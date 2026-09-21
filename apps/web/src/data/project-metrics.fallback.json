@@ -1,44 +1,44 @@
 {
   "weapp-tailwindcss": {
-    "version": "5.3.5",
-    "releasedAt": "2026-08-25T03:07:36.077Z",
-    "stars": 1849,
-    "weeklyDownloads": 11561,
-    "fetchedAt": "2026-08-26T00:00:00.000Z"
+    "version": "5.5.6",
+    "releasedAt": "2026-09-18T04:42:30.933Z",
+    "stars": 1862,
+    "weeklyDownloads": 6037,
+    "fetchedAt": "2026-09-21T05:57:35.624Z"
   },
   "weapp-vite": {
-    "version": "6.22.0",
-    "releasedAt": "2026-08-24T15:07:11.946Z",
-    "stars": 465,
-    "weeklyDownloads": 3178,
-    "fetchedAt": "2026-08-26T00:00:00.000Z"
+    "version": "7.1.4",
+    "releasedAt": "2026-09-20T17:42:00.511Z",
+    "stars": 485,
+    "weeklyDownloads": 2978,
+    "fetchedAt": "2026-09-21T05:57:35.625Z"
   },
   "varo": {
     "version": "2.1.0",
     "releasedAt": "2026-09-13T15:45:51.579Z",
-    "stars": 2,
-    "weeklyDownloads": 195,
-    "fetchedAt": "2026-09-16T00:00:00.000Z"
+    "stars": 3,
+    "weeklyDownloads": 189,
+    "fetchedAt": "2026-09-21T05:57:35.658Z"
   },
   "vite-plugin-taro": {
-    "version": "0.7.1",
-    "releasedAt": "2026-09-07T16:45:56.067Z",
-    "stars": 50,
-    "weeklyDownloads": 934,
-    "fetchedAt": "2026-09-09T11:13:25.620Z"
+    "version": "0.7.6",
+    "releasedAt": "2026-09-21T04:28:00.738Z",
+    "stars": 52,
+    "weeklyDownloads": 834,
+    "fetchedAt": "2026-09-21T05:57:35.595Z"
   },
   "uni-helper": {
     "version": "2.17.1",
     "releasedAt": "2026-09-14T02:54:35.528Z",
-    "stars": 309,
-    "weeklyDownloads": 817,
-    "fetchedAt": "2026-09-16T12:00:00.000Z"
+    "stars": 311,
+    "weeklyDownloads": 689,
+    "fetchedAt": "2026-09-21T05:57:35.558Z"
   },
   "wot-ui": {
     "version": "1.14.0",
     "releasedAt": "2026-01-04T11:19:40.319Z",
-    "stars": 360,
-    "weeklyDownloads": 2378,
-    "fetchedAt": "2026-09-16T12:00:00.000Z"
+    "stars": 377,
+    "weeklyDownloads": 2885,
+    "fetchedAt": "2026-09-21T05:57:35.597Z"
   }
 }
