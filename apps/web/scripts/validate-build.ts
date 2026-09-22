@@ -204,7 +204,10 @@ for (const prefix of ['', 'en/']) {
   if (JSON.stringify(sponsorTiers.slice(0, 3)) !== JSON.stringify(expectedTiers) || sponsorTiers.length !== (githubPages ? 3 : 4)) {
     errors.push(`${prefix}pricing/: incorrect sponsorship tiers for this target`)
   }
-  for (const id of ['plans', 'roadmap', 'cloud-build', 'services', 'support', 'boundary', 'faq']) {
+  if (pricing.querySelector('#plans')) {
+    errors.push(`${prefix}pricing/: product shelf must not be published`)
+  }
+  for (const id of ['roadmap', 'cloud-build', 'services', 'support', 'boundary', 'faq']) {
     if (Boolean(pricing.querySelector(`#${id}`)) === githubPages) {
       errors.push(`${prefix}pricing/: incorrect visibility for #${id}`)
     }
@@ -228,13 +231,15 @@ if (githubPages) {
   const commercialCopy = /\bgold\b|\benterprise\b|\bservices?\b|\btraining\b|cloud[ -]build|定制|人工服务|服务报价|迁移与培训|建设中的能力|云构建|企业合作|商业化/i
   for (const file of surfaces) {
     const contents = await readFile(resolve(dist, file), 'utf8')
-    // Keep the open-source project's data-roadmap-count attribute; ban the commercial section.
-    if (commercialCopy.test(contents)) {
+    const doc = file.endsWith('.html') ? parse(contents) : undefined
+    // Astro can inline shared CSS; selector names are not published service copy.
+    doc?.querySelectorAll('style').forEach(node => node.remove())
+    if (commercialCopy.test(doc?.toString() ?? contents)) {
       errors.push(`${file}: Pages output contains commercial content`)
     }
-    if (file.endsWith('.html')) {
-      const doc = parse(contents)
-      doc.querySelectorAll('style, script:not([type="application/ld+json"])').forEach(node => node.remove())
+    if (doc) {
+      // Keep the open-source project's data-roadmap-count attribute; ban commercial copy.
+      doc.querySelectorAll('script:not([type="application/ld+json"])').forEach(node => node.remove())
       if (/\broadmap\b|路线图/i.test(doc.text)) {
         errors.push(`${file}: Pages output contains commercial roadmap copy`)
       }

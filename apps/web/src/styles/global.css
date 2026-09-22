@@ -823,15 +823,10 @@
 .pricing-hero {
   background: var(--background);
 }
-.pricing-plan,
 .pricing-sponsor-tier,
 .pricing-template,
 .pricing-service-list article {
   border-radius: 12px;
-  box-shadow: none;
-}
-.pricing-plan-featured {
-  border-color: var(--accent);
   box-shadow: none;
 }
 

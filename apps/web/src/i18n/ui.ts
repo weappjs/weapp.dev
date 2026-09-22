@@ -173,12 +173,6 @@ export const siteCopy = {
       title: '先支持开源，再选择可交付服务',
       description: '核心编译器和插件永远 MIT 开源。当前页面只列出人工服务与开源赞助，其他商业化能力仍在建设中。',
       early: '当前没有账户或支付后台。赞助与服务咨询请先通过 GitHub 联系，产品能力开放后再更新这里。',
-      plans: [
-        { name: 'Community', price: '免费', cadence: '现在可用', description: '完整使用开源工具，不设文档墙或付费 Issue。', features: ['全部开源包与文档', '公开 GitHub Issues', '本地 CLI 与基础模板骨架'], action: '从开源开始', status: 'available', featured: false },
-        { name: 'Pro', price: '规划中', cadence: '尚未开放', description: '未来面向个人生产力的模板与云构建方案。', features: ['官方模板完整源码', '云构建与预览结果', '构建记录与体积分析'], action: '查看建设方向', status: 'planned', featured: true },
-        { name: 'Team', price: '规划中', cadence: '尚未开放', description: '未来面向小团队协同与私有组件交付。', features: ['团队权限与协作', '私有组件 registry', '可分享的构建记录'], action: '查看建设方向', status: 'planned', featured: false },
-        { name: 'Enterprise', price: '规划中', cadence: '尚未开放', description: '未来面向安全评审、内网部署与长期支持。', features: ['专属部署与安全能力', '版本锁定与审计', '专属交付支持'], action: '查看建设方向', status: 'planned', featured: false },
-      ],
       sponsorTitle: '支持 weapp.dev 开源',
       sponsorDescription: '中国开源项目需要持续的时间、基础设施和维护投入。赞助不是购买服务，而是帮助这套工具继续发布、修复和陪伴社区。',
       sponsorTiers: [
@@ -461,12 +455,6 @@ export const siteCopy = {
       title: 'Support open source first, then choose a service',
       description: 'Core compilers and plugins stay MIT open source. This page lists human-delivered services and sponsorship; other commercial capabilities are still in development.',
       early: 'There is no account or payment backend yet. Contact us through GitHub for sponsorship or service discussions; this page will change when products open.',
-      plans: [
-        { name: 'Community', price: 'Free', cadence: 'Available now', description: 'Use the open-source tools fully, without docs walls or paid-only Issues.', features: ['All open packages and docs', 'Public GitHub Issues', 'Local CLI and starter template skeletons'], action: 'Start with open source', status: 'available', featured: false },
-        { name: 'Pro', price: 'Planned', cadence: 'Not open yet', description: 'A future personal productivity path for templates and cloud builds.', features: ['Complete official templates', 'Cloud builds and preview output', 'Build history and bundle analysis'], action: 'View the direction', status: 'planned', featured: true },
-        { name: 'Team', price: 'Planned', cadence: 'Not open yet', description: 'A future path for small-team collaboration and private components.', features: ['Team roles and collaboration', 'Private component registry', 'Shareable build records'], action: 'View the direction', status: 'planned', featured: false },
-        { name: 'Enterprise', price: 'Planned', cadence: 'Not open yet', description: 'A future path for security review, internal deployment, and long-term support.', features: ['Dedicated deployment and security', 'Version pinning and audit', 'Dedicated delivery support'], action: 'View the direction', status: 'planned', featured: false },
-      ],
       sponsorTitle: 'Sponsor weapp.dev open source',
       sponsorDescription: 'Chinese open source needs sustained time, infrastructure, and maintenance. Sponsorship is not a service purchase; it helps this toolchain keep shipping and supporting its community.',
       sponsorTiers: [

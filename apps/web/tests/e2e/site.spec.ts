@@ -118,7 +118,8 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
 test('renders the bilingual pricing and delivery page', async ({ page }) => {
   await page.goto('/pricing/')
   await expect(page.getByRole('heading', { level: 1, name: '先支持开源，再选择可交付服务' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Community' })).toBeVisible()
+  await expect(page.locator('#plans')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: /^(Community|Pro|Team|Enterprise)$/ })).toHaveCount(0)
   await expect(page.getByText('¥20', { exact: true })).toBeVisible()
   await expect(page.getByText('¥200', { exact: true })).toBeVisible()
   await expect(page.getByText('¥1,000', { exact: true })).toBeVisible()
@@ -130,8 +131,6 @@ test('renders the bilingual pricing and delivery page', async ({ page }) => {
   await expect(page.locator('#roadmap')).toContainText('建设中的能力')
   await expect(page.locator('#cloud-build')).toContainText('仍在建设中')
   await expect(page.locator('#services')).toContainText('¥8,000-15,000')
-  await expect(page.locator('#plans')).not.toContainText('500 分钟')
-  await expect(page.locator('#plans')).toContainText('规划中')
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://weapp.dev/pricing/')
   await expect(page.locator('link[hreflang="en-US"]')).toHaveAttribute('href', 'https://weapp.dev/en/pricing/')
   await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(2)
@@ -141,6 +140,8 @@ test('renders the bilingual pricing and delivery page', async ({ page }) => {
   await expect(page).toHaveURL(/\/en\/pricing\/$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Support open source first, then choose a service' })).toBeVisible()
   await expect(page.locator('#sponsor')).toContainText('¥1,000')
+  await expect(page.locator('#plans')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: /^(Community|Pro|Team|Enterprise)$/ })).toHaveCount(0)
 })
 
 test('home commercial entry points reach pricing and services', async ({ page }) => {
