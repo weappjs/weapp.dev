@@ -10,6 +10,7 @@ describe('deployment target', () => {
     expect(isGithubPagesBuild()).toBe(false)
     expect(getBuildOutputDir()).toBe('dist')
     expect(getSiteProfile().origin).toBe('https://weapp.dev')
+    expect(getSiteProfile().heroWordmark).toBe('weapp.dev')
     expect(getSiteProfile().features).toEqual({ services: true, sponsorship: true })
   })
 
@@ -19,6 +20,7 @@ describe('deployment target', () => {
     expect(isGithubPagesBuild()).toBe(true)
     expect(getBuildOutputDir()).toBe('dist-pages')
     expect(getSiteProfile().origin).toBe('https://weapp.js.org')
+    expect(getSiteProfile().heroWordmark).toBe('weapp.js.org')
     expect(getSiteProfile().features).toEqual({ services: false, sponsorship: false })
     expect(getSiteProfile().navigation.map(item => item.path)).not.toContain('/pricing/#services')
     expect(getDeploymentTarget('anything-else')).toBe('weapp')

@@ -43,7 +43,7 @@ const profiles: Record<DeploymentTarget, SiteProfile> = {
     target: 'github-pages',
     origin: 'https://weapp.js.org',
     name: 'weapp.js.org',
-    heroWordmark: 'weapp',
+    heroWordmark: 'weapp.js.org',
     outputDir: 'dist-pages',
     features: { services: false, sponsorship: false },
     navigation: [projectNavigation, { id: 'about', path: '/#about', label: { 'zh-CN': '生态介绍', 'en': 'Ecosystem' } }, releaseNavigation, { id: 'collaboration', path: '/#collaboration', label: { 'zh-CN': '参与贡献', 'en': 'Contribute' } }],

@@ -12,7 +12,7 @@ test('loads Pages assets and navigates between languages below the repository pa
     }
   })
   await page.goto('/weapp.dev/')
-  await expect(page.locator('#home-hero-title')).toHaveText('weapp')
+  await expect(page.locator('#home-hero-title')).toHaveText('weapp.js.org')
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://weapp.js.org/')
   await expect(page.locator('.home-hero-screen')).toHaveCSS('background-color', 'rgb(2, 3, 8)')
   await page.locator('img').evaluateAll(images => images.forEach(image => (image as HTMLImageElement).loading = 'eager'))
@@ -60,7 +60,7 @@ test.describe('Pages without JavaScript', () => {
         await expectSiteLink(homeLink, `${mount}${prefix}/`)
         await homeLink.click()
         await expect(page).toHaveURL(`${mount}${prefix}/`)
-        await expect(page.locator('#home-hero-title')).toHaveText('weapp')
+        await expect(page.locator('#home-hero-title')).toHaveText('weapp.js.org')
       }
       expect(failures).toEqual([])
     })

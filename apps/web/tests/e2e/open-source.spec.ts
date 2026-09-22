@@ -10,7 +10,7 @@ const fundingCopy = /赞助|资金|基金|付费|商业服务|商业化|\bsponso
 for (const prefix of ['', '/en']) {
   test(`publishes an open-source identity and contribution navigation on ${prefix || 'zh-CN'}`, async ({ page, isMobile }) => {
     await page.goto(`${prefix}/`)
-    await expect(page.locator('#home-hero-title')).toHaveText('weapp')
+    await expect(page.locator('#home-hero-title')).toHaveText('weapp.js.org')
     await expect(page.locator('[data-site-header]').getByRole('link', { name: 'weapp.js.org', exact: true })).toHaveCount(1)
     await expect(page.locator('[data-site-header] [data-analytics-target="site_source"]')).toHaveAttribute('href', 'https://github.com/weappjs')
     await expect(page.locator('footer [data-analytics-target="site_source"]')).toHaveAttribute('href', 'https://github.com/weappjs/weapp.dev')
