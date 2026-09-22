@@ -1,14 +1,14 @@
 ---
 import type { Locale } from '../../types/project'
 import { homeSection, sectionTitle, shell } from '../../styles/classes'
-import { siteCopy } from '../../i18n/ui'
+import { getSiteCopy } from '../../i18n/ui'
 
 interface Props {
   locale: Locale
 }
 
 const { locale } = Astro.props
-const copy = siteCopy[locale]
+const copy = getSiteCopy(locale)
 ---
 
 <section class="border-y border-line bg-panel-soft" id="vision" aria-labelledby="vision-title">

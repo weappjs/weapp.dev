@@ -7,8 +7,8 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   webServer: {
-    // The CLI detaches in agent environments; Playwright needs a foreground server.
-    command: `node --input-type=module -e "import { preview } from 'astro'; await preview({ server: { host: '127.0.0.1', port: 4321 } })"`,
+    // Serve the exact deployment artifact, including the Pages relative paths.
+    command: 'node scripts/serve-test-site.mjs',
     url: 'http://127.0.0.1:4321',
     reuseExistingServer: false,
   },

@@ -1,21 +1,22 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import Header from '../../components/Header.astro'
-import PricingPage from '../../components/PricingPage.astro'
 import Footer from '../../components/Footer.astro'
+import ProjectRedirect from '../../components/ProjectRedirect.astro'
 import { getProjects } from '../../lib/projects'
+import { getSiteProfile } from '../../lib/deployment'
 import { pricingSchema } from '../../lib/seo'
-import { isGithubPagesBuild } from '../../lib/deployment'
 
 const locale = 'en' as const
-const projects = await getProjects()
-const title = 'Sponsorship and fund splits | weapp.dev'
-const githubPages = isGithubPagesBuild()
-const description = githubPages ? 'Sponsorship tiers, the 60/25/15 fund split, and the weapp.dev contributors fund.' : 'Sponsorship tiers, the 60/25/15 fund split, and deliverable migration and training services from weapp.dev.'
+const profile = getSiteProfile()
+const projects = profile.features.sponsorship ? await getProjects() : []
+const Content = profile.features.sponsorship ? (await import('../../components/PricingPage.astro')).default : ProjectRedirect
+const title = 'Migration, training and open-source sponsorship'
+const description = 'Mini-program migration and training services, with separate sponsorship for open-source maintenance, documentation, and contributors.'
 ---
 
-<BaseLayout locale={locale} title={title} description={description} imageAlt={githubPages ? 'weapp.dev open-source sponsorship and contributors fund' : 'weapp.dev commercial delivery layer'} schemas={[pricingSchema(locale, githubPages)]}>
+{profile.features.sponsorship ? <BaseLayout locale={locale} title={`${title} | ${profile.name}`} description={description} imageAlt={`${profile.name} ${title}`} schemas={[pricingSchema(locale)]}>
   <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
-  <PricingPage locale={locale} />
+  <Content locale={locale} />
   <Footer locale={locale} projects={projects} currentPath={Astro.url.pathname} />
-</BaseLayout>
+</BaseLayout> : <ProjectRedirect locale={locale} />}

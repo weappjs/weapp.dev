@@ -1,7 +1,7 @@
 ---
 import { ArrowLeft } from '@lucide/astro'
 import type { Locale } from '../types/project'
-import { localizePath, siteCopy } from '../i18n/ui'
+import { localizePath, getSiteCopy } from '../i18n/ui'
 import { buttonPrimary, pageTitle, shell } from '../styles/classes'
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 }
 
 const { locale } = Astro.props
-const copy = siteCopy[locale].notFound
+const copy = getSiteCopy(locale).notFound
 ---
 
 <main id="main-content" class:list={[shell, 'grid min-h-[min(700px,calc(100dvh-64px))] grid-cols-[.82fr_1.18fr] items-center gap-14 py-12 max-[820px]:min-h-0 max-[820px]:grid-cols-1 max-[820px]:gap-8 max-[720px]:py-10']}>

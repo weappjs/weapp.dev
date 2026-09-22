@@ -1,4 +1,5 @@
 ---
+import { getSiteProfile } from '../lib/deployment'
 import BaseLayout from '../layouts/BaseLayout.astro'
 import Header from '../components/Header.astro'
 import HomePage from '../components/HomePage.astro'
@@ -8,20 +9,21 @@ import { loadProjectMetrics } from '../lib/metrics'
 import { getHomeProjects } from '../lib/home'
 import { organizationSchema, projectListSchema, websiteSchema } from '../lib/seo'
 
+const profile = getSiteProfile()
 const locale = 'zh-CN' as const
 const projects = await getProjects()
 const metrics = await loadProjectMetrics()
 const homeProjects = await getHomeProjects(projects)
-const title = 'weapp.dev | 小程序工程工具链'
-const description = '面向真实小程序工程的开放工具链：weapp-vite 负责构建，weapp-tailwindcss 负责样式，Varo 负责组件交付，weapp-sqlite 规划本地数据能力，VPT 连接 Taro 与 React 团队。'
+const title = `${profile.name} | ${profile.features.services ? '小程序工程工具链与服务' : 'JavaScript 小程序开源生态'}`
+const description = profile.features.services ? '面向真实小程序工程的开放工具链：weapp-vite 负责构建，weapp-tailwindcss 负责样式，Varo 负责组件交付，weapp-sqlite 规划本地数据能力，VPT 连接 Taro 与 React 团队。' : '汇集 JavaScript 小程序开源项目：构建工具、样式工具、Vue 与 React 运行时及组件库。浏览项目关系、真实源码、文档和参与贡献的入口。'
 ---
 
 <BaseLayout
   locale={locale}
   title={title}
   description={description}
-  imageAlt="weapp.dev 小程序工程工具链地图"
-  schemas={[organizationSchema(projects), websiteSchema(locale), projectListSchema(locale, projects)]}
+  imageAlt={`${profile.name} 小程序工程工具链地图`}
+  schemas={[organizationSchema(), websiteSchema(locale), projectListSchema(locale, projects)]}
 >
   <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
   <HomePage locale={locale} projects={projects} homeProjects={homeProjects} metrics={metrics} />

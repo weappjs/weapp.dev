@@ -1,4 +1,5 @@
 ---
+import { getSiteProfile } from '../../lib/deployment'
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import Header from '../../components/Header.astro'
 import HomePage from '../../components/HomePage.astro'
@@ -8,20 +9,21 @@ import { loadProjectMetrics } from '../../lib/metrics'
 import { getHomeProjects } from '../../lib/home'
 import { organizationSchema, projectListSchema, websiteSchema } from '../../lib/seo'
 
+const profile = getSiteProfile()
 const locale = 'en' as const
 const projects = await getProjects()
 const metrics = await loadProjectMetrics()
 const homeProjects = await getHomeProjects(projects)
-const title = 'weapp.dev | Mini-app engineering toolchain'
-const description = 'An open toolchain for real mini-app projects: weapp-vite handles builds, weapp-tailwindcss handles styling, Varo plans editable component delivery, weapp-sqlite maps local data, and VPT connects Taro and React teams.'
+const title = `${profile.name} | ${profile.features.services ? 'Mini-app engineering and services' : 'Open-source JavaScript mini-program ecosystem'}`
+const description = profile.features.services ? 'An open toolchain for real mini-app projects: weapp-vite handles builds, weapp-tailwindcss handles styling, Varo delivers editable components, weapp-sqlite is planning local data capabilities, and VPT connects Taro and React teams.' : 'Open-source JavaScript tools for mini-program development. Explore build tooling, styling, Vue and React runtimes, and component libraries, with source code and documentation for each project.'
 ---
 
 <BaseLayout
   locale={locale}
   title={title}
   description={description}
-  imageAlt="weapp.dev toolchain map for mini-app engineering"
-  schemas={[organizationSchema(projects), websiteSchema(locale), projectListSchema(locale, projects)]}
+  imageAlt={`${profile.name} toolchain map for mini-app engineering`}
+  schemas={[organizationSchema(), websiteSchema(locale), projectListSchema(locale, projects)]}
 >
   <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
   <HomePage locale={locale} projects={projects} homeProjects={homeProjects} metrics={metrics} />

@@ -1,10 +1,12 @@
 ---
+import { getSiteProfile } from '../../../lib/deployment'
 import BaseLayout from '../../../layouts/BaseLayout.astro'
 import Header from '../../../components/Header.astro'
 import Footer from '../../../components/Footer.astro'
 import ProjectsIndexPage from '../../../components/ProjectsIndexPage.astro'
 import { getProjects } from '../../../lib/projects'
 import { projectListSchema, projectsIndexSchema } from '../../../lib/seo'
+const profile = getSiteProfile()
 const projects = await getProjects()
 ---
-<BaseLayout locale="en" title="Toolchain projects | weapp.dev" description="The weapp native toolchain, Taro, Vue Mini, Rezor, and uni-app ecosystems" imageAlt="weapp.dev ecosystem projects map" schemas={[projectsIndexSchema('en', projects), projectListSchema('en', projects)]}><Header locale="en" projects={projects} currentPath={Astro.url.pathname} /><ProjectsIndexPage locale="en" projects={projects} /><Footer locale="en" projects={projects} currentPath={Astro.url.pathname} /></BaseLayout>
+<BaseLayout locale="en" title={`Toolchain projects | ${profile.name}`} description="The weapp native toolchain, Taro, Vue Mini, Rezor, and uni-app ecosystems" imageAlt={`${profile.name} ecosystem projects map`} schemas={[projectsIndexSchema('en', projects), projectListSchema('en', projects)]}><Header locale="en" projects={projects} currentPath={Astro.url.pathname} /><ProjectsIndexPage locale="en" projects={projects} /><Footer locale="en" projects={projects} currentPath={Astro.url.pathname} /></BaseLayout>

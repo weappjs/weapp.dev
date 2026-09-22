@@ -1,13 +1,14 @@
 ---
-import { ArrowRight, ArrowUpRight, GitFork, Heart, Layers2, Package, ScanLine, ShieldCheck, BadgeCheck } from '@lucide/astro'
+import { ArrowRight, ArrowUpRight, GitFork, Layers2, Package, ScanLine, ShieldCheck, BadgeCheck } from '@lucide/astro'
 import type { Locale, ProjectMetricsMap } from '../types/project'
 import type { ProjectEntry } from '../lib/projects'
 import { formatReleaseDate } from '../lib/metrics'
-import { localizePath, siteCopy } from '../i18n/ui'
-import { isGithubPagesBuild } from '../lib/deployment'
+import { localizePath, getSiteCopy } from '../i18n/ui'
+import { getSiteProfile } from '../lib/deployment'
 import { buttonPrimary, buttonSecondary, iconControl, section, shell } from '../styles/classes'
 import BuildRail from './BuildRail.astro'
 import HomeHero from './home/HomeHero.astro'
+import HomeCommercial from './home/HomeCommercial.astro'
 import type { HomeProject } from '../lib/home-projects'
 import { getCatalogEcosystemGroups, getConstellationProjects } from '../lib/toolchain'
 import HomePartnerSection from './home/HomePartnerSection.astro'
@@ -22,8 +23,8 @@ interface Props {
 }
 
 const { locale, projects, metrics, homeProjects = [] } = Astro.props
-const copy = siteCopy[locale]
-const githubPages = isGithubPagesBuild()
+const copy = getSiteCopy(locale)
+const profile = getSiteProfile()
 const numberLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
 const ecosystemGroups = getCatalogEcosystemGroups(projects)
 const weappHome = homeProjects.filter(project => project.data.ecosystem === 'weapp')
@@ -45,7 +46,7 @@ const railGroups = ecosystemGroups.map(group => ({
     stage: stageById.get(project.id) ?? { 'zh-CN': copy.rail[group.id], en: copy.rail[group.id] },
   })),
 }))
-const releaseProjects = projects.filter(project => metrics[project.id])
+const releaseProjects = projects.filter(project => project.data.status !== 'planned' && metrics[project.id])
 const stepIcons = [Layers2, ScanLine, Package]
 const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
 ---
@@ -58,6 +59,14 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
       <header data-reveal class="mb-12 max-w-[720px]">
         <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{copy.about.title}</h2>
         <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{copy.about.description}</p>
+        {profile.features.services ? <p class="mt-5 mb-0 text-sm leading-[1.7] text-copy-muted">
+          {locale === 'zh-CN' ? 'weapp.dev 展示工具链的工程能力，并提供迁移与培训服务。纯开源项目展示和参与入口在 ' : 'weapp.dev presents the toolchain and offers migration and training. Explore the dedicated open-source project showcase at '}
+          <a class="font-semibold text-brand underline underline-offset-4" href={`https://weapp.js.org${localizePath(locale)}`}>weapp.js.org</a>{locale === 'zh-CN' ? '。' : '.'}
+        </p> : <div class="mt-7 flex flex-wrap gap-3">
+          <a class={buttonPrimary} href={localizePath(locale, '/projects/')}>{copy.hero.primary}<ArrowRight size={17} aria-hidden="true" /></a>
+          <a class={buttonSecondary} href={profile.organizationUrl} target="_blank" rel="noopener noreferrer">{copy.hero.secondary}<GitFork size={17} aria-hidden="true" /></a>
+        </div>}
+
       </header>
       <ol class="m-0 grid list-none grid-cols-3 gap-0 border-y border-line p-0 max-[720px]:grid-cols-1 max-[720px]:border-b-0">
         {copy.about.items.map((item, index) => {
@@ -90,31 +99,12 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
     <ToolchainMap locale={locale} projects={projects} />
   </section>
 
-  <BuildRail locale={locale} />
+  {profile.features.services && <>
+    <BuildRail locale={locale} />
+    <HomeCommercial locale={locale} />
+  </>}
 
-  <section class="border-y border-line bg-panel-soft" id="commercial">
-    <div class:list={[section, shell]}>
-      <header data-reveal class="mb-12 max-w-[720px]">
-        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{githubPages ? copy.commercial.pagesTitle : copy.commercial.title}</h2>
-        <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{githubPages ? copy.commercial.pagesDescription : copy.commercial.description}</p>
-      </header>
-      <div class:list={["grid gap-px overflow-hidden border border-line bg-line max-[760px]:grid-cols-1", githubPages ? "grid-cols-1" : "grid-cols-3"]}>
-        {copy.commercial.cards.filter(card => !githubPages || (card.kind !== 'service' && card.kind !== 'roadmap')).map((card, index) => (
-          <article data-reveal style={`--reveal-delay: ${index * 70}ms`} class="bg-panel p-7">
-            <h3 class="mb-3 text-2xl font-[660]">{card.title}</h3>
-            <p class="mb-0 text-sm leading-[1.7] text-copy-muted">{card.body}</p>
-          </article>
-        ))}
-      </div>
-      <div class="mt-8 flex flex-wrap items-center gap-3">
-        <a class={buttonPrimary} href={`${localizePath(locale, '/pricing/')}#sponsor`} data-analytics-event="navigate_section" data-analytics-section="sponsor">{copy.commercial.trial}<Heart size={17} stroke-width={1.9} aria-hidden="true" /></a>
-        {!githubPages && <a class={buttonSecondary} href={`${localizePath(locale, '/pricing/')}#services`} data-analytics-event="navigate_section" data-analytics-section="services"><ArrowRight size={17} stroke-width={1.9} aria-hidden="true" />{copy.commercial.services}</a>}
-        {!githubPages && <a class="inline-flex min-h-11 items-center gap-2 px-2 text-sm font-[650] text-copy-muted transition-colors hover:text-ink" href={`${localizePath(locale, '/pricing/')}#roadmap`} data-analytics-event="navigate_section" data-analytics-section="roadmap">{copy.commercial.pricing}<ArrowUpRight size={16} stroke-width={1.8} aria-hidden="true" /></a>}
-      </div>
-    </div>
-  </section>
-
-  <section class="border-y border-line bg-panel-soft" id="vision">
+  {profile.features.services && <section class="border-y border-line bg-panel-soft" id="vision">
     <span id="principles" class="sr-only" aria-hidden="true"></span>
     <div class:list={[section, shell, 'grid grid-cols-[.72fr_1.28fr] gap-16 max-[900px]:grid-cols-1 max-[900px]:gap-10']}>
       <header data-reveal class="max-w-[470px]">
@@ -134,7 +124,7 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
         })}
       </div>
     </div>
-  </section>
+  </section>}
 
   <section class:list={[section, shell]} id="releases">
     <div class="grid grid-cols-[.75fr_1.25fr] gap-16 max-[900px]:grid-cols-1 max-[900px]:gap-10">
@@ -163,14 +153,14 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
     </div>
   </section>
 
-  <section class="border-y border-line bg-panel">
+  <section class="border-y border-line bg-panel" id="collaboration">
     <div data-reveal class:list={[shell, 'grid min-h-[260px] grid-cols-[72px_1fr_auto] items-center gap-8 py-12 max-[820px]:grid-cols-[58px_1fr] max-[620px]:grid-cols-1']}>
       <img class="size-[72px] rounded-panel border border-line bg-panel-soft p-2.5 max-[820px]:size-[58px]" src="/logo.svg" width="72" height="72" alt="" />
       <div>
         <h2 class="mb-3 text-[34px] font-[670] max-[620px]:text-[30px]">{copy.collaboration.title}</h2>
         <p class="mb-0 max-w-[650px] text-copy-muted">{copy.collaboration.description}</p>
       </div>
-      <a class:list={[buttonSecondary, 'max-[820px]:col-start-2 max-[820px]:w-fit max-[620px]:col-auto']} href="https://github.com/sonofmagic/weapp.dev" target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="collaboration">
+      <a class:list={[buttonSecondary, 'max-[820px]:col-start-2 max-[820px]:w-fit max-[620px]:col-auto']} href={profile.organizationUrl} target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="collaboration">
         <GitFork size={18} stroke-width={1.9} aria-hidden="true" />
         {copy.collaboration.action}
       </a>

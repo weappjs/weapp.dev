@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { siteCopy } from '../../src/i18n/ui'
+import { heroWordmark, isOpenSourceSite, siteOrigin } from './site-target'
 import { expect, test } from './test'
 
 const retiredVisuals = 'canvas:not(.home-hero-particle-canvas), [data-shader-canvas], [data-shader], [data-shader-frame], [data-webgl-fallback], [data-art], .project-art, [class^="art-"], [class*=" art-"]'
@@ -25,8 +26,8 @@ const railLinks = [
 ]
 
 async function expectHomeVisuals(page: import('@playwright/test').Page) {
-  await expect(page.getByRole('heading', { level: 1, name: 'weapp.dev' })).toBeAttached()
-  await expect(page.locator('#home-hero-title')).toHaveText('weapp.dev')
+  await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeAttached()
+  await expect(page.locator('#home-hero-title')).toHaveText(heroWordmark)
   await expect(page.locator('.home-hero-screen')).toBeVisible()
   await expect(page.locator('.home-hero-constellation .home-hero-tile')).toHaveCount(7)
   await expect(page.locator('.home-hero-orbit-inner, .home-hero-orbit-mid, .home-hero-orbit-outer, .home-hero-planet--ring')).toHaveCount(0)
@@ -69,18 +70,21 @@ async function mockAnalyticsScripts(
 
 test('renders the bilingual ecosystem home with valid metadata', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1, name: 'weapp.dev' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeVisible()
   await expectHomeVisuals(page)
   await expect(page.getByRole('heading', { name: 'Uni Helper 和 Wot UI' })).toBeVisible()
   await expect(page.locator('#projects').getByRole('heading', { name: 'weapp-tailwindcss' })).toBeVisible()
   await expect(page.locator('#projects').getByRole('heading', { name: 'weapp-vite' })).toBeVisible()
   await expect(page.locator('#projects').getByRole('heading', { name: 'Varo' })).toBeVisible()
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://weapp.dev/')
-  await expect(page.locator('link[hreflang="en-US"]')).toHaveAttribute('href', 'https://weapp.dev/en/')
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `${siteOrigin}/`)
+  await expect(page.locator('link[hreflang="en-US"]')).toHaveAttribute('href', `${siteOrigin}/en/`)
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow')
-  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://weapp.dev/og.png')
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', `${siteOrigin}/og.png`)
   await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(4)
-  await expect(page.locator('#about')).toContainText('weapp-tailwindcss')
+  await expect(page.locator('#about')).toContainText(isOpenSourceSite ? 'JavaScript 与 TypeScript 项目' : 'weapp-tailwindcss')
+  if (isOpenSourceSite) {
+    await expect(page.locator('#about')).toContainText('weappjs')
+  }
   const docsLinks = page.locator('#projects').getByRole('link', { name: '阅读文档' })
   await expect(docsLinks).toHaveCount(4)
   await expect(docsLinks.evaluateAll(links => links.map(link => link.getAttribute('href')))).resolves.toEqual([
@@ -93,7 +97,7 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
   await expect(projectHomeLinks.evaluateAll(links => links.map(link => ({ href: link.getAttribute('href'), target: link.getAttribute('target'), rel: link.getAttribute('rel') })))).resolves.toEqual(
     railLinks.map(href => ({ href, target: '_blank', rel: 'noopener noreferrer' })),
   )
-  await expect(page.locator('#projects a[data-analytics-event="select_project"]').evaluateAll(links => links.map(link => link.getAttribute('href')))).resolves.toEqual([
+  await expect(page.locator('#projects a[data-analytics-event="select_project"]').evaluateAll(links => links.map(link => new URL((link as HTMLAnchorElement).href).pathname))).resolves.toEqual([
     '/projects/weapp-vite/',
     '/projects/weapp-tailwindcss/',
     '/projects/varo/',
@@ -103,10 +107,14 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
   await page.getByRole('link', { name: 'English' }).click()
   await expect(page).toHaveURL(/\/en\/$/)
   await expect(page.getByRole('heading', { name: 'Uni Helper and Wot UI' })).toBeVisible()
+  if (isOpenSourceSite) {
+    await expect(page.locator('#about')).toContainText('JavaScript and TypeScript projects')
+    await expect(page.locator('#about')).toContainText('weappjs')
+  }
   await expectHomeVisuals(page)
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://weapp.dev/en/')
-  await expect(page.locator('link[hreflang="zh-CN"]')).toHaveAttribute('href', 'https://weapp.dev/')
-  await expect(page.locator('#projects a[data-analytics-event="select_project"]').evaluateAll(links => links.map(link => link.getAttribute('href')))).resolves.toEqual([
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `${siteOrigin}/en/`)
+  await expect(page.locator('link[hreflang="zh-CN"]')).toHaveAttribute('href', `${siteOrigin}/`)
+  await expect(page.locator('#projects a[data-analytics-event="select_project"]').evaluateAll(links => links.map(link => new URL((link as HTMLAnchorElement).href).pathname))).resolves.toEqual([
     '/en/projects/weapp-vite/',
     '/en/projects/weapp-tailwindcss/',
     '/en/projects/varo/',
@@ -116,15 +124,18 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
 })
 
 test('renders the bilingual pricing and delivery page', async ({ page }) => {
+  test.skip(isOpenSourceSite, 'Sponsorship and services belong to weapp.dev')
   await page.goto('/pricing/')
-  await expect(page.getByRole('heading', { level: 1, name: '先支持开源，再选择可交付服务' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: '围绕真实项目的迁移与培训' })).toBeVisible()
   await expect(page.locator('#plans')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: /^(Community|Pro|Team|Enterprise)$/ })).toHaveCount(0)
   await expect(page.getByText('¥20', { exact: true })).toBeVisible()
   await expect(page.getByText('¥200', { exact: true })).toBeVisible()
   await expect(page.getByText('¥1,000', { exact: true })).toBeVisible()
   await expect(page.getByText('¥2,000 起', { exact: true })).toBeVisible()
-  await expect(page.locator('#sponsor')).toContainText('20%')
+  await expect(page.locator('#sponsor')).toContainText('60% 核心维护')
+  await expect(page.locator('#sponsor')).toContainText('25% 贡献者基金')
+  await expect(page.locator('#sponsor')).toContainText('15% 周边开源')
   await expect(page.locator('#sponsor')).toContainText('赞助不是购买服务')
   await expect(page.locator('#sponsor')).toContainText('weapp.dev、tw.weapp.dev、vite.weapp.dev')
   await expect(page.locator('#sponsor')).toContainText('Easysearch')
@@ -138,15 +149,20 @@ test('renders the bilingual pricing and delivery page', async ({ page }) => {
 
   await page.getByRole('link', { name: 'English' }).click()
   await expect(page).toHaveURL(/\/en\/pricing\/$/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Support open source first, then choose a service' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Migration and training for your project' })).toBeVisible()
   await expect(page.locator('#sponsor')).toContainText('¥1,000')
+  await expect(page.locator('#sponsor')).toContainText('60% Core maintenance')
+  await expect(page.locator('#sponsor')).toContainText('25% Contributors fund')
+  await expect(page.locator('#sponsor')).toContainText('15% Adjacent open source')
   await expect(page.locator('#plans')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: /^(Community|Pro|Team|Enterprise)$/ })).toHaveCount(0)
 })
 
 test('home commercial entry points reach pricing and services', async ({ page }) => {
+  test.skip(isOpenSourceSite, 'Sponsorship and services belong to weapp.dev')
   await page.goto('/')
-  await expect(page.locator('#commercial')).toContainText('赞助开源')
+  await expect(page.locator('#commercial')).toContainText('迁移与培训')
+  await expect(page.locator('#commercial')).toContainText('自愿赞助用于维护、文档和贡献者基金，不购买实施服务。')
   await page.getByRole('link', { name: '支持开源' }).click()
   await expect(page).toHaveURL(/\/pricing\/#sponsor$/)
   await page.goto('/')
@@ -205,7 +221,7 @@ test('home hero keeps a cosmic first screen while the rest of the page follows t
     const background = await screen.evaluate(element => getComputedStyle(element).backgroundColor)
     expect(background, theme).toBe('rgb(2, 3, 8)')
     await expect(page.locator('[data-hero-particles] canvas')).toHaveCount(1)
-    await expect(page.getByRole('heading', { level: 1, name: 'weapp.dev' })).toBeAttached()
+    await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeAttached()
     await page.locator('#about').scrollIntoViewIfNeeded()
     await expect.poll(() => page.locator('html').evaluate(element => element.hasAttribute('data-hero-cosmos'))).toBe(false)
   }
@@ -255,7 +271,9 @@ test('reduced motion keeps content visible and product interactions stationary',
     await row.locator('a').first().focus()
     expect(await movingOrHidden()).toEqual([])
   }
-  await page.locator('[data-principle-card]').first().hover()
+  if (!isOpenSourceSite) {
+    await page.locator('[data-principle-card]').first().hover()
+  }
   expect(await movingOrHidden()).toEqual([])
   expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
 })
@@ -363,7 +381,7 @@ test('passes automated accessibility checks in light and dark themes', async ({ 
   await page.emulateMedia({ reducedMotion: 'reduce' })
   for (const theme of ['light', 'dark']) {
     await page.addInitScript(selectedTheme => localStorage.setItem('weapp-theme', selectedTheme), theme)
-    for (const path of ['/', '/en/', '/pricing/', '/en/pricing/']) {
+    for (const path of (isOpenSourceSite ? ['/', '/en/', '/projects/', '/en/projects/'] : ['/', '/en/', '/pricing/', '/en/pricing/'])) {
       await page.goto(path)
       await page.waitForFunction(() => [...document.querySelectorAll('[data-reveal]')].every(element => element.hasAttribute('data-visible')))
       const results = await new AxeBuilder({ page }).analyze()
@@ -458,7 +476,7 @@ test('opens analytics preferences directly from the privacy page', async ({ page
 })
 
 test('loads all local product visuals on key pages', async ({ page }) => {
-  for (const path of ['/', '/en/', '/projects/weapp-tailwindcss/', '/projects/weapp-vite/', '/projects/varo/', '/en/projects/weapp-tailwindcss/', '/en/projects/weapp-vite/', '/en/projects/varo/', '/pricing/', '/en/pricing/', '/privacy/', '/en/privacy/', '/404/']) {
+  for (const path of ['/', '/en/', '/projects/weapp-tailwindcss/', '/projects/weapp-vite/', '/projects/varo/', '/en/projects/weapp-tailwindcss/', '/en/projects/weapp-vite/', '/en/projects/varo/', ...(isOpenSourceSite ? [] : ['/pricing/', '/en/pricing/']), '/privacy/', '/en/privacy/', '/404/']) {
     await page.goto(path)
     await expect(page.locator(retiredVisuals)).toHaveCount(0)
     await page.locator('img').evaluateAll(images => images.forEach((image) => {
@@ -487,7 +505,7 @@ test('keeps core content and links available without JavaScript', async ({ brows
   const page = await context.newPage()
   for (const locale of ['zh-CN', 'en'] as const) {
     await page.goto(locale === 'en' ? '/en/' : '/')
-    await expect(page.getByRole('heading', { level: 1, name: 'weapp.dev' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: siteCopy[locale].projects.documentation }).first()).toBeVisible()
     await expectHomeVisuals(page)
   }
@@ -575,7 +593,7 @@ test('keeps the other provider working when GA4 fails to load', async ({ page })
 
   await page.goto('/')
   await expect(page.locator('#weapp-baidu-tongji')).toHaveCount(1)
-  await expect(page.getByRole('heading', { level: 1, name: 'weapp.dev' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeVisible()
 })
 
 test('retries a failed GA4 script without duplicating its configuration', async ({ page }) => {

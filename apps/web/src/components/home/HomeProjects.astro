@@ -3,7 +3,7 @@ import type { Locale, ProjectMetricsMap } from '../../types/project'
 import type { HomeProject } from '../../lib/home-projects'
 import { homeSection, homeSectionPack, sectionTitle, shell } from '../../styles/classes'
 import HomeProjectRow from './HomeProjectRow.astro'
-import { siteCopy } from '../../i18n/ui'
+import { getSiteCopy } from '../../i18n/ui'
 
 interface Props {
   locale: Locale
@@ -18,7 +18,7 @@ interface Props {
 }
 
 const { locale, projects, metrics, labProjects, pack } = Astro.props
-const copy = siteCopy[locale]
+const copy = getSiteCopy(locale)
 const sectionId = Astro.props.id ?? 'projects'
 const eyebrow = Astro.props.eyebrow ?? copy.projects.eyebrow
 const title = Astro.props.title ?? copy.projects.title

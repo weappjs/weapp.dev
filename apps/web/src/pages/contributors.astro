@@ -1,19 +1,22 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import Footer from '../components/Footer.astro'
 import Header from '../components/Header.astro'
-import ContributorsPage from '../components/ContributorsPage.astro'
+import Footer from '../components/Footer.astro'
+import ProjectRedirect from '../components/ProjectRedirect.astro'
 import { getProjects } from '../lib/projects'
-import { siteCopy } from '../i18n/ui'
+import { getSiteProfile } from '../lib/deployment'
 import { contributorsSchema } from '../lib/seo'
 
 const locale = 'zh-CN' as const
-const copy = siteCopy[locale].contributors
-const projects = await getProjects()
+const profile = getSiteProfile()
+const projects = profile.features.sponsorship ? await getProjects() : []
+const Content = profile.features.sponsorship ? (await import('../components/ContributorsPage.astro')).default : ProjectRedirect
+const title = '贡献者计划'
+const description = '了解开源贡献、贡献者基金与公开分配规则。'
 ---
 
-<BaseLayout locale={locale} title={`${copy.title} | weapp.dev`} description={copy.description} imageAlt="weapp.dev 贡献者基金与积分规则" schemas={[contributorsSchema(locale, copy.title, copy.description)]}>
+{profile.features.sponsorship ? <BaseLayout locale={locale} title={`${title} | ${profile.name}`} description={description} imageAlt={`${profile.name} ${title}`} schemas={[contributorsSchema(locale, title, description)]}>
   <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
-  <ContributorsPage locale={locale} />
+  <Content locale={locale} />
   <Footer locale={locale} projects={projects} currentPath={Astro.url.pathname} />
-</BaseLayout>
+</BaseLayout> : <ProjectRedirect locale={locale} />}

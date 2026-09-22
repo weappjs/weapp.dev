@@ -2,9 +2,9 @@
 import { ChevronDown, Languages, Menu, Moon, Sun, X } from '@lucide/astro'
 import type { Locale } from '../types/project'
 import type { ProjectEntry } from '../lib/projects'
-import { alternatePath, localizePath, projectPath, siteCopy } from '../i18n/ui'
+import { alternatePath, localizePath, projectPath, getSiteCopy } from '../i18n/ui'
 import { localeChoiceScript } from '../lib/locale-redirect'
-import { isGithubPagesBuild } from '../lib/deployment'
+import { getSiteProfile } from '../lib/deployment'
 import { iconControl, shell, wordmark, wordmarkMark } from '../styles/classes'
 
 interface Props {
@@ -14,23 +14,22 @@ interface Props {
 }
 
 const { locale, projects, currentPath } = Astro.props
-const copy = siteCopy[locale]
-const pricingLabel = isGithubPagesBuild() ? (locale === 'zh-CN' ? '开源赞助' : 'Open-source sponsorship') : copy.nav.pricing
+const copy = getSiteCopy(locale)
+const profile = getSiteProfile()
+const navigation = profile.navigation.filter(item => item.id !== 'projects')
 const home = localizePath(locale)
 const languageUrl = alternatePath(locale, currentPath)
 const navLink = 'inline-flex items-center gap-1.5 whitespace-nowrap py-2 text-sm font-[590] text-copy-muted transition-colors duration-200 hover:text-ink'
 const projectsIndexPath = localizePath(locale, '/projects/')
-const pricingPath = localizePath(locale, '/pricing/')
 const isProjectsIndex = currentPath === projectsIndexPath
-const isPricing = currentPath === pricingPath
-const siteGithubUrl = 'https://github.com/weappjs/weapp.dev'
+const siteGithubUrl = profile.features.services ? profile.repositoryUrl : profile.organizationUrl
 ---
 
 <header data-site-header class="sticky top-0 z-30 h-16 border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] bg-[var(--header)] backdrop-blur-xl max-[720px]:h-[58px]">
   <div class:list={[shell, 'flex h-full items-center']}>
-    <a class={wordmark} href={home} aria-label="weapp.dev" aria-current={currentPath === home ? 'page' : undefined}>
-      <img class={wordmarkMark} src="/logo.svg" width="64" height="64" alt="" decoding="async" fetchpriority="high" />
-      <span>weapp.dev</span>
+    <a class:list={[wordmark, 'max-[360px]:gap-2 max-[360px]:text-[0.8125rem]']} href={home} aria-label={profile.name} aria-current={currentPath === home ? 'page' : undefined}>
+      <img class:list={[wordmarkMark, 'max-[360px]:size-7']} src="/logo.svg" width="64" height="64" alt="" decoding="async" fetchpriority="high" />
+      <span>{profile.name}</span>
     </a>
 
     <nav class="ml-auto flex items-center gap-6 max-[960px]:hidden" aria-label={locale === 'zh-CN' ? '主导航' : 'Primary navigation'}>
@@ -54,13 +53,10 @@ const siteGithubUrl = 'https://github.com/weappjs/weapp.dev'
           ))}
         </nav>
       </details>
-      <a class={navLink} href={`${home}#about`} data-analytics-event="navigate_section" data-analytics-section="about">{copy.nav.about}</a>
-      <a class={navLink} href={`${home}#vision`} data-analytics-event="navigate_section" data-analytics-section="vision">{copy.nav.vision}</a>
-      <a class={navLink} href={`${home}#releases`} data-analytics-event="navigate_section" data-analytics-section="releases">{copy.nav.releases}</a>
-      <a class={navLink} href={pricingPath} aria-current={isPricing ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="pricing">{pricingLabel}</a>
+      {navigation.map(item => <a class={navLink} href={localizePath(locale, item.path)} aria-current={currentPath === localizePath(locale, item.path) ? 'page' : undefined} data-analytics-event={item.path.includes('#') ? 'navigate_section' : 'navigate_page'} data-analytics-section={item.id}>{item.label[locale]}</a>)}
     </nav>
 
-    <div class="ml-5 flex items-center gap-1 max-[960px]:ml-auto">
+    <div class="ml-5 flex items-center gap-1 max-[960px]:ml-auto max-[360px]:gap-0">
       <a class:list={[iconControl, 'w-auto grid-cols-[auto_auto] gap-1.5 px-2.5 font-mono text-xs font-bold max-[720px]:w-10 max-[720px]:px-0']} href={languageUrl} aria-label={copy.alternateLanguage} title={copy.alternateLanguage} data-locale-choice={locale === 'zh-CN' ? 'en' : 'zh-CN'} data-analytics-event="switch_language" data-analytics-from={locale} data-analytics-to={locale === 'zh-CN' ? 'en' : 'zh-CN'}>
         <Languages size={18} stroke-width={1.8} aria-hidden="true" />
         <span class="max-[720px]:hidden">{locale === 'zh-CN' ? 'EN' : '中'}</span>
@@ -88,10 +84,7 @@ const siteGithubUrl = 'https://github.com/weappjs/weapp.dev'
             </a>
           ))}
           <span class="my-1 h-px bg-line" aria-hidden="true"></span>
-          <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={`${home}#about`} data-analytics-event="navigate_section" data-analytics-section="about">{copy.nav.about}</a>
-          <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={`${home}#vision`} data-analytics-event="navigate_section" data-analytics-section="vision">{copy.nav.vision}</a>
-          <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={`${home}#releases`} data-analytics-event="navigate_section" data-analytics-section="releases">{copy.nav.releases}</a>
-          <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={pricingPath} aria-current={isPricing ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="pricing">{pricingLabel}</a>
+          {navigation.map(item => <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={localizePath(locale, item.path)} aria-current={currentPath === localizePath(locale, item.path) ? 'page' : undefined} data-analytics-event={item.path.includes('#') ? 'navigate_section' : 'navigate_page'} data-analytics-section={item.id}>{item.label[locale]}</a>)}
         </nav>
       </details>
     </div>

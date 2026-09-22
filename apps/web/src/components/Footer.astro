@@ -2,8 +2,8 @@
 import { ArrowUpRight, GitFork, Rss, SlidersHorizontal } from '@lucide/astro'
 import type { Locale } from '../types/project'
 import type { ProjectEntry } from '../lib/projects'
-import { localizePath, projectPath, siteCopy } from '../i18n/ui'
-import { isGithubPagesBuild } from '../lib/deployment'
+import { localizePath, projectPath, getSiteCopy } from '../i18n/ui'
+import { getSiteProfile } from '../lib/deployment'
 import { shell, wordmark, wordmarkMark } from '../styles/classes'
 
 interface Props {
@@ -13,8 +13,8 @@ interface Props {
 }
 
 const { locale, projects, currentPath } = Astro.props
-const copy = siteCopy[locale]
-const pricingLabel = isGithubPagesBuild() ? (locale === 'zh-CN' ? '开源赞助' : 'Open-source sponsorship') : copy.nav.pricing
+const copy = getSiteCopy(locale)
+const profile = getSiteProfile()
 const projectsPath = localizePath(locale, '/projects/')
 const pricingPath = localizePath(locale, '/pricing/')
 const contributorsPath = localizePath(locale, '/contributors/')
@@ -26,7 +26,7 @@ const privacyPath = localizePath(locale, '/privacy/')
     <div class="max-[720px]:col-span-2">
       <a class={wordmark} href={localizePath(locale)} aria-current={currentPath === localizePath(locale) ? 'page' : undefined}>
         <img class={wordmarkMark} src="/logo.svg" width="64" height="64" alt="" loading="lazy" decoding="async" />
-        <span>weapp.dev</span>
+        <span>{profile.name}</span>
       </a>
       <p class="mt-5 mb-0 max-w-[410px] text-sm leading-[1.7] text-copy-muted">{copy.footer.description}</p>
     </div>
@@ -45,14 +45,18 @@ const privacyPath = localizePath(locale, '/privacy/')
         {copy.footer.docs}
       </a>
       <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={projectsPath} aria-current={currentPath === projectsPath ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="projects_index">{locale === 'zh-CN' ? '全部项目' : 'All projects'}</a>
-      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href="https://github.com/sonofmagic/weapp.dev" target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="site_source">
+      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={profile.repositoryUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="site_source">
         <GitFork size={15} stroke-width={1.8} aria-hidden="true" />
         {copy.footer.source}
       </a>
       <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={privacyPath} aria-current={currentPath === privacyPath ? 'page' : undefined}>{copy.footer.privacy}</a>
-      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={pricingPath} aria-current={currentPath === pricingPath ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="pricing">{pricingLabel}</a>
-      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={contributorsPath} aria-current={currentPath === contributorsPath ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="contributors">{copy.footer.contributors}</a>
-      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={localizePath(locale, '/sponsors/')} aria-current={currentPath === localizePath(locale, '/sponsors/') ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="sponsors">{locale === 'zh-CN' ? '赞助图谱' : 'Sponsor graph'}</a>
+      {profile.features.services && <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={`${pricingPath}#services`} data-analytics-event="navigate_section" data-analytics-section="services">{locale === 'zh-CN' ? '迁移与培训' : 'Migration and training'}</a>}
+      {profile.features.sponsorship && <>
+        <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={`${pricingPath}#sponsor`} data-analytics-event="navigate_section" data-analytics-section="sponsor">{locale === 'zh-CN' ? '开源赞助' : 'Open-source sponsorship'}</a>
+        <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={contributorsPath} aria-current={currentPath === contributorsPath ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="contributors">{copy.footer.contributors}</a>
+        <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={localizePath(locale, '/sponsors/')} aria-current={currentPath === localizePath(locale, '/sponsors/') ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="sponsors">{locale === 'zh-CN' ? '赞助图谱' : 'Sponsor graph'}</a>
+      </>}
+      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={profile.organizationUrl} target="_blank" rel="noopener noreferrer">{locale === 'zh-CN' ? '参与开源 · weappjs' : 'Contribute · weappjs'}</a>
       <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href="/releases.xml" data-analytics-event="navigate_section" data-analytics-section="release_feed">
         <Rss size={15} stroke-width={1.8} aria-hidden="true" />
         {copy.footer.releases}
@@ -66,7 +70,7 @@ const privacyPath = localizePath(locale, '/privacy/')
         <SlidersHorizontal size={14} stroke-width={1.8} aria-hidden="true" />
         {copy.footer.analyticsPreferences}
       </button>
-      <a class="hover:text-brand" href="https://github.com/sonofmagic/weapp.dev/blob/main/LICENSE">MIT License</a>
+      <a class="hover:text-brand" href={`${profile.repositoryUrl}/blob/main/LICENSE`}>MIT License</a>
     </div>
   </div>
 </footer>

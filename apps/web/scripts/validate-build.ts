@@ -2,58 +2,38 @@ import { access, readdir, readFile } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
 import process from 'node:process'
 import { parse } from 'node-html-parser'
-import { getBuildOutputDir, isGithubPagesBuild } from '../src/lib/deployment'
+import { getSiteProfile, isRetiredOpenSourcePath } from '../src/lib/deployment'
 
 const root = resolve(import.meta.dirname, '..')
-const dist = resolve(root, getBuildOutputDir())
-const githubPages = isGithubPagesBuild()
+const site = getSiteProfile()
+const dist = resolve(root, site.outputDir)
+const githubPages = site.target === 'github-pages'
+const projectIds = (await readdir(resolve(root, 'src/content/projects'))).filter(file => file.endsWith('.json')).map(file => file.slice(0, -5))
 const expectedFiles = [
-  'index.html',
-  'en/index.html',
-  'pricing/index.html',
-  'en/pricing/index.html',
+  ...['', 'en/'].flatMap(prefix => [
+    `${prefix}index.html`,
+    ...['projects', 'pricing', 'privacy', 'contributors', 'sponsors'].map(route => `${prefix}${route}/index.html`),
+    ...projectIds.map(id => `${prefix}projects/${id}/index.html`),
+  ]),
   '404.html',
-  'projects/weapp-tailwindcss/index.html',
-  'projects/weapp-vite/index.html',
-  'projects/varo/index.html',
-  'projects/weapp-sqlite/index.html',
-  'projects/vite-plugin-taro/index.html',
-  'projects/vue-mini/index.html',
-  'projects/rezor/index.html',
-  'en/projects/weapp-tailwindcss/index.html',
-  'en/projects/weapp-vite/index.html',
-  'en/projects/weapp-sqlite/index.html',
-  'privacy/index.html',
-  'en/privacy/index.html',
-  'contributors/index.html',
-  'en/contributors/index.html',
-  'projects/index.html',
-  'en/projects/index.html',
-  'sponsors/index.html',
-  'en/sponsors/index.html',
-  'en/projects/varo/index.html',
-  'en/projects/vite-plugin-taro/index.html',
-  'en/projects/vue-mini/index.html',
-  'en/projects/rezor/index.html',
   'releases.xml',
   'sitemap-index.xml',
   'robots.txt',
   'llms.txt',
   'llms-full.txt',
   'og.png',
-  'CNAME',
-  '.nojekyll',
+  'og.svg',
+  ...(githubPages ? ['CNAME', '.nojekyll', '404/index.html'] : []),
 ]
 const retiredDocsHosts = ['tw.icebreaker.top', 'vite.icebreaker.top']
+const errors: string[] = []
+const openSourceForbiddenCopy = /\bsponsors?(?:ship)?\b|\b(?:donations?|donate|funds?)\b|paid services?|engineering services?|migration and training|cloud[ -]build|business partnerships?|赞助|基金|分账|捐赠|打赏|付费服务|迁移与培训|服务报价|云构建|企业合作|[¥￥$€]\s*\d/i
 
 async function collectHtml(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true })
   const nested = await Promise.all(entries.map(async (entry) => {
     const path = join(directory, entry.name)
-    if (entry.isDirectory()) {
-      return collectHtml(path)
-    }
-    return path.endsWith('.html') ? [path] : []
+    return entry.isDirectory() ? collectHtml(path) : path.endsWith('.html') ? [path] : []
   }))
   return nested.flat()
 }
@@ -63,15 +43,32 @@ function outputPathForUrl(pathname: string): string {
     return resolve(dist, 'index.html')
   }
   if (pathname === '/404' || pathname === '/404/') {
-    return resolve(dist, '404.html')
+    return resolve(dist, githubPages ? '404/index.html' : '404.html')
   }
-  if (pathname.endsWith('/')) {
-    return resolve(dist, pathname.slice(1), 'index.html')
-  }
-  return resolve(dist, pathname.slice(1))
+  return pathname.endsWith('/') ? resolve(dist, pathname.slice(1), 'index.html') : resolve(dist, pathname.slice(1))
 }
 
-const errors: string[] = []
+function isOwnUrl(value: string): boolean {
+  try {
+    return new URL(value).origin === site.origin
+  }
+  catch {
+    return false
+  }
+}
+
+function hasForbiddenSchema(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some(hasForbiddenSchema)
+  }
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+  const node = value as Record<string, unknown>
+  const types = Array.isArray(node['@type']) ? node['@type'] : [node['@type']]
+  return types.some(type => type === 'Service' || type === 'DonateAction') || Object.values(node).some(hasForbiddenSchema)
+}
+
 for (const file of expectedFiles) {
   try {
     await access(resolve(dist, file))
@@ -81,49 +78,56 @@ for (const file of expectedFiles) {
   }
 }
 
-const pagesCname = (await readFile(resolve(dist, 'CNAME'), 'utf8')).trim()
-if (pagesCname !== 'weapp.js.org') {
-  errors.push(`CNAME: expected weapp.js.org, received ${pagesCname || '(empty)'}`)
+if (githubPages) {
+  try {
+    const cname = (await readFile(resolve(dist, 'CNAME'), 'utf8')).trim()
+    if (cname !== new URL(site.origin).hostname) {
+      errors.push(`CNAME: expected ${new URL(site.origin).hostname}, received ${cname || '(empty)'}`)
+    }
+  }
+  catch {
+    errors.push('CNAME: unable to read Pages hostname')
+  }
 }
-
-for (const homeFile of ['index.html', 'en/index.html']) {
-  const html = await readFile(resolve(dist, homeFile), 'utf8')
-  if (html.includes('echarts') || html.includes('SponsorGraphs')) {
-    errors.push(`${homeFile}: homepage must not load sponsor graph runtime`)
+else {
+  for (const name of ['CNAME', '.nojekyll']) {
+    try {
+      await access(resolve(dist, name))
+      errors.push(`${name}: Pages deployment file must not appear in the Cloudflare output`)
+    }
+    catch {
+      // The complete site does not publish GitHub Pages control files.
+    }
   }
 }
 
-for (const sponsorFile of ['sponsors/index.html', 'en/sponsors/index.html']) {
-  const html = await readFile(resolve(dist, sponsorFile), 'utf8')
-  const runtimeScripts = html.match(/<script[^>]+src="[^"]*SponsorGraphs[^" ]*"/g) ?? []
-  if (runtimeScripts.length !== 1) {
-    errors.push(`${sponsorFile}: expected exactly one sponsor graph runtime script`)
-  }
-}
-
-for (const file of await collectHtml(dist)) {
-  if (/^baidu_verify_[^/]+\.html$/.test(relative(dist, file))) {
+const htmlFiles = await collectHtml(dist)
+for (const file of htmlFiles) {
+  const label = relative(dist, file)
+  if (/^baidu_verify_[^/]+\.html$/.test(label)) {
     continue
   }
   const html = await readFile(file, 'utf8')
   const document = parse(html)
-  const label = relative(dist, file)
+  const pagePath = `/${label.replace(/index\.html$/, '')}`
+  const canonicalPath = label === '404.html' ? '/404/' : pagePath
+  const retiredRedirect = githubPages && isRetiredOpenSourcePath(pagePath)
+  const destination = pagePath.startsWith('/en/') ? '/en/projects/' : '/projects/'
   const canonical = document.querySelector('link[rel="canonical"]')?.getAttribute('href')
+  const expectedCanonical = new URL(retiredRedirect ? destination : canonicalPath, site.origin).href
   const alternates = document.querySelectorAll('link[rel="alternate"][hreflang]')
   const title = document.querySelectorAll('title')
   const descriptions = document.querySelectorAll('meta[name="description"]')
   const robots = document.querySelector('meta[name="robots"]')?.getAttribute('content')
   const schemas = document.querySelectorAll('script[type="application/ld+json"]')
+
+  if (canonical !== expectedCanonical) {
+    errors.push(`${label}: expected canonical ${expectedCanonical}, received ${canonical ?? '(missing)'}`)
+  }
   for (const host of retiredDocsHosts) {
     if (html.includes(host)) {
       errors.push(`${label}: contains retired documentation host ${host}`)
     }
-  }
-  if (!canonical?.startsWith('https://weapp.dev/')) {
-    errors.push(`${label}: invalid canonical URL`)
-  }
-  if (alternates.length < 3) {
-    errors.push(`${label}: missing language alternates`)
   }
   if (title.length !== 1 || !title[0].text.trim()) {
     errors.push(`${label}: missing unique title`)
@@ -134,33 +138,81 @@ for (const file of await collectHtml(dist)) {
   if (!robots) {
     errors.push(`${label}: missing robots directive`)
   }
-  if (label === '404.html' || label === 'en/404/index.html') {
-    if (!robots?.includes('noindex')) {
-      errors.push(`${label}: 404 must be noindex`)
+  if ((retiredRedirect || label === '404.html' || label === '404/index.html' || label === 'en/404/index.html') && !robots?.includes('noindex')) {
+    errors.push(`${label}: compatibility redirects and 404 pages must be noindex`)
+  }
+
+  if (retiredRedirect) {
+    const refresh = document.querySelector('meta[http-equiv="refresh"]')?.getAttribute('content')
+    const refreshHref = refresh?.match(/^0\s*;\s*url=(.+)$/i)?.[1]
+    if (!refreshHref || /^(?:https?:)?\//.test(refreshHref) || new URL(refreshHref, `${site.origin}${pagePath}`).pathname !== destination) {
+      errors.push(`${label}: expected immediate relative redirect to ${destination}`)
+    }
+    const link = document.querySelector('a[href]')
+    const href = link?.getAttribute('href')
+    if (!href || !link?.text.trim() || /^(?:https?:)?\//.test(href) || new URL(href, `${site.origin}${pagePath}`).pathname !== destination) {
+      errors.push(`${label}: missing visible relative project-index fallback`)
     }
   }
-  if (schemas.length === 0) {
-    errors.push(`${label}: missing JSON-LD schema`)
+  else {
+    if (alternates.length < 3 || alternates.some(link => !isOwnUrl(link.getAttribute('href') ?? ''))) {
+      errors.push(`${label}: missing language alternates on this site's origin`)
+    }
+    for (const property of ['og:url', 'og:image']) {
+      const value = document.querySelector(`meta[property="${property}"]`)?.getAttribute('content')
+      if (!value || !isOwnUrl(value)) {
+        errors.push(`${label}: ${property} must use this site's origin`)
+      }
+    }
+    if (schemas.length === 0) {
+      errors.push(`${label}: missing JSON-LD schema`)
+    }
   }
   for (const schema of schemas) {
     try {
-      JSON.parse(schema.text)
+      const data: unknown = JSON.parse(schema.text)
+      if (githubPages && hasForbiddenSchema(data)) {
+        errors.push(`${label}: open-source output must not contain Service or DonateAction schema`)
+      }
     }
     catch {
       errors.push(`${label}: invalid JSON-LD schema`)
     }
   }
+
   if (document.text.includes('—') || document.text.includes('–')) {
     errors.push(`${label}: contains a forbidden dash character`)
+  }
+  if ((githubPages || label === 'index.html' || label === 'en/index.html') && /SponsorGraphs|echarts/.test(html)) {
+    errors.push(`${label}: must not load sponsor graph runtime`)
+  }
+  if (!githubPages && /^(?:en\/)?sponsors\/index\.html$/.test(label)) {
+    const runtimeScripts = html.match(/<script[^>]+src="[^"]*SponsorGraphs[^" ]*"/g) ?? []
+    if (runtimeScripts.length !== 1) {
+      errors.push(`${label}: expected exactly one sponsor graph runtime script`)
+    }
+  }
+  if (githubPages) {
+    const published = parse(html)
+    published.querySelectorAll('style, script:not([type="application/ld+json"])').forEach(node => node.remove())
+    const publishedContent = `${published.text} ${schemas.map(schema => schema.text).join(' ')}`
+    if (openSourceForbiddenCopy.test(publishedContent)) {
+      errors.push(`${label}: open-source output contains financial or paid-service content`)
+    }
   }
 
   for (const anchor of document.querySelectorAll('a[href]')) {
     const href = anchor.getAttribute('href')
-    if (!href || /^(?:https?:|mailto:|tel:)/.test(href)) {
+    if (!href || /^(?:mailto:|tel:)/.test(href)) {
       continue
     }
-    const pagePath = `/${label.replace(/index\.html$/, '')}`
-    const targetUrl = new URL(href, `https://weapp.dev${pagePath}`)
+    const targetUrl = new URL(href, `${site.origin}${pagePath}`)
+    if (githubPages && ['https://weapp.dev', 'https://weapp.js.org'].includes(targetUrl.origin) && isRetiredOpenSourcePath(targetUrl.pathname)) {
+      errors.push(`${label}: normal navigation links to retired financial page ${href}`)
+    }
+    if (targetUrl.origin !== site.origin) {
+      continue
+    }
     try {
       const targetPath = outputPathForUrl(targetUrl.pathname)
       await access(targetPath)
@@ -178,74 +230,73 @@ for (const file of await collectHtml(dist)) {
   }
 }
 
-for (const file of ['sitemap-index.xml', 'robots.txt', 'llms.txt', 'llms-full.txt']) {
+const sitemapFiles = (await readdir(dist)).filter(file => /^sitemap.*\.xml$/.test(file))
+for (const file of [...sitemapFiles, 'robots.txt', 'llms.txt', 'llms-full.txt', 'releases.xml']) {
   try {
     const contents = await readFile(resolve(dist, file), 'utf8')
-    if (file.startsWith('sitemap') && contents.includes('/404')) {
-      errors.push(`${file}: must not include 404 URLs`)
-    }
     for (const host of retiredDocsHosts) {
       if (contents.includes(host)) {
         errors.push(`${file}: contains retired documentation host ${host}`)
       }
     }
+    if (file.startsWith('sitemap')) {
+      const urls = [...contents.matchAll(/<loc>([^<]+)<\/loc>|<xhtml:link[^>]*href="([^"]+)"/g)].map(match => match[1] ?? match[2])
+      if (urls.length === 0) {
+        errors.push(`${file}: sitemap has no URLs`)
+      }
+      for (const value of urls) {
+        const url = new URL(value)
+        if (url.origin !== site.origin || /\/404(?:\.html|\/|$)/.test(url.pathname) || (githubPages && isRetiredOpenSourcePath(url.pathname))) {
+          errors.push(`${file}: unexpected sitemap URL ${value}`)
+        }
+        try {
+          await access(outputPathForUrl(url.pathname))
+        }
+        catch {
+          errors.push(`${file}: sitemap URL has no output ${value}`)
+        }
+      }
+    }
+    if (file === 'robots.txt' && !contents.includes(`Sitemap: ${site.origin}/sitemap-index.xml`)) {
+      errors.push(`${file}: sitemap must use this site's origin`)
+    }
+    if (file === 'releases.xml' && !contents.includes(`<link>${site.origin}/</link>`)) {
+      errors.push(`${file}: release channel must use this site's origin`)
+    }
+    if (file.startsWith('llms')) {
+      const otherOrigin = githubPages ? 'https://weapp.dev/' : 'https://weapp.js.org/'
+      if (contents.includes(otherOrigin)) {
+        errors.push(`${file}: reference pages must use this site's origin`)
+      }
+      if (githubPages && (openSourceForbiddenCopy.test(contents) || /\/(?:en\/)?(?:pricing|sponsors|contributors)\//.test(contents))) {
+        errors.push(`${file}: open-source reference contains financial or paid-service content`)
+      }
+    }
   }
   catch {
-    errors.push(`Unable to read required SEO output: ${file}`)
+    errors.push(`Unable to validate required SEO output: ${file}`)
   }
 }
 
-// Verify the target-specific public content as part of every build, including CI.
-for (const prefix of ['', 'en/']) {
-  const home = parse(await readFile(resolve(dist, `${prefix}index.html`), 'utf8'))
-  const pricing = parse(await readFile(resolve(dist, `${prefix}pricing/index.html`), 'utf8'))
-  const sponsorTiers = pricing.querySelectorAll('.pricing-sponsor-tier h3').map(node => node.text)
-  const expectedTiers = prefix ? ['Supporter', 'Bronze sponsor', 'Silver sponsor'] : ['普通支持', '铜牌赞助', '银牌赞助']
-  if (JSON.stringify(sponsorTiers.slice(0, 3)) !== JSON.stringify(expectedTiers) || sponsorTiers.length !== (githubPages ? 3 : 4)) {
-    errors.push(`${prefix}pricing/: incorrect sponsorship tiers for this target`)
-  }
-  if (pricing.querySelector('#plans')) {
-    errors.push(`${prefix}pricing/: product shelf must not be published`)
-  }
-  for (const id of ['roadmap', 'cloud-build', 'services', 'support', 'boundary', 'faq']) {
-    if (Boolean(pricing.querySelector(`#${id}`)) === githubPages) {
-      errors.push(`${prefix}pricing/: incorrect visibility for #${id}`)
+if (!githubPages) {
+  for (const prefix of ['', 'en/']) {
+    const home = parse(await readFile(resolve(dist, `${prefix}index.html`), 'utf8'))
+    const pricing = parse(await readFile(resolve(dist, `${prefix}pricing/index.html`), 'utf8'))
+    const sponsorTiers = pricing.querySelectorAll('.pricing-sponsor-tier h3').map(node => node.text)
+    const expectedTiers = prefix ? ['Supporter', 'Bronze sponsor', 'Silver sponsor'] : ['普通支持', '铜牌赞助', '银牌赞助']
+    if (JSON.stringify(sponsorTiers.slice(0, 3)) !== JSON.stringify(expectedTiers) || sponsorTiers.length !== 4) {
+      errors.push(`${prefix}pricing/: incorrect sponsorship tiers for this target`)
     }
-  }
-  for (const id of ['services', 'roadmap']) {
-    if (Boolean(home.querySelector(`a[href$="#${id}"]`)) === githubPages) {
-      errors.push(`${prefix}index.html: incorrect visibility for ${id} link`)
+    if (pricing.querySelector('#plans')) {
+      errors.push(`${prefix}pricing/: product shelf must not be published`)
     }
-  }
-  if (githubPages) {
-    for (const share of ['60%', '25%', '15%']) {
-      if (!pricing.querySelector('.pricing-sponsor-allocation')?.text.includes(share)) {
-        errors.push(`${prefix}pricing/: missing allocation ${share}`)
+    for (const id of ['roadmap', 'cloud-build', 'services', 'support', 'boundary', 'faq']) {
+      if (!pricing.querySelector(`#${id}`)) {
+        errors.push(`${prefix}pricing/: missing #${id}`)
       }
     }
-  }
-}
-
-if (githubPages) {
-  const surfaces = ['index.html', 'en/index.html', 'pricing/index.html', 'en/pricing/index.html', 'contributors/index.html', 'en/contributors/index.html', 'sponsors/index.html', 'en/sponsors/index.html', 'llms.txt', 'llms-full.txt']
-  const commercialCopy = /\bgold\b|\benterprise\b|\bservices?\b|\btraining\b|cloud[ -]build|定制|人工服务|服务报价|迁移与培训|建设中的能力|云构建|企业合作|商业化/i
-  for (const file of surfaces) {
-    const contents = await readFile(resolve(dist, file), 'utf8')
-    const doc = file.endsWith('.html') ? parse(contents) : undefined
-    // Astro can inline shared CSS; selector names are not published service copy.
-    doc?.querySelectorAll('style').forEach(node => node.remove())
-    if (commercialCopy.test(doc?.toString() ?? contents)) {
-      errors.push(`${file}: Pages output contains commercial content`)
-    }
-    if (doc) {
-      // Keep the open-source project's data-roadmap-count attribute; ban commercial copy.
-      doc.querySelectorAll('script:not([type="application/ld+json"])').forEach(node => node.remove())
-      if (/\broadmap\b|路线图/i.test(doc.text)) {
-        errors.push(`${file}: Pages output contains commercial roadmap copy`)
-      }
-    }
-    else if (/\broadmap\b|路线图/i.test(contents)) {
-      errors.push(`${file}: Pages LLM reference contains roadmap copy`)
+    if (!home.querySelector('a[href$="#services"]')) {
+      errors.push(`${prefix}index.html: missing services entry`)
     }
   }
 }
@@ -255,5 +306,5 @@ if (errors.length > 0) {
   process.exitCode = 1
 }
 else {
-  console.log(`Validated ${expectedFiles.length} required outputs and all internal links.`)
+  console.log(`Validated ${site.name}: ${expectedFiles.length} required outputs, ${htmlFiles.length} pages, SEO resources, and all internal links.`)
 }

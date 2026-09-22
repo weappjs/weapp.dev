@@ -57,7 +57,7 @@
       ],
       "faqs": [
         {
-          "question": "Vue Mini 是 weapp.dev 的第六层吗？",
+          "question": "Vue Mini 是 weapp 工具链的第六层吗？",
           "answer": "不是。它是小程序运行时框架，负责页面写法。weapp-vite 仍管构建，weapp-tailwindcss 仍管样式。"
         },
         {
@@ -83,7 +83,7 @@
       ],
       "faqs": [
         {
-          "question": "Is Vue Mini a sixth weapp.dev layer?",
+          "question": "Is Vue Mini a sixth weapp toolchain layer?",
           "answer": "No. It is a mini-program runtime framework for how you write pages. weapp-vite still owns the build; weapp-tailwindcss still owns styles."
         },
         {

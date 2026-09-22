@@ -1,6 +1,6 @@
 ---
 name: weapp.dev
-description: Bilingual ecosystem portal for an open mini-program engineering toolchain.
+description: Shared bilingual design system for the weapp.dev service and ecosystem site and the weapp.js.org open-source portal.
 colors:
   brand: "#0e7958"
   brand-hover: "#096646"
@@ -134,7 +134,7 @@ components:
     rounded: "{rounded.panel}"
 ---
 
-# Design System: weapp.dev
+# Design System: weapp.dev and weapp.js.org
 
 ## Overview
 
@@ -153,6 +153,14 @@ Surfaces stay calm across light and dark themes. A mint-sage canvas carries WeUI
 - Evidence-first: demos, metrics, and project marks beat stock illustration
 
 Confirmed visual rejections: TanStack palm/beach composition, platform-logo collages, mascots, decorative gradients/glows, and the discarded three-column project-card layout.
+
+## Site identity and content boundaries
+
+Both sites share the project marks, typography, colors, layouts, demos, nine-project catalog, and real project status. `getSiteProfile()` selects the site identity at build time. Header and footer wordmarks use `weapp.dev` on the service site and `weapp.js.org` on the open-source site; the latter uses the short `weapp` wordmark in its homepage hero.
+
+weapp.dev preserves the ecosystem story and makes services, sponsorship, and the contributors fund easy to find. weapp.js.org navigation leads to projects, ecosystem introduction, releases, and contribution. Its homepage and shared pages exclude commercial sections, funding graphs, sponsorship prompts, and referrals to the commercial site. Contribution links lead to open-source issues, code, tests, and documentation. The organization entry is `https://github.com/weappjs`; the site-source entry is `https://github.com/weappjs/weapp.dev`.
+
+The six retired funding routes on weapp.js.org use a small standalone redirect page with noindex metadata and a visible same-language project-directory link. They do not retain the funding-page shell or copy. Every link remains usable without JavaScript and below the GitHub Pages `/weapp.dev/` prefix.
 
 ## Colors
 
@@ -204,12 +212,12 @@ Syntax colors inside Style/Build/Registry demos. Not brand accents; do not use o
 
 ### Hierarchy
 
-- **Display** (740, `clamp(2.125rem, 4vw, 4.5rem)` / 1.08): Hero wordmark titles such as the homepage `weapp.dev` lockup.
+- **Display** (740, `clamp(2.125rem, 4vw, 4.5rem)` / 1.08): Hero wordmark titles such as the homepage `weapp.dev` or `weapp` lockup.
 - **Page title** (700, `clamp(2.125rem, 6vw, 4rem)` / 1.12): Pricing, contributors, privacy, and 404 heroes (`pageTitle`).
 - **Headline** (680, `clamp(2.125rem, 3vw, 2.75rem)` / 1.08): Section titles (`sectionTitle`).
 - **Featured** (680, 2.125rem → 1.5rem on small screens): Featured project names in proof rows and compact banner titles.
 - **Title** (660–680, 1.5rem): Card and dialog headings.
-- **Wordmark** (720, 0.9375rem): Header/footer `weapp.dev` lockup text.
+- **Wordmark** (720, 0.9375rem): Header/footer site-name lockup text.
 - **Lead** (400, 1.125rem / 1.6): Marketing leads and hero description.
 - **Body** (400, 1rem / 1.58): Running copy; keep readable measure near 40–65ch on marketing leads.
 - **Small** (400, 0.875rem): Dense UI chrome, buttons, and demo controls.
@@ -278,18 +286,18 @@ Sparse on the marketing site. When present (demo controls, analytics dialog togg
 
 ### Navigation
 
-- Sticky translucent header with emblem + `weapp.dev` wordmark (Sora 15px / 720).
+- Sticky translucent header with emblem + profile-selected site wordmark (Sora 15px / 720).
 - Desktop links: 14px, weight 590, muted → ink on hover.
 - Project dropdown / mobile sheet: panel surface, hairline, `shadow-panel`, soft row hover.
 - Language and theme sit as icon controls; language exposes mono `EN` / `中` where space allows.
 
 ### Signature: Project proof row
 
-Homepage project rows pair editorial copy with a static proof card (default markup, single-target build command, or install command) under a shared `--project-accent`. Interactive labs live only in the hero; project rows escalate with a sharper artifact. Each row exposes one primary docs CTA and one secondary details CTA.
+Homepage project rows pair editorial copy with project proof under a shared `--project-accent`. The weapp-vite row in `HomeProjects` contains the interactive labs. Other rows use static proof cards with default markup, a build or install command, or planned capability boundaries. Each row exposes one primary docs CTA and one secondary details CTA.
 
 ### Signature: Interactive demos
 
-Style / Build / Registry demos use an `8px` framed stage, mono headings, and tighter `4px` inner controls. They demonstrate toolchain behavior in the hero only; they are not decorative illustration and are not repeated in project rows.
+Style / Build / Registry demos use an `8px` framed stage, mono headings, and tighter `4px` inner controls. They demonstrate toolchain behavior in the weapp-vite project row, selected through `HomeDemos`. The hero contains the site wordmark and project constellation; other project rows use static proof rather than repeating the labs.
 
 ## Do's and Don'ts
 

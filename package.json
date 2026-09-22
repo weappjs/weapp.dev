@@ -22,7 +22,10 @@
     "repo:new": "repo new",
     "test": "turbo run test",
     "prepare": "husky",
-    "typecheck": "turbo run check"
+    "typecheck": "turbo run check",
+    "build:pages": "pnpm --filter @weapp.dev/web build:pages",
+    "dev:pages": "pnpm --filter @weapp.dev/web dev:pages",
+    "preview:pages": "pnpm --filter @weapp.dev/web preview:pages"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.2",

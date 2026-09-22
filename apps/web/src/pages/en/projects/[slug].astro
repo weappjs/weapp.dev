@@ -1,4 +1,5 @@
 ---
+import { getSiteProfile } from '../../../lib/deployment'
 import BaseLayout from '../../../layouts/BaseLayout.astro'
 import Header from '../../../components/Header.astro'
 import ProjectPage from '../../../components/ProjectPage.astro'
@@ -18,12 +19,13 @@ interface Props {
   project: ProjectEntry
 }
 
+const profile = getSiteProfile()
 const locale = 'en' as const
 const { project } = Astro.props as Props
 const projects = await getProjects()
 const metrics = await loadProjectMetrics()
 const content = project.data.locales[locale]
-const title = `${content.name} | weapp.dev`
+const title = `${content.name} | ${profile.name}`
 const projectMetrics = metrics[project.id] ?? { version: 'planned', releasedAt: '2026-01-01T00:00:00.000Z', stars: 0, weeklyDownloads: 0, fetchedAt: '2026-01-01T00:00:00.000Z' }
 ---
 

@@ -1,4 +1,6 @@
+import type { SiteProfile } from '../lib/deployment'
 import type { Locale } from '../types/project'
+import { getSiteProfile } from '../lib/deployment'
 
 const contributorCopy = {
   eyebrow: '开放协作',
@@ -25,12 +27,42 @@ const contributorCopy = {
   ],
   reposTitle: '关联仓库',
   repos: [
-    { name: 'weapp-vite', url: 'https://github.com/sonofmagic/weapp-vite' },
+    { name: 'weapp-vite', url: 'https://github.com/weapp-vite/weapp-vite' },
     { name: 'weapp-tailwindcss', url: 'https://github.com/sonofmagic/weapp-tailwindcss' },
   ],
   reposNote: '贡献应当能够在公开仓库或公开讨论中被验证。',
   payoutTitle: '发放流程',
   payout: ['按季度汇总贡献积分。', '公开核对贡献记录和基金余额。', '在确认信息后向贡献者发放或滚存基金。'],
+} as const
+
+const contributorCopyEn = {
+  eyebrow: 'Open collaboration',
+  title: 'Contributors fund and point rules',
+  updated: 'Updated August 26, 2026',
+  description: 'A public record of how contributions are recognized, reviewed, and returned to the mini-program ecosystem.',
+  pricingAction: 'Explore sponsorship',
+  allocationTitle: 'Sponsorship allocation',
+  buckets: [
+    { share: '60%', name: 'Core maintenance', body: 'Maintainer time, testing, CI, domains, and documentation sites.' },
+    { share: '25%', name: 'Contributors fund', body: 'Quarterly allocation for verified contributions, public tasks, and targeted bounties.' },
+    { share: '15%', name: 'Adjacent open source', body: 'Support upstream and adjacent open-source projects in the mini-program ecosystem.' },
+  ],
+  contents: 'On this page',
+  sections: [
+    { title: 'What counts as a contribution', body: 'Code, documentation, tests, issue reproductions, and community support are recorded publicly.' },
+    { title: 'Review and records', body: 'Maintainers update the record after merging or confirming a contribution and retain traceable repository links.' },
+  ],
+  weightsTitle: 'Point weights',
+  weights: [
+    { points: 5, name: 'Code contributions', rule: 'A merged, verifiable fix or feature.' },
+    { points: 3, name: 'Documentation and tests', rule: 'Additional documentation, tests, or reproducible examples.' },
+    { points: 1, name: 'Community support', rule: 'Help reproduce issues, answer usage questions, or organize feedback.' },
+  ],
+  reposTitle: 'Related repositories',
+  repos: contributorCopy.repos,
+  reposNote: 'Contributions must be verifiable in a public repository or public discussion.',
+  payoutTitle: 'Distribution process',
+  payout: ['Total contribution points each quarter.', 'Publicly review contribution records and the fund balance.', 'After confirming the details, distribute funds to contributors or carry the balance forward.'],
 } as const
 
 export const siteCopy = {
@@ -155,8 +187,8 @@ export const siteCopy = {
     },
     commercial: {
       eyebrow: '商业化交付层',
-      title: '支持开源，也支持真正能交付的服务',
-      description: '核心工具继续开放。当前先交付迁移与培训，同时公开建设中的云构建、模板和私有组件方向。',
+      title: '把工具链接入你的真实项目',
+      description: '围绕现有代码库提供迁移、接入与培训，先确认范围，再交付可以验证的工程结果。开源赞助另设入口，不包含服务权益。',
       pagesTitle: '支持开源项目继续维护',
       pagesDescription: '赞助会按公开规则用于核心维护、贡献者基金和周边开源项目。',
       cards: [
@@ -170,7 +202,7 @@ export const siteCopy = {
     },
     pricing: {
       eyebrow: '交付与赞助',
-      title: '先支持开源，再选择可交付服务',
+      title: '围绕真实项目的迁移与培训',
       description: '核心编译器和插件永远 MIT 开源。当前页面只列出人工服务与开源赞助，其他商业化能力仍在建设中。',
       early: '当前没有账户或支付后台。赞助与服务咨询请先通过 GitHub 联系，产品能力开放后再更新这里。',
       sponsorTitle: '支持 weapp.dev 开源',
@@ -182,7 +214,7 @@ export const siteCopy = {
         { id: 'gold', name: 'Gold 企业合作', price: '¥2,000 起', cadence: '按合作周期', body: '单站月度 ¥2,000 / 30 天；双站月度 ¥3,000 / 30 天；双站季度 ¥8,000 / 90 天；定制合作单独沟通。' },
       ],
       sponsorAction: '申请赞助方式',
-      sponsorAllocation: '赞助收入的 20% 会用于赞助小程序周边开源项目；其余用于 weapp.dev 的维护、文档、测试、构建基础设施和社区运营。后续按月或按季度公布支持去向。',
+      sponsorAllocation: '赞助收入的 60% 用于核心维护，25% 进入贡献者基金，15% 支持上游和周边开源项目。支持去向按公开记录更新。',
       sponsorAllocationBuckets: contributorCopy.buckets,
       sponsorNote: '赞助不是购买服务，也不包含技术支持、模板源码、云构建额度或订阅权益。公开展示需完成 GitHub 身份确认、维护者审核和明确授权；获准记录可同步展示在 weapp.dev、tw.weapp.dev、vite.weapp.dev。',
       sponsorSites: '公开名单（仅展示已确认并授权的 GitHub 或企业信息）',
@@ -225,7 +257,7 @@ export const siteCopy = {
       faqTitle: '常见问题',
       faq: [
         { question: '赞助 weapp.dev 会获得什么产品权益吗？', answer: '不会。赞助是对开源维护的支持，不包含技术支持、模板源码、云构建额度或其他商业权益。' },
-        { question: '赞助收入会如何使用？', answer: '固定 20% 用于赞助小程序周边开源项目，其余用于 weapp.dev 的维护、文档、测试、构建基础设施和社区运营。' },
+        { question: '赞助收入会如何使用？', answer: '60% 用于核心维护，25% 进入贡献者基金，15% 支持上游和周边开源项目。' },
         { question: '现在可以购买 Pro、Team 或 Enterprise 吗？', answer: '不能。这些能力仍在建设中，页面只用于公开方向，不代表已经开放或可以收款。' },
       ],
       ctaTitle: '让开源项目有继续维护的预算',
@@ -274,7 +306,7 @@ export const siteCopy = {
     },
     analytics: {
       dialogTitle: '统计偏好',
-      dialogBody: 'Cloudflare 无 Cookie 基础统计始终启用。百度统计和 Google Analytics 默认用于了解访问与关键交互，你可以随时关闭。',
+      dialogBody: '百度统计和 Google Analytics 在正式站点默认启用，用于了解访问与有限交互。你可以随时关闭。',
       enabled: '允许百度统计和 Google Analytics',
       privacySignal: '浏览器已启用全局隐私控制或“请勿跟踪”，第三方统计保持关闭。',
       save: '保存偏好',
@@ -283,20 +315,20 @@ export const siteCopy = {
     privacy: {
       eyebrow: '数据与隐私',
       title: '隐私说明',
-      description: 'weapp.dev 仅收集维护开源站点所需的最少访问与性能数据。',
-      updated: '更新日期：2026 年 8 月 26 日',
+      description: 'weapp.dev 使用访问与有限交互统计来维护网站和改进内容。',
+      updated: '更新日期：2026 年 9 月 22 日',
       contents: '本页目录',
       dataFlow: '数据流',
-      dataFlowItems: ['访问站点', '基础性能统计', '可选第三方统计'],
+      dataFlowItems: ['访问站点', '检查统计偏好', '允许时发送统计'],
       preferences: '打开统计偏好',
       sections: [
         {
           title: '收集哪些数据',
-          body: '我们统计页面浏览、来源、国家或地区、设备类别、浏览器、Core Web Vitals，以及项目、文档、GitHub、npm、语言和主题等有限交互。我们不采集姓名、邮箱、输入内容、完整外链地址或用户身份。',
+          body: '网站统计包括页面浏览、来源、国家或地区、设备类别、浏览器，以及项目、文档、GitHub、npm、语言和主题等有限交互。我们不向统计事件传入姓名、邮箱、输入内容、完整外链地址或用户身份。',
         },
         {
           title: '使用哪些服务',
-          body: 'Cloudflare Web Analytics 提供无 Cookie 的基础流量和性能统计。正式站点会同时使用百度统计和 Google Analytics 4；预览域名和本地开发不会加载这两个第三方平台。',
+          body: '正式站点使用百度统计和 Google Analytics 4 了解访问与有限交互。关闭统计或浏览器发出全局隐私控制、请勿跟踪信号时，不加载这两个平台；预览域名和本地开发也不会加载。',
         },
         {
           title: '如何控制统计',
@@ -437,8 +469,8 @@ export const siteCopy = {
     },
     commercial: {
       eyebrow: 'Commercial delivery layer',
-      title: 'Support open source, and the services we can deliver today.',
-      description: 'Core tools stay open. Today we deliver migration and training, while cloud builds, templates, and private components remain in development.',
+      title: 'Bring the toolchain into your project',
+      description: 'Migration, integration, and training for your existing codebase, with a clear scope and verifiable engineering results. Open-source sponsorship is separate and does not include services.',
       pagesTitle: 'Keep open source maintained',
       pagesDescription: 'Sponsorship follows a public split for core maintenance, the contributors fund, and adjacent open-source projects.',
       cards: [
@@ -452,7 +484,7 @@ export const siteCopy = {
     },
     pricing: {
       eyebrow: 'Delivery and support',
-      title: 'Support open source first, then choose a service',
+      title: 'Migration and training for your project',
       description: 'Core compilers and plugins stay MIT open source. This page lists human-delivered services and sponsorship; other commercial capabilities are still in development.',
       early: 'There is no account or payment backend yet. Contact us through GitHub for sponsorship or service discussions; this page will change when products open.',
       sponsorTitle: 'Sponsor weapp.dev open source',
@@ -464,12 +496,8 @@ export const siteCopy = {
         { id: 'gold', name: 'Gold business partner', price: '¥2,000+', cadence: 'by partnership term', body: 'Single-site monthly ¥2,000 / 30 days; dual-site monthly ¥3,000 / 30 days; dual-site quarterly ¥8,000 / 90 days; custom terms by discussion.' },
       ],
       sponsorAction: 'Request sponsorship details',
-      sponsorAllocation: '20% of sponsorship income goes to mini-app ecosystem open-source projects. The rest funds weapp.dev maintenance, documentation, testing, build infrastructure, and community operations. We will publish the destinations monthly or quarterly.',
-      sponsorAllocationBuckets: [
-        { share: '60%', name: 'Core maintenance', body: 'Maintainer time, testing, CI, domains, and documentation.' },
-        { share: '25%', name: 'Contributor fund', body: 'Quarterly allocation for verified contributions and public tasks.' },
-        { share: '15%', name: 'Adjacent open source', body: 'Support upstream and adjacent projects in the mini-app ecosystem.' },
-      ],
+      sponsorAllocation: '60% of sponsorship income funds core maintenance, 25% goes to the contributors fund, and 15% supports upstream and adjacent open-source projects. Destinations follow the public records.',
+      sponsorAllocationBuckets: contributorCopyEn.buckets,
       sponsorNote: 'Sponsorship is not a service purchase and does not include technical support, template source, cloud-build minutes, or subscription access. Public display requires GitHub identity confirmation, maintainer review, and explicit authorization; approved records may appear on weapp.dev, tw.weapp.dev, and vite.weapp.dev.',
       sponsorSites: 'Public recognition (confirmed and authorized GitHub or business details only)',
       sponsorEmpty: 'No public records are available yet.',
@@ -511,7 +539,7 @@ export const siteCopy = {
       faqTitle: 'Frequently asked questions',
       faq: [
         { question: 'What do sponsors receive?', answer: 'Sponsorship supports open-source maintenance and does not include technical support, template source, cloud-build minutes, or other commercial benefits.' },
-        { question: 'How is sponsorship income used?', answer: 'A fixed 20% goes to mini-app ecosystem open-source projects. The rest funds weapp.dev maintenance, documentation, testing, build infrastructure, and community operations.' },
+        { question: 'How is sponsorship income used?', answer: '60% funds core maintenance, 25% goes to the contributors fund, and 15% supports upstream and adjacent open-source projects.' },
         { question: 'Can I buy Pro, Team, or Enterprise today?', answer: 'No. These capabilities are still in development. The page describes direction, not an open checkout or payment commitment.' },
       ],
       ctaTitle: 'Give open source a budget to keep going',
@@ -560,7 +588,7 @@ export const siteCopy = {
     },
     analytics: {
       dialogTitle: 'Analytics preferences',
-      dialogBody: 'Cookie-free Cloudflare baseline analytics always remains active. Baidu Analytics and Google Analytics are enabled by default on the production site, and you can turn them off at any time.',
+      dialogBody: 'Baidu Analytics and Google Analytics are enabled by default on the production site to measure visits and limited interactions. You can turn them off at any time.',
       enabled: 'Allow Baidu Analytics and Google Analytics',
       privacySignal: 'Your browser has enabled Global Privacy Control or Do Not Track, so third-party analytics remains off.',
       save: 'Save preference',
@@ -569,20 +597,20 @@ export const siteCopy = {
     privacy: {
       eyebrow: 'Data and privacy',
       title: 'Privacy notice',
-      description: 'weapp.dev collects only the visit and performance data needed to maintain this open-source site.',
-      updated: 'Updated August 26, 2026',
+      description: 'weapp.dev uses visit and limited interaction metrics to maintain the website and improve its content.',
+      updated: 'Updated September 22, 2026',
       contents: 'On this page',
       dataFlow: 'Data flow',
-      dataFlowItems: ['Visit the site', 'Baseline performance analytics', 'Optional third-party analytics'],
+      dataFlowItems: ['Visit the site', 'Check analytics preferences', 'Send metrics when allowed'],
       preferences: 'Open analytics preferences',
       sections: [
         {
           title: 'What we collect',
-          body: 'We measure page views, referrers, country or region, device category, browser, Core Web Vitals, and limited interactions with projects, documentation, GitHub, npm, language, and theme controls. We do not collect names, email addresses, input content, complete outbound URLs, or user identities.',
+          body: 'Website analytics includes page views, referrers, country or region, device category, browser, and limited interactions with projects, documentation, GitHub, npm, language, and theme controls. We do not pass names, email addresses, input content, complete outbound URLs, or user identities to analytics events.',
         },
         {
           title: 'Services we use',
-          body: 'Cloudflare Web Analytics provides cookie-free baseline traffic and performance metrics. The production site uses both Baidu Analytics and Google Analytics 4; preview domains and local development do not load either third-party platform.',
+          body: 'The production site uses Baidu Analytics and Google Analytics 4 to measure visits and limited interactions. Neither platform loads when analytics is disabled or the browser signals Global Privacy Control or Do Not Track. Preview domains and local development do not load them either.',
         },
         {
           title: 'Your controls',
@@ -600,9 +628,69 @@ export const siteCopy = {
       action: 'Return home',
       code: 'ROUTE_NOT_EMITTED',
     },
-    contributors: contributorCopy,
+    contributors: contributorCopyEn,
   },
 } as const
+
+/** Localized content for the site's purpose; project facts stay shared. */
+export function getSiteCopy(locale: Locale, profile: SiteProfile = getSiteProfile()) {
+  const copy = siteCopy[locale]
+  if (profile.features.services) {
+    const hostingNote = locale === 'zh-CN'
+      ? 'weapp.dev 由 Cloudflare 托管，托管平台可能另行记录流量和性能指标；本页统计偏好只控制百度统计和 Google Analytics。'
+      : 'weapp.dev is hosted on Cloudflare, which may separately record hosting traffic and performance metrics. These analytics preferences control only Baidu Analytics and Google Analytics.'
+    return {
+      ...copy,
+      privacy: {
+        ...copy.privacy,
+        sections: copy.privacy.sections.map((section, index) => index === 1 ? { ...section, body: `${section.body} ${hostingNote}` } : section),
+      },
+    }
+  }
+
+  const openSource = locale === 'zh-CN'
+    ? {
+        hero: { title: profile.heroWordmark, description: '汇集 JavaScript 与 TypeScript 小程序开源项目，从工程构建、样式与组件到运行时框架。', primary: '浏览开源项目', secondary: '查看 GitHub 组织' },
+        about: {
+          eyebrow: '开源生态',
+          title: '一个入口，发现小程序开源项目',
+          description: 'weapp 是我们为小程序开源生态选择的共同名称。这里汇集 JavaScript 与 TypeScript 项目，帮助你了解各自的职责，并找到文档、源码和参与方式。',
+          items: [
+            { title: '找到项目', body: '按 weapp、Taro、Vue Mini、Rezor 和 uni-app 生态浏览，查看项目状态和适合的使用场景。' },
+            { title: '了解边界', body: '构建、样式、组件、数据和运行时各有职责。项目可以独立采用，相关能力也可以组合。' },
+            { title: '参与协作', body: '从真实仓库提交问题、改进文档或贡献代码。相关 weapp-* 仓库计划逐步汇集到 weappjs 组织，迁移前保留原有入口与维护者信息。' },
+          ],
+        },
+        collaboration: { eyebrow: '参与贡献', title: '从一个问题、一段文档开始', description: '在 weappjs 发现相关仓库，或进入项目自己的源码仓库参与讨论。这里的项目由各自维护者和社区共同维护。', action: '前往 weappjs' },
+        footer: { description: 'JavaScript 与 TypeScript 小程序开源项目集合。', copyright: `${profile.name}，网站源码以 MIT License 开放。` },
+        privacyDescription: `${profile.name} 使用访问与有限交互统计来维护站点和改进开源项目内容。`,
+      }
+    : {
+        hero: { title: profile.heroWordmark, description: 'Discover JavaScript and TypeScript open-source projects for mini-programs, from builds and styling to components and runtimes.', primary: 'Explore open-source projects', secondary: 'Visit the GitHub organization' },
+        about: {
+          eyebrow: 'Open-source ecosystem',
+          title: 'One starting point for mini-program open source',
+          description: 'weapp is the umbrella name for our mini-program open-source ecosystem. Discover JavaScript and TypeScript projects, understand what each does, and find its documentation, source, and ways to contribute.',
+          items: [
+            { title: 'Find a project', body: 'Browse the weapp, Taro, Vue Mini, Rezor, and uni-app ecosystems, with project status and practical use cases.' },
+            { title: 'Understand its role', body: 'Builds, styling, components, data, and runtimes have distinct responsibilities. Adopt tools independently or combine the capabilities you need.' },
+            { title: 'Contribute together', body: 'Report issues, improve documentation, or contribute code in the original repositories. Related weapp-* repositories are planned to move into weappjs over time; current links and maintainer attribution remain in place until then.' },
+          ],
+        },
+        collaboration: { eyebrow: 'Contribute', title: 'Start with an issue or a documentation fix', description: 'Discover repositories in weappjs, or join a project through its own source repository. Each project is maintained by its respective maintainers and community.', action: 'Visit weappjs' },
+        footer: { description: 'JavaScript and TypeScript open-source projects for mini-programs.', copyright: `${profile.name}. Website source available under the MIT License.` },
+        privacyDescription: `${profile.name} uses visit and limited interaction metrics to maintain the site and improve its open-source project content.`,
+      }
+
+  return {
+    ...copy,
+    hero: { ...copy.hero, ...openSource.hero },
+    about: openSource.about,
+    collaboration: openSource.collaboration,
+    footer: { ...copy.footer, ...openSource.footer },
+    privacy: { ...copy.privacy, description: openSource.privacyDescription },
+  }
+}
 
 export function localizePath(locale: Locale, path = '/'): string {
   const normalized = path.startsWith('/') ? path : `/${path}`

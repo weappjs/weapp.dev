@@ -26,8 +26,8 @@
     <path d="M6 30L28 18L58 25L36 37L6 30Z" fill="#79D0AE" stroke="#3C9E78" stroke-width="1.5"/>
     <path d="M6 43L28 31L58 38L36 50L6 43Z" fill="#0E7958" stroke="#07583F" stroke-width="1.5"/>
   </g>
-  <text x="68" y="250" font-family="Arial, sans-serif" font-size="82" font-weight="700" fill="#edf5f0">weapp.dev</text>
-  <text x="72" y="312" font-family="Arial, sans-serif" font-size="28" font-weight="500" fill="#b8c8bf">Open tooling for real mini-app projects</text>
+  <text x="68" y="250" font-family="Arial, sans-serif" font-size="82" font-weight="700" fill="#edf5f0">{{wordmark}}</text>
+  <text x="72" y="312" font-family="Arial, sans-serif" font-size="28" font-weight="500" fill="#b8c8bf">{{description}}</text>
   <text x="72" y="498" font-family="monospace" font-size="20" fill="#79d0ae">STYLE</text>
   <path d="M146 491 H206" stroke="#53675d" stroke-width="2"/>
   <text x="224" y="498" font-family="monospace" font-size="20" fill="#d9e7df">BUILD</text>

@@ -57,7 +57,7 @@
       "faqs": [
         {
           "question": "为什么现在没有独立文档站？",
-          "answer": "rezor.dev 尚未解析。weapp.dev 先指向 GitHub 仓库，站点上线后再更新文档链接。"
+          "answer": "rezor.dev 尚未解析。本目录先指向 GitHub 仓库，站点上线后再更新文档链接。"
         },
         {
           "question": "它和 VPT 是一回事吗？",
@@ -83,7 +83,7 @@
       "faqs": [
         {
           "question": "Why is there no dedicated docs site yet?",
-          "answer": "rezor.dev does not resolve yet. weapp.dev points at the GitHub repository until a docs site is published."
+          "answer": "rezor.dev does not resolve yet. This catalog points at the GitHub repository until a docs site is published."
         },
         {
           "question": "Is this the same as VPT?",

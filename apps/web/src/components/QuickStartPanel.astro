@@ -1,11 +1,11 @@
 ---
 import { Check, Copy } from '@lucide/astro'
 import type { Locale, ProjectDefinition } from '../types/project'
-import { siteCopy } from '../i18n/ui'
+import { getSiteCopy } from '../i18n/ui'
 
 interface Props { locale: Locale; status: ProjectDefinition['status']; audience: string; note?: string; command?: string; projectId?: string }
 const { locale, status, audience, note, command, projectId } = Astro.props
-const copy = siteCopy[locale]
+const copy = getSiteCopy(locale)
 const canInstall = status !== 'planned' && Boolean(command)
 const fallbackNote = status === 'planned' ? copy.project.plannedSetupNote : copy.project.commandUnavailable
 const audienceId = `quick-start-audience-${projectId ?? 'project'}`

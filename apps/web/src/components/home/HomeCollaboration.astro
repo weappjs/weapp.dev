@@ -2,24 +2,26 @@
 import { GitFork } from '@lucide/astro'
 import type { Locale } from '../../types/project'
 import { buttonSecondary, featuredTitle, shell } from '../../styles/classes'
-import { siteCopy } from '../../i18n/ui'
+import { getSiteCopy } from '../../i18n/ui'
+import { getSiteProfile } from '../../lib/deployment'
 
 interface Props {
   locale: Locale
 }
 
 const { locale } = Astro.props
-const copy = siteCopy[locale]
+const copy = getSiteCopy(locale)
+const profile = getSiteProfile()
 ---
 
-<section class="border-y border-line bg-panel" aria-labelledby="collaboration-title">
+<section class="border-y border-line bg-panel" id="collaboration" aria-labelledby="collaboration-title">
   <div data-reveal class:list={[shell, 'grid min-h-[200px] grid-cols-[72px_1fr_auto] items-center gap-8 py-12 max-[820px]:grid-cols-[58px_1fr] max-[620px]:grid-cols-1 max-[720px]:py-10']}>
     <img class="size-[72px] rounded-panel border border-line bg-panel-soft p-2.5 max-[820px]:size-[58px]" src="/logo.svg" width="72" height="72" alt="" loading="lazy" decoding="async" />
     <div>
       <h2 id="collaboration-title" class:list={[featuredTitle, 'mb-3']}>{copy.collaboration.title}</h2>
       <p class="mb-0 max-w-[650px] text-copy-muted">{copy.collaboration.description}</p>
     </div>
-    <a class:list={[buttonSecondary, 'max-[820px]:col-start-2 max-[820px]:w-fit max-[620px]:col-auto']} href="https://github.com/sonofmagic/weapp.dev" target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="collaboration">
+    <a class:list={[buttonSecondary, 'max-[820px]:col-start-2 max-[820px]:w-fit max-[620px]:col-auto']} href={profile.organizationUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="collaboration">
       <GitFork size={18} stroke-width={1.9} aria-hidden="true" />
       {copy.collaboration.action}
     </a>

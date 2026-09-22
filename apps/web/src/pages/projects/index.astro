@@ -1,10 +1,12 @@
 ---
+import { getSiteProfile } from '../../lib/deployment'
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import Header from '../../components/Header.astro'
 import Footer from '../../components/Footer.astro'
 import ProjectsIndexPage from '../../components/ProjectsIndexPage.astro'
 import { getProjects } from '../../lib/projects'
 import { projectListSchema, projectsIndexSchema } from '../../lib/seo'
+const profile = getSiteProfile()
 const projects = await getProjects()
 ---
-<BaseLayout locale="zh-CN" title="工具链项目 | weapp.dev" description="weapp 原生工具链、Taro、Vue Mini、Rezor 与 uni-app 生态" imageAlt="weapp.dev 生态项目地图" schemas={[projectsIndexSchema('zh-CN', projects), projectListSchema('zh-CN', projects)]}><Header locale="zh-CN" projects={projects} currentPath={Astro.url.pathname} /><ProjectsIndexPage locale="zh-CN" projects={projects} /><Footer locale="zh-CN" projects={projects} currentPath={Astro.url.pathname} /></BaseLayout>
+<BaseLayout locale="zh-CN" title={`工具链项目 | ${profile.name}`} description="weapp 原生工具链、Taro、Vue Mini、Rezor 与 uni-app 生态" imageAlt={`${profile.name} 生态项目地图`} schemas={[projectsIndexSchema('zh-CN', projects), projectListSchema('zh-CN', projects)]}><Header locale="zh-CN" projects={projects} currentPath={Astro.url.pathname} /><ProjectsIndexPage locale="zh-CN" projects={projects} /><Footer locale="zh-CN" projects={projects} currentPath={Astro.url.pathname} /></BaseLayout>

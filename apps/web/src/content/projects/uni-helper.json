@@ -56,7 +56,7 @@
       "faqs": [
         {
           "question": "Uni Helper 是一个 npm 包还是一个组织？",
-          "answer": "它是 GitHub 组织。weapp.dev 用旗舰包 create-uni 作为可安装入口，文档指向组织门户 uni-helper.cn。"
+          "answer": "它是 GitHub 组织。本目录用旗舰包 create-uni 作为可安装入口，文档指向组织门户 uni-helper.cn。"
         },
         {
           "question": "它和 weapp-vite 是同一层吗？",
@@ -82,7 +82,7 @@
       "faqs": [
         {
           "question": "Is Uni Helper one npm package or an organization?",
-          "answer": "It is a GitHub organization. weapp.dev uses the flagship create-uni package as the installable entry and points docs at uni-helper.cn."
+          "answer": "It is a GitHub organization. This catalog uses the flagship create-uni package as the installable entry and points docs at uni-helper.cn."
         },
         {
           "question": "Is it the same layer as weapp-vite?",

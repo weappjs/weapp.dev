@@ -6,9 +6,27 @@
     <a href="https://weapp.dev/">中文官网</a> ·
     <a href="https://weapp.dev/en/">English</a> ·
     <a href="https://weapp.js.org/">weapp.js.org</a> ·
-    <a href="https://github.com/sonofmagic/weapp.dev">GitHub</a>
+    <a href="https://github.com/weappjs/weapp.dev">GitHub</a>
   </p>
 </div>
+
+## 两个站点，共享项目事实
+
+[weapp.dev](https://weapp.dev/) 保留生态介绍，并提供迁移与培训、开源赞助和贡献者基金入口。[weapp.js.org](https://weapp.js.org/) 是申请中的开源组织门户，只展示项目、文档、源码、发布和贡献方式，不包含赞助、资金、基金、付费服务或商业导流。
+
+两站共享 weapp-vite、weapp-tailwindcss、Varo、weapp-sqlite、VPT、Vue Mini、Rezor、Uni Helper 和 Wot UI 的项目数据。weapp-sqlite 仍处于规划阶段；项目的成熟度、仓库和文档域名不会因站点拆分而改变。组织入口为 [weappjs](https://github.com/weappjs)，站点构建本身不执行仓库或项目文档迁移。
+
+默认 target `weapp` 生成 `apps/web/dist`，供 Cloudflare 发布；`github-pages` 生成 `apps/web/dist-pages`，供 GitHub Pages 发布。每份产物使用自己的 canonical、分享元数据和发现资源。
+
+```bash
+pnpm check
+pnpm --filter @weapp.dev/web build
+pnpm --filter @weapp.dev/web exec playwright test
+pnpm --filter @weapp.dev/web build:pages
+WEAPP_DEPLOY_TARGET=github-pages pnpm --filter @weapp.dev/web exec playwright test
+```
+
+CI 必须完成两份产物的校验及桌面/移动 E2E 后才能部署。Pages 还覆盖 `/weapp.dev/` 子路径；旧 pricing、sponsors、contributors 中英六页只保留 noindex 静态跳转，目标为同语种项目目录，禁用 JavaScript 时仍可使用。开发和部署细节见 [维护手册](docs/maintenance.md)。
 
 ## 保留你的写法，升级交付链路
 
@@ -102,7 +120,7 @@ npm create vite-taro@latest my-app
 - **渐进接入：** 先稳定构建链路，再按页面引入新写法，不要求一次性重写业务。
 - **结果可验证：** 源码、发布记录、运行日志与截图链路公开，构建结果可以复现。
 
-## 赞助与贡献者计划
+## weapp.dev 赞助与贡献者计划
 
 已确认的开源赞助按净额拆成三桶：60% 核心维护、25% 贡献者基金、15% 周边开源。贡献者基金按季发放给有效合并的修复、功能、测试和文档，不是工资或兼职。
 

@@ -1,0 +1,39 @@
+---
+import type { Locale } from '../types/project'
+import { localizePath } from '../i18n/ui'
+import { getSiteProfile } from '../lib/deployment'
+import { relativeSiteUrl } from '../lib/github-pages-paths'
+
+interface Props { locale: Locale }
+const { locale } = Astro.props
+const profile = getSiteProfile()
+const destination = localizePath(locale, '/projects/')
+const relativeDestination = relativeSiteUrl(Astro.url.pathname.replace(/^\/+|\/+$/g, ''), destination)
+const title = locale === 'zh-CN' ? '浏览开源项目' : 'Explore open-source projects'
+---
+<!doctype html>
+<html lang={locale === 'zh-CN' ? 'zh-CN' : 'en-US'}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="noindex, follow" />
+    <meta name="description" content={title} />
+    <meta http-equiv="refresh" content={`0;url=${relativeDestination}`} />
+    <link rel="canonical" href={new URL(destination, profile.origin)} />
+    <title>{title} | {profile.name}</title>
+  </head>
+  <body class="project-redirect-page">
+    <main><h1>{title}</h1><p><a href={relativeDestination}>{title}</a></p></main>
+  </body>
+</html>
+<style>
+  .project-redirect-page { margin: 0; background: #f4f7f5; color: #0d1712; font: 1rem/1.6 system-ui, sans-serif; }
+  .project-redirect-page main { max-width: 48rem; margin: 10vh auto; padding: 2rem; }
+  .project-redirect-page h1 { font-size: 2rem; }
+  .project-redirect-page a { color: #0e7958; display: inline-block; padding: .75rem 0; }
+  .project-redirect-page a:focus-visible { outline: 3px solid #f2c94c; outline-offset: 3px; }
+  @media (prefers-color-scheme: dark) {
+    .project-redirect-page { background: #0b110e; color: #edf5f0; }
+    .project-redirect-page a { color: #69c7a5; }
+  }
+</style>

@@ -53,16 +53,14 @@ jobs:
       - name: Prepare the GitHub Pages site
         env:
           WEAPP_DEPLOY_TARGET: github-pages
-        run: |
-          pnpm --filter @weapp.dev/web build:pages
-          pnpm --filter @weapp.dev/web pages:rewrite dist-pages
-          pnpm --filter @weapp.dev/web exec tsx scripts/validate-build.ts
+        run: pnpm --filter @weapp.dev/web build:pages
 
       - name: Upload the GitHub Pages site
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: web-pages-dist
           path: apps/web/dist-pages
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
 
@@ -70,6 +68,18 @@ jobs:
     needs: verify
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: weapp
+            artifact: web-dist
+            directory: dist
+          - target: github-pages
+            artifact: web-pages-dist
+            directory: dist-pages
+    env:
+      WEAPP_DEPLOY_TARGET: ${{ matrix.target }}
 
     steps:
       - name: Check out the repository
@@ -90,8 +100,8 @@ jobs:
       - name: Download the static site
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: web-dist
-          path: apps/web/dist
+          name: ${{ matrix.artifact }}
+          path: apps/web/${{ matrix.directory }}
 
       - name: Install the Playwright browser
         run: pnpm --filter @weapp.dev/web exec playwright install --with-deps chromium
@@ -100,7 +110,7 @@ jobs:
         run: pnpm --filter @weapp.dev/web exec playwright test
 
   deploy-production:
-    needs: verify
+    needs: [verify, e2e]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -144,7 +154,7 @@ jobs:
           pnpm exec wrangler deploy --message "${GITHUB_SHA}" 2>&1 | tee "$GITHUB_STEP_SUMMARY"
 
   deploy-pages:
-    needs: verify
+    needs: [verify, e2e]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -176,7 +186,7 @@ jobs:
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
 
   deploy-preview:
-    needs: verify
+    needs: [verify, e2e]
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 10

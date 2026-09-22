@@ -10,11 +10,13 @@ web
 
 Primary users are frontend teams evaluating or adopting a mini-program / H5 toolchain. They arrive while selecting or migrating tooling, and need a clear map of project boundaries, credibility signals, and the right docs or repositories to continue.
 
-Secondary audiences exist (active users checking releases, maintainers, contributors, sponsors), but they are not the first audience for this portal.
+Active users, maintainers, and contributors also use both sites to find releases and repositories. Service buyers and sponsors use weapp.dev; weapp.js.org has no commercial or fundraising audience path.
 
 ## Product Purpose
 
-weapp.dev is the bilingual ecosystem portal for an open mini-program engineering toolchain. It helps visitors understand how engineering (weapp-vite), styling (weapp-tailwindcss), components (Varo), local data (weapp-sqlite), and migration (VPT) fit together, then reach the corresponding documentation or source without requiring a rewrite of their existing writing style.
+This repository builds two bilingual sites from one project catalog. weapp.dev keeps the ecosystem overview and gives migration, training, open-source sponsorship, and the contributors fund clear entry points. weapp.js.org is the open-source organization portal: it explains the related JavaScript mini-program projects, links their documentation and source, and helps visitors contribute. It contains no sponsorship, funding, paid-service content, or commercial referrals.
+
+Both sites explain how engineering (weapp-vite), styling (weapp-tailwindcss), components (Varo), local data (weapp-sqlite), and the surrounding Taro, Vue Mini, React, and uni-app ecosystems relate. Project status and documentation domains remain shared facts; the site split does not imply that individual projects or their documentation have moved.
 
 Success for this site means a visitor can quickly grasp the five-layer boundaries and leave into the correct docs or repositories.
 
@@ -25,13 +27,13 @@ The portal markets a progressive, composable toolchain: keep familiar native min
 ## Operating Context
 
 - Developers compare tools before changing a production mini-program or H5 codebase.
-- Discovery happens on weapp.dev; deep docs remain on project sites such as `tw.weapp.dev` and `vite.weapp.dev`, with GitHub and npm as proof surfaces.
-- Homepage interactive demos illustrate style, build, registry, local-data, and migration flows without pretending to run the full production toolchain in-browser.
-- Commercial and contributor paths (migration/training, sponsorship, contributors fund) are published beside the open-source core.
+- Discovery happens on both sites; deep docs remain on project sites such as `tw.weapp.dev` and `vite.weapp.dev`, with GitHub and npm as proof surfaces.
+- Homepage interactive demos illustrate style, build, and registry behavior in the weapp-vite project row without pretending to run the full production toolchain in-browser. Local-data and migration capabilities use static proof with their current status and boundaries.
+- Commercial and funding paths (migration/training, sponsorship, contributors fund) are published only on weapp.dev. Contribution on weapp.js.org means issues, code, tests, and documentation.
 
 ## Capabilities and Constraints
 
-- This repository is the Astro monorepo for the weapp.dev website (`apps/web`), not the individual tool runtimes.
+- This repository is the Astro monorepo for both websites (`apps/web`), not the individual tool runtimes. `WEAPP_DEPLOY_TARGET=weapp` writes `dist`; `github-pages` writes `dist-pages`. Identity, navigation, and feature availability come from `getSiteProfile()` in `src/lib/deployment.ts`.
 - Published project catalog is grouped by ecosystem: the weapp native stack (weapp-vite, weapp-tailwindcss, Varo, weapp-sqlite), Taro (VPT), Vue Mini, Rezor, and uni-app (Uni Helper, Wot UI). Only the weapp stack appears in the weapp toolchain map.
 - Site must stay bilingual: Chinese at `/`, English under `/en/`, with parity for key pages.
 - Site must remain static-first: core content and default demos readable without client JavaScript; theme and navigation may enhance progressively.
@@ -40,7 +42,7 @@ The portal markets a progressive, composable toolchain: keep familiar native min
 
 ## Brand Commitments
 
-- Name: **weapp.dev**
+- Site brands: **weapp.dev** and **weapp.js.org**; the open-source homepage hero uses **weapp**.
 - Maintainer attribution: initiated and maintained by [sonofmagic](https://github.com/sonofmagic)
 - License: MIT
 - Existing marks and logos live under `apps/web/public/logo.svg` and `apps/web/public/brands/`
@@ -53,7 +55,7 @@ The portal markets a progressive, composable toolchain: keep familiar native min
 - Interactive homepage demos for style / build / registry under `apps/web/src/components/home/demos/`
 - Media and showcase assets under `apps/web/public/media/`
 - Committed metrics fallback: `apps/web/src/data/project-metrics.fallback.json`
-- Contributors fund and sponsorship rules published on-site (`/contributors/`, `/pricing/`)
+- Contributors fund and sponsorship rules published on weapp.dev (`/contributors/`, `/pricing/`); these are not content sources for weapp.js.org
 - Architecture and acceptance notes under `docs/`
 - Absence to preserve: no fabricated testimonials, unnamed enterprise customers, or unverifiable download/sponsor claims
 
@@ -63,7 +65,13 @@ The portal markets a progressive, composable toolchain: keep familiar native min
 2. **Preserve the writing, upgrade the delivery** — migration cost stays low; tools take over engineering, styling, components, data, or migration without demanding a rewrite.
 3. **Prove with real artifacts** — demos, metrics, releases, and source links beat category slogans.
 4. **Bilingual and static-readable** — Chinese/English parity and no-JS readability are product requirements, not polish.
-5. **Open core, honest commercial edges** — sponsorship and services may exist, but must stay distinguishable from unverifiable marketing claims.
+5. **Separate site purposes** — weapp.dev explains services and funding honestly. weapp.js.org stays focused on open-source projects and contribution, with no commercial referral path.
+
+## Retired routes and publishing
+
+On weapp.js.org, `/pricing/`, `/sponsors/`, and `/contributors/`, including their `/en/` equivalents, are noindex static redirects to the same-language project directory. They use a meta refresh and a visible relative link, work without JavaScript, and stay out of the sitemap. They do not redirect to weapp.dev.
+
+Both deployment artifacts must pass their own static validation and desktop/mobile E2E suite before either site deploys. The Pages artifact is also tested below `/weapp.dev/` so its relative links and assets work on the GitHub project URL and the requested custom domain.
 
 ## Accessibility & Inclusion
 

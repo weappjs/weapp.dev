@@ -1,7 +1,8 @@
 ---
 import { ArrowRight, ArrowUpRight, Heart } from '@lucide/astro'
 import type { Locale } from '../../types/project'
-import { localizePath, siteCopy } from '../../i18n/ui'
+import { localizePath, getSiteCopy } from '../../i18n/ui'
+import { getSiteProfile } from '../../lib/deployment'
 import { buttonPrimary, buttonSecondary, homeSection, sectionTitle, shell } from '../../styles/classes'
 
 interface Props {
@@ -9,17 +10,18 @@ interface Props {
 }
 
 const { locale } = Astro.props
-const copy = siteCopy[locale]
+const copy = getSiteCopy(locale)
+const profile = getSiteProfile()
 ---
 
-<section class="border-y border-line bg-panel-soft" id="commercial" aria-labelledby="commercial-title">
+{profile.features.services && <section class="border-y border-line bg-panel-soft" id="commercial" aria-labelledby="commercial-title">
   <div class:list={[homeSection, shell]}>
     <header data-reveal class="mb-9 max-w-[720px]">
       <h2 id="commercial-title" class={sectionTitle}>{copy.commercial.title}</h2>
       <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{copy.commercial.description}</p>
     </header>
-    <div class="grid grid-cols-3 gap-px overflow-hidden border border-line bg-line max-[760px]:grid-cols-1">
-      {copy.commercial.cards.map((card, index) => (
+    <div class="grid grid-cols-2 gap-px overflow-hidden border border-line bg-line max-[760px]:grid-cols-1">
+      {copy.commercial.cards.filter(card => card.kind !== 'sponsorship').map((card, index) => (
         <article data-reveal style={`--reveal-delay: ${index * 70}ms`} class="bg-panel p-6">
           <h3 class="mb-3 text-2xl font-[660]">{card.title}</h3>
           <p class="mb-0 text-sm leading-[1.7] text-copy-muted">{card.body}</p>
@@ -27,9 +29,12 @@ const copy = siteCopy[locale]
       ))}
     </div>
     <div class="mt-6 flex flex-wrap items-center gap-3">
-      <a class={buttonPrimary} href={`${localizePath(locale, '/pricing/')}#sponsor`} data-analytics-event="navigate_section" data-analytics-section="sponsor">{copy.commercial.trial}<Heart size={17} stroke-width={1.9} aria-hidden="true" /></a>
-      <a class={buttonSecondary} href={`${localizePath(locale, '/pricing/')}#services`} data-analytics-event="navigate_section" data-analytics-section="services"><ArrowRight size={17} stroke-width={1.9} aria-hidden="true" />{copy.commercial.services}</a>
-      <a class="inline-flex min-h-11 items-center gap-2 px-2 text-sm font-[650] text-copy-muted transition-colors hover:text-ink" href={`${localizePath(locale, '/pricing/')}#sponsor`} data-analytics-event="navigate_section" data-analytics-section="sponsor_splits">{copy.commercial.pricing}<ArrowUpRight size={16} stroke-width={1.8} aria-hidden="true" /></a>
+      <a class={buttonPrimary} href={`${localizePath(locale, '/pricing/')}#services`} data-analytics-event="navigate_section" data-analytics-section="services">{copy.commercial.services}<ArrowRight size={17} stroke-width={1.9} aria-hidden="true" /></a>
+      <a class={buttonSecondary} href={`${localizePath(locale, '/pricing/')}#roadmap`} data-analytics-event="navigate_section" data-analytics-section="roadmap">{copy.commercial.pricing}<ArrowUpRight size={16} stroke-width={1.8} aria-hidden="true" /></a>
     </div>
+    {profile.features.sponsorship && <aside class="mt-9 flex flex-wrap items-center justify-between gap-5 border-t border-line pt-7" aria-label={locale === 'zh-CN' ? '开源赞助' : 'Open-source sponsorship'}>
+      <p class="mb-0 max-w-[620px] text-sm leading-[1.7] text-copy-muted">{locale === 'zh-CN' ? '想支持开源维护？自愿赞助用于维护、文档和贡献者基金，不购买实施服务。' : 'Want to support open-source maintenance? Voluntary sponsorship funds maintenance, documentation, and contributors. It does not purchase implementation services.'}</p>
+      <a class="inline-flex min-h-11 items-center gap-2 text-sm font-[650] text-brand" href={`${localizePath(locale, '/pricing/')}#sponsor`} data-analytics-event="navigate_section" data-analytics-section="sponsor">{copy.commercial.trial}<Heart size={17} stroke-width={1.9} aria-hidden="true" /></a>
+    </aside>}
   </div>
-</section>
+</section>}

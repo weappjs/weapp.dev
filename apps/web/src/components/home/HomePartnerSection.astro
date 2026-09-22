@@ -2,7 +2,7 @@
 import { ArrowRight, ArrowUpRight } from '@lucide/astro'
 import type { Locale } from '../../types/project'
 import type { ProjectEntry } from '../../lib/projects'
-import { projectPath, siteCopy } from '../../i18n/ui'
+import { projectPath, getSiteCopy } from '../../i18n/ui'
 import { buttonPrimary, buttonSecondary, homeSection, homeSectionPack, sectionTitle, shell } from '../../styles/classes'
 
 interface Props {
@@ -16,7 +16,7 @@ interface Props {
 }
 
 const { locale, projects, id, eyebrow, title, description, pack } = Astro.props
-const copy = siteCopy[locale]
+const copy = getSiteCopy(locale)
 const sectionClass = pack ? homeSectionPack[pack] : homeSection
 ---
 

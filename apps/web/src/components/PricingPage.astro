@@ -1,9 +1,9 @@
 ---
 import { ArrowRight, ExternalLink, GitFork, Heart } from '@lucide/astro'
 import type { Locale } from '../types/project'
-import { localizePath, siteCopy } from '../i18n/ui'
-import { isGithubPagesBuild } from '../lib/deployment'
-import { filterOpenSourceSponsors, isOpenSourceSponsorTier, loadPublicSponsors } from '../lib/sponsors'
+import { localizePath, getSiteCopy } from '../i18n/ui'
+import { getSiteProfile } from '../lib/deployment'
+import { loadPublicSponsors } from '../lib/sponsors'
 import { buttonPrimary, buttonSecondary, section, shell } from '../styles/classes'
 
 interface Props {
@@ -11,33 +11,17 @@ interface Props {
 }
 
 const { locale } = Astro.props
-const copy = siteCopy[locale]
+const copy = getSiteCopy(locale)
 const pricing = copy.pricing
-const githubPages = isGithubPagesBuild()
+const profile = getSiteProfile()
 const sponsorSnapshot = await loadPublicSponsors()
-const publicSponsors = (githubPages ? filterOpenSourceSponsors(sponsorSnapshot) : sponsorSnapshot).items
-const githubUrl = 'https://github.com/sonofmagic/weapp.dev'
-const hero = githubPages
-  ? locale === 'zh-CN'
-    ? { eyebrow: '开源赞助', title: '支持工具链继续开源', description: '通过公开赞助支持 weapp.dev 的维护、文档、测试和贡献者基金。', early: '赞助用于支持开源维护和贡献者基金。', ctaTitle: '让开源项目有继续维护的预算', ctaBody: '通过 GitHub 查看开源赞助方式和公开记录。', ctaAction: '在 GitHub 了解方式' }
-    : { eyebrow: 'Open-source sponsorship', title: 'Keep the toolchain open', description: 'Support weapp.dev maintenance, documentation, testing, and the contributors fund through public sponsorship.', early: 'Sponsorship supports open-source maintenance and the contributors fund.', ctaTitle: 'Give open source a budget to keep going', ctaBody: 'Use GitHub to see sponsorship details and public records.', ctaAction: 'Learn how on GitHub' }
-  : { eyebrow: pricing.eyebrow, title: pricing.title, description: pricing.description, early: pricing.early, ctaTitle: pricing.ctaTitle, ctaBody: pricing.ctaBody, ctaAction: pricing.ctaAction }
-const sponsorNote = githubPages
-  ? locale === 'zh-CN'
-    ? '赞助用于开源维护、文档、测试和贡献者基金。公开展示需完成 GitHub 身份确认、维护者审核和明确授权。'
-    : 'Sponsorship supports open-source maintenance, documentation, testing, and the contributors fund. Public display requires GitHub identity confirmation, maintainer review, and explicit authorization.'
-  : pricing.sponsorNote
-const sponsorDescription = githubPages
-  ? locale === 'zh-CN'
-    ? '通过一次性赞助支持 weapp.dev 的维护、文档、测试和贡献者基金。'
-    : 'Support weapp.dev maintenance, documentation, testing, and the contributors fund through one-time sponsorship.'
-  : pricing.sponsorDescription
-const sponsorSites = githubPages
-  ? locale === 'zh-CN' ? '公开名单（仅展示已确认并授权的 GitHub 信息）' : 'Public recognition (confirmed and authorized GitHub details only)'
-  : pricing.sponsorSites
+const publicSponsors = sponsorSnapshot.items
+const githubUrl = profile.repositoryUrl
+const hero = { eyebrow: pricing.eyebrow, title: pricing.title, description: pricing.description, early: pricing.early, ctaTitle: pricing.ctaTitle, ctaBody: pricing.ctaBody, ctaAction: pricing.ctaAction }
+
 ---
 
-<main id="main-content">
+{profile.features.services && <main id="main-content">
   <section class="pricing-hero">
     <div class:list={[shell, 'pricing-hero-inner']}>
       <div data-reveal>
@@ -45,12 +29,12 @@ const sponsorSites = githubPages
         <h1 class="mb-6 max-w-[780px] text-[64px] font-[740] leading-[1.15] max-[1000px]:text-[52px] max-[720px]:text-[36px]">{hero.title}</h1>
         <p class="mb-8 max-w-[650px] text-xl leading-[1.5] text-copy-muted max-[720px]:text-base">{hero.description}</p>
         <div class="flex flex-wrap items-center gap-3">
-          <a class={buttonPrimary} href={githubUrl} target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="pricing_github">
-            <GitFork size={18} stroke-width={1.9} aria-hidden="true" />
-            {hero.ctaAction}
+          <a class={buttonPrimary} href="#services" data-analytics-event="navigate_section" data-analytics-section="services">
+            <ArrowRight size={18} stroke-width={1.9} aria-hidden="true" />
+            {locale === 'zh-CN' ? '查看迁移与培训' : 'Explore migration and training'}
           </a>
-          <a class={buttonSecondary} href={`${localizePath(locale)}#projects`} data-analytics-event="navigate_section" data-analytics-section="pricing_projects">
-            {locale === 'zh-CN' ? '先看开源项目' : 'Explore open source'}
+          <a class={buttonSecondary} href="#sponsor" data-analytics-event="navigate_section" data-analytics-section="sponsor">
+            {locale === 'zh-CN' ? '支持开源维护' : 'Support open-source maintenance'}
             <ArrowRight size={17} stroke-width={1.9} aria-hidden="true" />
           </a>
         </div>
@@ -62,15 +46,34 @@ const sponsorSites = githubPages
     </div>
   </section>
 
+  <section class="border-y border-line bg-panel" id="services">
+    <div class:list={[section, shell]}>
+      <header data-reveal class="mb-12 max-w-[700px]">
+        <p class="mb-3 font-mono text-xs font-[650] text-brand">01 / {locale === 'zh-CN' ? '实施服务' : 'SERVICES'}</p>
+        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.servicesTitle}</h2>
+      </header>
+      <div class="pricing-service-list">
+        {pricing.services.map((service, index) => (
+          <article data-reveal style={`--reveal-delay: ${index * 60}ms`}>
+            <span class="pricing-service-index">{String(index + 1).padStart(2, '0')}</span>
+            <div><h3 class="mb-2 text-lg font-[660]">{service.name}</h3><p class="mb-0 text-sm text-copy-muted">{service.body}</p></div>
+            <strong class="font-mono text-sm font-[700] max-[620px]:col-start-2">{service.price}</strong>
+          </article>
+        ))}
+      </div>
+      <p class="mt-7 mb-0 max-w-[720px] text-xs leading-[1.7] text-copy-muted">{locale === 'zh-CN' ? '服务只围绕工具链交付，不承接与产品无关的业务外包。服务收入连续两个月超过总收入 50% 时，将停止接收新单。' : 'Services stay tied to the toolchain and do not become unrelated product outsourcing. New work pauses if services exceed 50% of total revenue for two consecutive months.'}</p>
+    </div>
+  </section>
+
   <section class="border-y border-line bg-panel-soft" id="sponsor">
     <div class:list={[section, shell]}>
       <header data-reveal class="mb-12 max-w-[720px]">
-        <p class="mb-3 font-mono text-xs font-[650] text-brand">01 / {locale === 'zh-CN' ? '开源赞助' : 'OPEN-SOURCE SPONSORSHIP'}</p>
+        <p class="mb-3 font-mono text-xs font-[650] text-brand">02 / {locale === 'zh-CN' ? '开源赞助' : 'OPEN-SOURCE SPONSORSHIP'}</p>
         <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.sponsorTitle}</h2>
-        <p class="mb-0 max-w-[650px] text-lg text-copy-muted max-[720px]:text-base">{sponsorDescription}</p>
+        <p class="mb-0 max-w-[650px] text-lg text-copy-muted max-[720px]:text-base">{pricing.sponsorDescription}</p>
       </header>
-      <div class="pricing-sponsor-grid" style={githubPages ? "--sponsor-columns: 3" : undefined}>
-        {pricing.sponsorTiers.filter(tier => !githubPages || isOpenSourceSponsorTier(tier.id)).map((tier, index) => (
+      <div class="pricing-sponsor-grid">
+        {pricing.sponsorTiers.map((tier, index) => (
           <article data-reveal class="pricing-sponsor-tier" style={`--reveal-delay: ${index * 70}ms`}>
             <Heart class="mb-8 text-brand" size={23} stroke-width={1.7} aria-hidden="true" />
             <h3 class="mb-2 text-xl font-[660]">{tier.name}</h3>
@@ -86,7 +89,7 @@ const sponsorSites = githubPages
       </div>
       <div data-reveal class="pricing-sponsor-allocation">
         <p class="mb-2 font-[650]">{locale === 'zh-CN' ? '资金去向' : 'Where it goes'}</p>
-        {githubPages ? <>
+        <>
           <ul class="m-0 grid list-none gap-3 p-0 text-sm leading-[1.7] text-copy-muted">
             {pricing.sponsorAllocationBuckets.map(bucket => <li><strong class="text-ink">{bucket.share} {bucket.name}</strong> · {bucket.body}</li>)}
           </ul>
@@ -94,11 +97,11 @@ const sponsorSites = githubPages
             <a class="text-sm font-[650] text-brand underline underline-offset-4" href={localizePath(locale, '/contributors/')}>{locale === 'zh-CN' ? '了解贡献者基金' : 'Explore the contributors fund'}</a>
             <a class="text-sm font-[650] text-brand underline underline-offset-4" href={localizePath(locale, '/sponsors/')}>{locale === 'zh-CN' ? '查看赞助图谱' : 'View the sponsor graph'}</a>
           </div>
-        </> : <p class="mb-0 text-sm leading-[1.7] text-copy-muted">{pricing.sponsorAllocation}</p>}
+        </>
       </div>
-      <p data-reveal class="mt-5 mb-0 text-xs text-copy-muted">{sponsorNote}</p>
+      <p data-reveal class="mt-5 mb-0 text-xs text-copy-muted">{pricing.sponsorNote}</p>
       <div data-reveal class="pricing-public-sponsors">
-        <h3 class="mb-2 text-lg font-[660]">{sponsorSites}</h3>
+        <h3 class="mb-2 text-lg font-[660]">{pricing.sponsorSites}</h3>
         {publicSponsors.length === 0 ? <p class="mb-0 text-sm text-copy-muted">{pricing.sponsorEmpty}</p> : <div class="pricing-public-sponsor-list">
           {(['gold', 'silver', 'bronze', 'supporter'] as const).map(tier => {
             const sponsors = publicSponsors.filter(sponsor => sponsor.tier === tier)
@@ -118,11 +121,10 @@ const sponsorSites = githubPages
     </div>
   </section>
 
-  {!githubPages && <>
   <section class="border-y border-line bg-panel-soft" id="roadmap">
     <div class:list={[section, shell]}>
       <header data-reveal class="mb-12 max-w-[700px]">
-        <p class="mb-3 font-mono text-xs font-[650] text-brand">02 / {locale === 'zh-CN' ? '建设中的能力' : 'ROADMAP'}</p>
+        <p class="mb-3 font-mono text-xs font-[650] text-brand">03 / {locale === 'zh-CN' ? '建设中的能力' : 'ROADMAP'}</p>
         <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.roadmapTitle}</h2>
         <p class="mb-4 text-lg text-copy-muted max-[720px]:text-base">{pricing.roadmapDescription}</p>
         <h3 class="mb-3 text-xl font-[660]">{pricing.templatesTitle}</h3>
@@ -146,7 +148,7 @@ const sponsorSites = githubPages
   <section class:list={[section, shell]} id="cloud-build">
     <div class="grid grid-cols-[.76fr_1.24fr] gap-16 max-[900px]:grid-cols-1 max-[900px]:gap-10">
       <header data-reveal class="max-w-[470px]">
-        <p class="mb-3 font-mono text-xs font-[650] text-brand">03 / {locale === 'zh-CN' ? '云构建' : 'CLOUD BUILDS'}</p>
+        <p class="mb-3 font-mono text-xs font-[650] text-brand">04 / {locale === 'zh-CN' ? '云构建' : 'CLOUD BUILDS'}</p>
         <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.buildTitle}</h2>
         <p class="mb-0 text-copy-muted">{pricing.buildDescription}</p>
       </header>
@@ -158,25 +160,6 @@ const sponsorSites = githubPages
           </li>
         ))}
       </ol>
-    </div>
-  </section>
-
-  <section class="border-y border-line bg-panel" id="services">
-    <div class:list={[section, shell]}>
-      <header data-reveal class="mb-12 max-w-[700px]">
-        <p class="mb-3 font-mono text-xs font-[650] text-brand">04 / {locale === 'zh-CN' ? '实施服务' : 'SERVICES'}</p>
-        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.servicesTitle}</h2>
-      </header>
-      <div class="pricing-service-list">
-        {pricing.services.map((service, index) => (
-          <article data-reveal style={`--reveal-delay: ${index * 60}ms`}>
-            <span class="pricing-service-index">{String(index + 1).padStart(2, '0')}</span>
-            <div><h3 class="mb-2 text-lg font-[660]">{service.name}</h3><p class="mb-0 text-sm text-copy-muted">{service.body}</p></div>
-            <strong class="font-mono text-sm font-[700] max-[620px]:col-start-2">{service.price}</strong>
-          </article>
-        ))}
-      </div>
-      <p class="mt-7 mb-0 max-w-[720px] text-xs leading-[1.7] text-copy-muted">{locale === 'zh-CN' ? '服务只围绕工具链交付，不承接与产品无关的业务外包。服务收入连续两个月超过总收入 50% 时，将停止接收新单。' : 'Services stay tied to the toolchain and do not become unrelated product outsourcing. New work pauses if services exceed 50% of total revenue for two consecutive months.'}</p>
     </div>
   </section>
 
@@ -203,15 +186,13 @@ const sponsorSites = githubPages
     </div>
   </section>
 
-  </>}
-
   <section class="pricing-cta border-t border-line bg-panel-soft">
     <div data-reveal class:list={[shell, 'grid min-h-[300px] grid-cols-[1fr_auto] items-center gap-10 py-16 max-[720px]:grid-cols-1 max-[720px]:py-14']}>
       <div><h2 class="mb-3 max-w-[700px] text-[38px] font-[680] max-[720px]:text-[30px]">{hero.ctaTitle}</h2><p class="mb-0 max-w-[650px] text-copy-muted">{hero.ctaBody}</p></div>
       <a class={buttonPrimary} href={githubUrl} target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="pricing_cta"><GitFork size={18} stroke-width={1.9} aria-hidden="true" />{hero.ctaAction}</a>
     </div>
   </section>
-</main>
+</main>}
 
 <style is:global>
   .pricing-hero { background: var(--background); color: var(--text); }

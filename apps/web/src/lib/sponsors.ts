@@ -141,7 +141,7 @@ export async function loadPublicSponsors(): Promise<SponsorSnapshot> {
 const projects = [
   ['project:weapp-vite', 'weapp-vite', 'https://github.com/weapp-vite/weapp-vite'],
   ['project:weapp-tailwindcss', 'weapp-tailwindcss', 'https://github.com/sonofmagic/weapp-tailwindcss'],
-  ['project:weapp-dev', 'weapp.dev', 'https://github.com/sonofmagic/weapp.dev'],
+  ['project:weapp-dev', 'weapp.dev', 'https://github.com/weappjs/weapp.dev'],
 ] as const
 const sites = [
   ['site:weapp', 'weapp.dev', 'https://weapp.dev/'],

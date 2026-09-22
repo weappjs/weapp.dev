@@ -3,6 +3,7 @@ import '@fontsource-variable/geist/index.css'
 import '@fontsource-variable/geist-mono/index.css'
 import '@fontsource-variable/sora/index.css'
 import '../styles/global.css'
+import { getSiteProfile } from '../lib/deployment'
 import type { Locale } from '../types/project'
 import { alternatePath } from '../i18n/ui'
 import { localeRedirectScript } from '../lib/locale-redirect'
@@ -23,15 +24,16 @@ interface Props {
   schemas?: unknown[]
 }
 
+const profile = getSiteProfile()
 const {
   locale,
   title,
   description,
   image = '/og.png',
   type = 'website',
-  imageAlt = 'weapp.dev styling and build tools for mini-apps',
+  imageAlt = `${profile.name} JavaScript mini-program ecosystem`,
   noindex = false,
-  author = 'weapp.dev',
+  author = profile.name,
   datePublished,
   dateModified,
   schemas = [],
@@ -63,9 +65,9 @@ const skipLabel = locale === 'zh-CN' ? '跳到主要内容' : 'Skip to main cont
     <link rel="alternate" hreflang={languageTag} href={canonical} />
     <link rel="alternate" hreflang={alternateTag} href={alternate} />
     <link rel="alternate" hreflang="x-default" href={locale === 'zh-CN' ? canonical : alternate} />
-    <link rel="alternate" type="application/rss+xml" title="weapp.dev releases" href="/releases.xml" />
+    <link rel="alternate" type="application/rss+xml" title={`${profile.name} releases`} href="/releases.xml" />
     <meta property="og:type" content={type} />
-    <meta property="og:site_name" content="weapp.dev" />
+    <meta property="og:site_name" content={profile.name} />
     <meta property="og:locale" content={locale === 'zh-CN' ? 'zh_CN' : 'en_US'} />
     <meta property="og:locale:alternate" content={locale === 'zh-CN' ? 'en_US' : 'zh_CN'} />
     <meta property="og:title" content={title} />

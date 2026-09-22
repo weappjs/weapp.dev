@@ -4,7 +4,7 @@ import type { Locale, ProjectMetricsMap } from '../../types/project'
 import type { ProjectEntry } from '../../lib/projects'
 import { formatReleaseDate } from '../../lib/metrics'
 import { homeSection, iconControl, sectionTitle, shell } from '../../styles/classes'
-import { siteCopy } from '../../i18n/ui'
+import { getSiteCopy } from '../../i18n/ui'
 
 interface Props {
   locale: Locale
@@ -13,7 +13,7 @@ interface Props {
 }
 
 const { locale, projects, metrics } = Astro.props
-const copy = siteCopy[locale]
+const copy = getSiteCopy(locale)
 const numberLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
 ---
 

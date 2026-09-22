@@ -1,7 +1,7 @@
 ---
 import { Activity, ArrowRight, ChartNoAxesCombined, SlidersHorizontal } from '@lucide/astro'
 import type { Locale } from '../types/project'
-import { siteCopy } from '../i18n/ui'
+import { getSiteCopy } from '../i18n/ui'
 import { buttonSecondary, pageTitle, section, shell } from '../styles/classes'
 
 interface Props {
@@ -9,8 +9,8 @@ interface Props {
 }
 
 const { locale } = Astro.props
-const copy = siteCopy[locale].privacy
-const flowIcons = [Activity, ChartNoAxesCombined, SlidersHorizontal]
+const copy = getSiteCopy(locale).privacy
+const flowIcons = [Activity, SlidersHorizontal, ChartNoAxesCombined]
 ---
 
 <main id="main-content">

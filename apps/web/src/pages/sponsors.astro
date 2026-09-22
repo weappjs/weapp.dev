@@ -2,9 +2,21 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import Header from '../components/Header.astro'
 import Footer from '../components/Footer.astro'
-import SponsorsPage from '../components/SponsorsPage.astro'
-import { sponsorsSchema } from '../lib/seo'
+import ProjectRedirect from '../components/ProjectRedirect.astro'
 import { getProjects } from '../lib/projects'
-const projects = await getProjects()
+import { getSiteProfile } from '../lib/deployment'
+import { sponsorsSchema } from '../lib/seo'
+
+const locale = 'zh-CN' as const
+const profile = getSiteProfile()
+const projects = profile.features.sponsorship ? await getProjects() : []
+const Content = profile.features.sponsorship ? (await import('../components/SponsorsPage.astro')).default : ProjectRedirect
+const title = '赞助图谱'
+const description = '公开赞助、项目维护与贡献者基金图谱。'
 ---
-<BaseLayout locale="zh-CN" title="赞助图谱 | weapp.dev" description="公开赞助、项目维护与贡献者基金图谱" imageAlt="weapp.dev 赞助图谱与资金流" schemas={[sponsorsSchema('zh-CN')]}><Header locale="zh-CN" projects={projects} currentPath={Astro.url.pathname} /><SponsorsPage locale="zh-CN" /><Footer locale="zh-CN" projects={projects} currentPath={Astro.url.pathname} /></BaseLayout>
+
+{profile.features.sponsorship ? <BaseLayout locale={locale} title={`${title} | ${profile.name}`} description={description} imageAlt={`${profile.name} ${title}`} schemas={[sponsorsSchema(locale)]}>
+  <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
+  <Content locale={locale} />
+  <Footer locale={locale} projects={projects} currentPath={Astro.url.pathname} />
+</BaseLayout> : <ProjectRedirect locale={locale} />}

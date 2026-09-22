@@ -1,17 +1,19 @@
 ---
+import { getSiteProfile } from '../lib/deployment'
 import BaseLayout from '../layouts/BaseLayout.astro'
 import Header from '../components/Header.astro'
 import Footer from '../components/Footer.astro'
 import NotFoundPage from '../components/NotFoundPage.astro'
 import { getProjects } from '../lib/projects'
-import { siteCopy } from '../i18n/ui'
+import { getSiteCopy } from '../i18n/ui'
 
+const profile = getSiteProfile()
 const locale = 'zh-CN' as const
-const copy = siteCopy[locale]
+const copy = getSiteCopy(locale)
 const projects = await getProjects()
 ---
 
-<BaseLayout locale={locale} title={`${copy.notFound.title} | weapp.dev`} description={copy.notFound.description} imageAlt="weapp.dev 页面未找到" noindex>
+<BaseLayout locale={locale} title={`${copy.notFound.title} | ${profile.name}`} description={copy.notFound.description} imageAlt={`${profile.name} 页面未找到`} noindex>
   <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
   <NotFoundPage locale={locale} />
   <Footer locale={locale} projects={projects} currentPath={Astro.url.pathname} />

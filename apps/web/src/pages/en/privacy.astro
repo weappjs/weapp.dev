@@ -1,17 +1,19 @@
 ---
+import { getSiteProfile } from '../../lib/deployment'
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import Footer from '../../components/Footer.astro'
 import Header from '../../components/Header.astro'
 import PrivacyPage from '../../components/PrivacyPage.astro'
 import { getProjects } from '../../lib/projects'
-import { siteCopy } from '../../i18n/ui'
+import { getSiteCopy } from '../../i18n/ui'
 
+const profile = getSiteProfile()
 const locale = 'en' as const
-const copy = siteCopy[locale].privacy
+const copy = getSiteCopy(locale).privacy
 const projects = await getProjects()
 ---
 
-<BaseLayout locale={locale} title={`${copy.title} | weapp.dev`} description={copy.description} imageAlt="weapp.dev privacy and data practices">
+<BaseLayout locale={locale} title={`${copy.title} | ${profile.name}`} description={copy.description} imageAlt={`${profile.name} privacy and data practices`}>
   <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
   <PrivacyPage locale={locale} />
   <Footer locale={locale} projects={projects} currentPath={Astro.url.pathname} />

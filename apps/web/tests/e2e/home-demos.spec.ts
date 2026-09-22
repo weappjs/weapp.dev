@@ -67,7 +67,7 @@ for (const locale of ['zh-CN', 'en'] as const) {
     const proof = page.locator('home-demos [data-demo="migration"]')
     await expect(proof.locator('pre code')).toContainText('npm create vite-taro@latest my-app')
     await proof.getByRole('radio').last().check()
-    await expect(proof.locator('figure:visible img')).toHaveAttribute('src', '/media/projects/vpt-hmr-after.webp')
+    await expect(proof.locator('figure:visible img')).toHaveJSProperty('src', new URL('/media/projects/vpt-hmr-after.webp', page.url()).href)
     await expect(proof.locator('figure:visible')).toContainText('5')
     await expect(page.locator('[data-migration-hmr]')).toContainText('HMR')
   })

@@ -1,7 +1,8 @@
 import type { Locale, ProjectDefinition, ProjectMetrics } from '../types/project'
-import { isGithubPagesBuild } from './deployment'
+import { getSiteProfile } from './deployment'
 
-export const siteUrl = 'https://weapp.dev'
+const profile = getSiteProfile()
+export const siteUrl = profile.origin
 export const organizationId = `${siteUrl}/#organization`
 
 export function absoluteUrl(path: string): string {
@@ -17,24 +18,15 @@ export function serializeJsonLd(value: unknown): string {
   return JSON.stringify(value).replace(/</g, '\\u003c')
 }
 
-export function organizationSchema(projects: Array<{ data: ProjectDefinition }>) {
-  const projectLinks = projects.flatMap(project => [
-    `https://github.com/${project.data.github}`,
-    project.data.docsUrl,
-  ])
-
+export function organizationSchema() {
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     '@id': organizationId,
-    'name': 'weapp.dev',
+    'name': 'weapp',
     'url': siteUrl,
     'logo': absoluteUrl('/logo.svg'),
-    'sameAs': [
-      'https://github.com/sonofmagic/weapp.dev',
-      'https://weapp.js.org/',
-      ...projectLinks,
-    ],
+    'sameAs': [profile.organizationUrl, profile.repositoryUrl],
   }
 }
 
@@ -43,7 +35,7 @@ export function websiteSchema(locale: Locale) {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     '@id': `${siteUrl}/#website`,
-    'name': 'weapp.dev',
+    'name': profile.name,
     'url': siteUrl,
     'inLanguage': locale === 'zh-CN' ? 'zh-CN' : 'en-US',
     'publisher': { '@id': organizationId },
@@ -67,7 +59,7 @@ export function projectListSchema(locale: Locale, projects: Array<{ id: string, 
   return {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    'name': locale === 'zh-CN' ? 'weapp.dev 项目' : 'weapp.dev projects',
+    'name': locale === 'zh-CN' ? `${profile.name} 项目` : `${profile.name} projects`,
     'itemListOrder': 'https://schema.org/ItemListOrderAscending',
     'numberOfItems': projects.length,
     'itemListElement': projects.map((project, index) => ({
@@ -126,11 +118,9 @@ export function contributorsSchema(locale: Locale, title: string, description: s
   }
 }
 
-export function pricingSchema(locale: Locale, githubPages = isGithubPagesBuild()) {
+export function pricingSchema(locale: Locale) {
   const path = locale === 'zh-CN' ? '/pricing/' : '/en/pricing/'
-  const name = githubPages
-    ? (locale === 'zh-CN' ? 'weapp.dev 开源赞助' : 'weapp.dev open-source sponsorship')
-    : (locale === 'zh-CN' ? 'weapp.dev 交付与开源赞助' : 'weapp.dev delivery and open-source support')
+  const name = locale === 'zh-CN' ? 'weapp.dev 交付与开源赞助' : 'weapp.dev delivery and open-source support'
 
   return {
     '@context': 'https://schema.org',
@@ -143,17 +133,15 @@ export function pricingSchema(locale: Locale, githubPages = isGithubPagesBuild()
     'about': [
       locale === 'zh-CN' ? '开源赞助与分账' : 'Open-source sponsorship and fund splits',
       locale === 'zh-CN' ? '贡献者计划' : 'Contributor program',
-      ...(githubPages ? [] : [locale === 'zh-CN' ? '小程序工程迁移实施' : 'Mini-app engineering migration services']),
+      locale === 'zh-CN' ? '小程序工程迁移实施' : 'Mini-app engineering migration services',
     ],
     'hasPart': [
-      ...(!githubPages
-        ? [{
-            '@type': 'Service',
-            'name': locale === 'zh-CN' ? '小程序工程迁移与培训' : 'Mini-app engineering migration and training',
-            'provider': { '@id': organizationId },
-            'description': locale === 'zh-CN' ? '按项目范围人工交付的迁移、培训和模板定制服务。' : 'Human-delivered migration, training, and template customization scoped per project.',
-          }]
-        : []),
+      {
+        '@type': 'Service',
+        'name': locale === 'zh-CN' ? '小程序工程迁移与培训' : 'Mini-app engineering migration and training',
+        'provider': { '@id': organizationId },
+        'description': locale === 'zh-CN' ? '按项目范围人工交付的迁移、培训和模板定制服务。' : 'Human-delivered migration, training, and template customization scoped per project.',
+      },
       {
         '@type': 'DonateAction',
         'name': locale === 'zh-CN' ? '支持 weapp.dev 开源' : 'Support weapp.dev open source',
@@ -196,7 +184,7 @@ export function projectSchema(
       '@type': 'Organization',
       'name': project.data.maintainer,
     },
-    'isPartOf': { '@id': organizationId },
+    'mainEntityOfPage': absoluteUrl(path),
     'sameAs': [project.data.docsUrl, ...(isPlanned ? [] : [project.data.npmUrl]), `https://github.com/${project.data.github}`],
   }
 }
@@ -211,7 +199,7 @@ export function breadcrumbSchema(locale: Locale, project: { id: string, data: Pr
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     'itemListElement': [
-      { '@type': 'ListItem', 'position': 1, 'name': 'weapp.dev', 'item': absoluteUrl(homePath) },
+      { '@type': 'ListItem', 'position': 1, 'name': profile.name, 'item': absoluteUrl(homePath) },
       { '@type': 'ListItem', 'position': 2, 'name': projectsLabel, 'item': absoluteUrl(`${homePath}projects/`) },
       { '@type': 'ListItem', 'position': 3, 'name': content.name, 'item': absoluteUrl(projectPath) },
     ],

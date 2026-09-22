@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import vpt from '../../src/content/projects/vite-plugin-taro.json' with { type: 'json' }
+import { expectSiteLink, siteOrigin } from './site-target'
 import { expect, test } from './test'
 
 for (const locale of ['zh-CN', 'en'] as const) {
@@ -12,7 +13,7 @@ for (const locale of ['zh-CN', 'en'] as const) {
     await page.goto(home)
     await expect(page.locator('header a[data-analytics-project="vite-plugin-taro"]')).toHaveCount(2)
     const footerLink = page.locator('footer').getByRole('link', { name: 'VPT', exact: true })
-    await expect(footerLink).toHaveAttribute('href', path)
+    await expectSiteLink(footerLink, path)
     await footerLink.click()
 
     await expect(page).toHaveURL(path)
@@ -27,8 +28,8 @@ for (const locale of ['zh-CN', 'en'] as const) {
     await expect(page.locator('main a[data-analytics-target="package"]')).toHaveAttribute('href', vpt.npmUrl)
     await expect(page.locator('pre code').filter({ hasText: vpt.installCommand })).toHaveText(vpt.installCommand)
     await expect(page.locator('[data-copy-command]')).toHaveAttribute('data-copy-command', vpt.installCommand)
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://weapp.dev${path}`)
-    await expect(page.locator(`link[hreflang="${locale === 'zh-CN' ? 'en-US' : 'zh-CN'}"]`)).toHaveAttribute('href', `https://weapp.dev${alternate}`)
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `${siteOrigin}${path}`)
+    await expect(page.locator(`link[hreflang="${locale === 'zh-CN' ? 'en-US' : 'zh-CN'}"]`)).toHaveAttribute('href', `${siteOrigin}${alternate}`)
     const schemas = (await page.locator('script[type="application/ld+json"]').allTextContents()).map(text => JSON.parse(text))
     expect(schemas).toContainEqual(expect.objectContaining({
       '@type': 'SoftwareSourceCode',
@@ -57,6 +58,6 @@ test('includes VPT in discovery resources', async ({ request }) => {
   const sitemap = await request.get('/sitemap-0.xml')
   expect(sitemap.ok()).toBe(true)
   const content = await sitemap.text()
-  expect(content).toContain('https://weapp.dev/projects/vite-plugin-taro/')
-  expect(content).toContain('https://weapp.dev/en/projects/vite-plugin-taro/')
+  expect(content).toContain(`${siteOrigin}/projects/vite-plugin-taro/`)
+  expect(content).toContain(`${siteOrigin}/en/projects/vite-plugin-taro/`)
 })

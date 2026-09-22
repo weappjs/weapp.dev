@@ -3,7 +3,7 @@ import { ArrowRight, BadgeCheck, BookOpen, Clock3 } from '@lucide/astro'
 import type { Locale, ProjectMetrics } from '../../types/project'
 import type { HomeProject } from '../../lib/home-projects'
 import { formatCompactNumber, showsPublicMetrics } from '../../lib/metrics'
-import { projectPath, siteCopy } from '../../i18n/ui'
+import { projectPath, getSiteCopy } from '../../i18n/ui'
 import { buttonPrimary, buttonSecondary, featuredTitle, projectTone } from '../../styles/classes'
 import HomeDemos from './demos/HomeDemos.astro'
 import HomeProjectProof from './HomeProjectProof.astro'
@@ -18,7 +18,7 @@ interface Props {
 
 const { locale, project, index, metrics: projectMetrics, labProjects } = Astro.props
 const content = project.data.locales[locale]
-const copy = siteCopy[locale]
+const copy = getSiteCopy(locale)
 const numberLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
 const publicMetrics = Boolean(projectMetrics) && showsPublicMetrics(project.data.status)
 const lab = labProjects?.length ? labProjects : null

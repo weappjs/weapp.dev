@@ -4,7 +4,8 @@ import type { Locale } from '../../types/project'
 import type { HomeProject } from '../../lib/home-projects'
 import { shell } from '../../styles/classes'
 import HeroParticles from './HeroParticles.astro'
-import { siteCopy } from '../../i18n/ui'
+import { getSiteCopy } from '../../i18n/ui'
+import { getSiteProfile } from '../../lib/deployment'
 
 interface RailProject {
   id: string
@@ -25,13 +26,14 @@ interface Props {
 }
 
 const { locale, railGroups, constellation } = Astro.props
-const copy = siteCopy[locale]
-const wordmarkMarkup = ['w', 'e', 'a', 'p', 'p', '.', 'd', 'e', 'v']
+const copy = getSiteCopy(locale)
+const profile = getSiteProfile()
+const wordmarkMarkup = [...profile.heroWordmark]
   .map((char, index) => `<span class="${char === '.' ? 'home-hero-letter home-hero-dot' : 'home-hero-letter'}" style="--i:${index}">${char}</span>`)
   .join('')
 ---
 
-<section class="home-hero" aria-labelledby="home-hero-title">
+<section class="home-hero" aria-label={locale === 'zh-CN' ? `${profile.name} 首页概览` : `${profile.name} overview`}>
   <div class="home-hero-screen">
     <script is:inline>
       document.documentElement.setAttribute('data-hero-cosmos', '')
@@ -63,7 +65,7 @@ const wordmarkMarkup = ['w', 'e', 'a', 'p', 'p', '.', 'd', 'e', 'v']
         )
       })}
     </div>
-    <h1 id="home-hero-title" class="home-hero-title" aria-label="weapp.dev">
+    <h1 id="home-hero-title" class="home-hero-title" aria-label={profile.heroWordmark}>
       <span aria-hidden="true" set:html={wordmarkMarkup} />
     </h1>
   </div>

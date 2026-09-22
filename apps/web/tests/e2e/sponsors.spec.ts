@@ -1,6 +1,9 @@
 import AxeBuilder from '@axe-core/playwright'
+import { isOpenSourceSite } from './site-target'
 import { expect, test } from './test'
 import { applyTheme } from './theme'
+
+test.skip(isOpenSourceSite, 'Sponsorship pages are retired on weapp.js.org')
 
 for (const route of ['/sponsors/', '/en/sponsors/']) {
   test(`passes automated accessibility checks on ${route}`, async ({ page }) => {
@@ -26,7 +29,7 @@ for (const route of ['/sponsors/', '/en/sponsors/']) {
     await expect(page.locator('section[aria-label]').filter({ has: graphs })).toHaveCount(1)
     await expect(page.locator('footer a[aria-current="page"]')).toHaveAttribute('href', route)
     await expect(page.locator('[data-sponsor-snapshot]')).toHaveText(route.startsWith('/en') ? 'Public snapshot v1' : '公开快照 v1')
-    await expect(page.locator('meta[property="og:image:alt"]')).toHaveAttribute('content', route.startsWith('/en') ? 'weapp.dev sponsor graph and funding flow' : 'weapp.dev 赞助图谱与资金流')
+    await expect(page.locator('meta[property="og:image:alt"]')).toHaveAttribute('content', route.startsWith('/en') ? 'weapp.dev Sponsor graph' : 'weapp.dev 赞助图谱')
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://weapp.dev${route}`)
     await expect(page.locator(`link[hreflang="${route.startsWith('/en') ? 'zh-CN' : 'en-US'}"]`)).toHaveAttribute('href', `https://weapp.dev${route.startsWith('/en') ? '/sponsors/' : '/en/sponsors/'}`)
     const sponsorSchema = page.locator('script[type="application/ld+json"]').nth(1)

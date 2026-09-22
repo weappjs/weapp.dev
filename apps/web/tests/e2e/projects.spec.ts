@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
+import { expectSiteLink, isOpenSourceSite, siteName, siteOrigin } from './site-target'
 import { expect, test } from './test'
 import { applyTheme } from './theme'
 
@@ -24,16 +25,16 @@ for (const prefix of ['', '/en']) {
     await expect(links).toHaveCount(4)
     const statusLabels = prefix ? { stable: 'Stable', planned: 'Planned' } : { stable: '稳定', planned: '规划中' }
     for (const id of ['weapp-vite', 'weapp-tailwindcss', 'varo']) {
-      const node = page.locator('.toolchain-map-list li').filter({ has: page.locator(`a[href="${prefix}/projects/${id}/"]`) })
+      const node = page.locator(`.toolchain-map-list li[data-project-id="${id}"]`)
       await expect(node.locator('.toolchain-status')).toHaveText(statusLabels.stable)
       await expect(node.locator('.toolchain-status')).toHaveAttribute('aria-label', prefix ? 'Project status: Stable' : '项目状态: 稳定')
     }
     for (const id of ['weapp-sqlite']) {
-      const node = page.locator('.toolchain-map-list li').filter({ has: page.locator(`a[href="${prefix}/projects/${id}/"]`) })
+      const node = page.locator(`.toolchain-map-list li[data-project-id="${id}"]`)
       await expect(node.locator('.toolchain-status')).toHaveText(statusLabels.planned)
       await expect(node.locator('.toolchain-status')).toHaveAttribute('aria-label', prefix ? 'Project status: Planned' : '项目状态: 规划中')
     }
-    await expect(links.evaluateAll(items => items.map(item => item.getAttribute('href')))).resolves.toEqual(ids.map(id => `${prefix}/projects/${id}/`))
+    await expect(links.evaluateAll(items => items.map(item => new URL((item as HTMLAnchorElement).href).pathname))).resolves.toEqual(ids.map(id => `${prefix}/projects/${id}/`))
     for (const id of ids) {
       const node = page.locator(`.toolchain-map-list li[data-project-id="${id}"]`)
       await expect(node).toHaveAttribute('aria-labelledby', `toolchain-project-${id}`)
@@ -47,7 +48,7 @@ for (const prefix of ['', '/en']) {
   test(`filters project rows and recovers from an empty intersection on ${prefix}/projects/`, async ({ page }) => {
     await page.goto(`${prefix}/projects/`)
     await expect(page.locator('section[aria-labelledby="projects-index-title"]')).toHaveCount(1)
-    await expect(page.locator('meta[property="og:image:alt"]')).toHaveAttribute('content', prefix ? 'weapp.dev ecosystem projects map' : 'weapp.dev 生态项目地图')
+    await expect(page.locator('meta[property="og:image:alt"]')).toHaveAttribute('content', prefix ? `${siteName} ecosystem projects map` : `${siteName} 生态项目地图`)
     await expect(page.locator('section[aria-label]')).toHaveCount(1)
     const role = page.locator('[data-filter-role]')
     const maturity = page.locator('[data-filter-maturity]')
@@ -153,15 +154,19 @@ for (const prefix of ['', '/en']) {
     await page.goto(`${prefix}/projects/`)
     const current = page.locator('[data-site-header] a[aria-current="page"]')
     await expect(current).toHaveCount(2)
-    await expect(current.first()).toHaveAttribute('href', `${prefix}/projects/`)
+    await expectSiteLink(current.first(), `${prefix}/projects/`)
     const collectionSchema = await page.locator('script[type="application/ld+json"]').evaluateAll(elements => elements.map(element => JSON.parse(element.textContent || '{}')).find(schema => schema['@type'] === 'CollectionPage'))
-    expect(collectionSchema).toMatchObject({ '@type': 'CollectionPage', 'url': `https://weapp.dev${prefix}/projects/` })
+    expect(collectionSchema).toMatchObject({ '@type': 'CollectionPage', 'url': `${siteOrigin}${prefix}/projects/` })
     expect(collectionSchema.mainEntity.numberOfItems).toBe(9)
   })
 
   test(`links the project catalog to sponsor support on ${prefix || 'zh-CN'}`, async ({ page }) => {
     await page.goto(`${prefix}/projects/`)
     const support = page.locator('[aria-labelledby="projects-support-title"]')
+    if (isOpenSourceSite) {
+      await expect(support).toHaveCount(0)
+      return
+    }
     await expect(support).toBeVisible()
     await expect(support).toContainText(prefix ? 'Support the toolchain maintenance' : '支持这套工具链继续维护')
     await expect(support.getByRole('link').nth(0)).toHaveAttribute('href', `${prefix}/sponsors/`)
@@ -215,7 +220,7 @@ for (const prefix of ['', '/en']) {
       await applyTheme(page, theme, { reducedMotion: 'reduce' })
       for (const slug of ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro']) {
         await page.goto(`${prefix}/projects/${slug}/`)
-        await expect(page.getByRole('link', { name: prefix ? 'Back to the stack' : '返回工具栈', exact: true })).toHaveAttribute('href', `${prefix}/projects/`)
+        await expectSiteLink(page.getByRole('link', { name: prefix ? 'Back to the stack' : '返回工具栈', exact: true }), `${prefix}/projects/`)
         await expect(page.locator('section[aria-labelledby="project-title"]')).toHaveCount(1)
         await expect(page.locator('section[aria-labelledby="project-faq-title"]')).toHaveCount(1)
         await expect(page.locator('section[aria-labelledby="project-future-docs-title"]')).toHaveCount(1)

@@ -1,5 +1,5 @@
 import type { ProjectDefinition } from '../types/project'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import varo from '../content/projects/varo.json'
 import taro from '../content/projects/vite-plugin-taro.json'
 import sqlite from '../content/projects/weapp-sqlite.json'
@@ -7,6 +7,11 @@ import tailwind from '../content/projects/weapp-tailwindcss.json'
 import vite from '../content/projects/weapp-vite.json'
 import fallbackMetrics from '../data/project-metrics.fallback.json'
 import { breadcrumbSchema, canonicalUrl, contributorsSchema, organizationSchema, pricingSchema, projectListSchema, projectSchema, projectsIndexSchema, serializeJsonLd, sponsorsSchema } from './seo'
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.resetModules()
+})
 
 describe('SEO helpers', () => {
   it('normalizes canonical URLs without query strings or hashes', () => {
@@ -46,13 +51,13 @@ describe('SEO helpers', () => {
     expect(entity).not.toHaveProperty('downloadUrl')
   })
 
-  it('derives organization links from project definitions', () => {
-    const project = { id: 'weapp-tailwindcss', data: tailwind as unknown as ProjectDefinition }
-    const organization = organizationSchema([project])
-
-    expect(organization.sameAs).toContain('https://tw.weapp.dev/')
-    expect(organization.sameAs).toContain('https://weapp.js.org/')
-    expect(organization.sameAs).toContain('https://github.com/sonofmagic/weapp-tailwindcss')
+  it('identifies the hub without claiming other projects are the same organization', () => {
+    const organization = organizationSchema()
+    expect(organization.sameAs).toEqual(['https://github.com/weappjs', 'https://github.com/weappjs/weapp.dev'])
+    const project = { id: 'varo', data: varo as unknown as ProjectDefinition }
+    const entity = projectSchema('en', project, fallbackMetrics.varo)
+    expect(entity.maintainer.name).toBe(varo.maintainer)
+    expect(entity).not.toHaveProperty('isPartOf')
   })
 
   it('describes delivery and sponsorship without purchasable offers', () => {
@@ -62,12 +67,20 @@ describe('SEO helpers', () => {
     expect(JSON.stringify(schema)).not.toContain('Offer')
   })
 
-  it.each(['zh-CN', 'en'] as const)('keeps only sponsorship entities in the %s Pages schema', (locale) => {
-    const schema = pricingSchema(locale, true)
-    expect(schema.hasPart.map(part => part['@type'])).toEqual(['DonateAction', 'WebPage'])
-    expect(JSON.stringify(schema)).not.toMatch(/Service|delivery|迁移|交付|定制|Gold/)
-    expect(schema.url).toBe(`https://weapp.dev/${locale === 'en' ? 'en/' : ''}pricing/`)
-    expect(pricingSchema(locale, false).hasPart.map(part => part['@type'])).toContain('Service')
+  it.each(['weapp', 'github-pages'] as const)('uses the %s identity without changing external project links', async (target) => {
+    vi.stubEnv('WEAPP_DEPLOY_TARGET', target)
+    vi.resetModules()
+    const seo = await import('./seo')
+    const origin = target === 'weapp' ? 'https://weapp.dev' : 'https://weapp.js.org'
+    const project = { id: 'weapp-tailwindcss', data: tailwind as unknown as ProjectDefinition }
+    expect(seo.canonicalUrl('/en/projects/weapp-tailwindcss/?q=1#start')).toBe(`${origin}/en/projects/weapp-tailwindcss/`)
+    expect(seo.websiteSchema('en').url).toBe(origin)
+    expect(seo.organizationSchema().url).toBe(origin)
+    expect(seo.projectListSchema('en', [project]).itemListElement[0].url).toBe(`${origin}/en/projects/weapp-tailwindcss/`)
+    const entity = seo.projectSchema('en', project, fallbackMetrics['weapp-tailwindcss'])
+    expect(entity.codeRepository).toBe('https://github.com/sonofmagic/weapp-tailwindcss')
+    expect(entity.sameAs).toContain('https://tw.weapp.dev/')
+    expect(seo.breadcrumbSchema('en', project).itemListElement[0].name).toBe(new URL(origin).hostname)
   })
 
   it('describes the sponsor graph as a bilingual collection page', () => {

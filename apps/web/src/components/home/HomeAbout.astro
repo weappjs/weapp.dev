@@ -2,14 +2,14 @@
 import { Database, Layers2, Package, ScanLine, Waypoints } from '@lucide/astro'
 import type { Locale } from '../../types/project'
 import { homeSection, sectionTitle, shell } from '../../styles/classes'
-import { siteCopy } from '../../i18n/ui'
+import { getSiteCopy } from '../../i18n/ui'
 
 interface Props {
   locale: Locale
 }
 
 const { locale } = Astro.props
-const copy = siteCopy[locale]
+const copy = getSiteCopy(locale)
 const stepIcons = [Layers2, ScanLine, Package, Database, Waypoints]
 ---
 

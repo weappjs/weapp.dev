@@ -1,22 +1,23 @@
 ---
 import type { Locale } from '../types/project'
-import { filterOpenSourceSponsors, loadPublicSponsors, sponsorGraphData } from '../lib/sponsors'
-import { isGithubPagesBuild } from '../lib/deployment'
+import { loadPublicSponsors, sponsorGraphData } from '../lib/sponsors'
+import { getSiteProfile } from '../lib/deployment'
 import SponsorGraphs from './SponsorGraphs.astro'
 import { pageTitle, section, shell } from '../styles/classes'
 interface Props { locale: Locale }
 const { locale } = Astro.props
 const snapshot = await loadPublicSponsors()
-const visibleSnapshot = isGithubPagesBuild() ? filterOpenSourceSponsors(snapshot) : snapshot
+const profile = getSiteProfile()
+const visibleSnapshot = snapshot
 const graph = sponsorGraphData(visibleSnapshot)
 const copy = locale === 'zh-CN' ? {
   eyebrow: '赞助图谱', title: '看见支持如何流动', description: '把公开赞助、项目维护和贡献者基金放在同一张图里。金额以公开账本为准，当前快照先展示结构与分配比例。', ledger: '查看公开账本', empty: '当前没有可公开展示的赞助记录。', repository: '赞助仓库', snapshot: `公开快照 v${visibleSnapshot.version}`,
 } : { eyebrow: 'Sponsor graph', title: 'See where support goes', description: 'Public sponsorship, project maintenance and the contributors fund in one view. Amounts follow the public ledger; the current snapshot shows structure and allocation shares.', ledger: 'Read the public ledger', empty: 'No public sponsor records are available yet.', repository: 'Sponsor repository', snapshot: `Public snapshot v${visibleSnapshot.version}` }
 const tierLabels = locale === 'zh-CN' ? { supporter: '支持者', bronze: '青铜', silver: '白银', gold: '黄金' } : { supporter: 'Supporter', bronze: 'Bronze', silver: 'Silver', gold: 'Gold' }
 ---
-<main id="main-content">
+{profile.features.sponsorship && <main id="main-content">
   <section class:list={[section, shell, 'sponsors-hero']} aria-labelledby="sponsors-title"><p class="mb-4 font-mono text-xs font-[650] text-brand">{copy.eyebrow}</p><h1 id="sponsors-title" class={pageTitle}>{copy.title}</h1><p class="mt-6 max-w-[680px] text-lg text-copy-muted">{copy.description}</p><p class="mt-3 font-mono text-xs text-copy-muted" data-sponsor-snapshot>{copy.snapshot}</p><div class="mt-7 flex flex-wrap gap-3"><a class="inline-flex min-h-11 items-center rounded-[6px] bg-brand px-4 py-2.5 text-sm font-[680] text-brand-contrast" href="https://github.com/sonofmagic/sponsors" target="_blank" rel="noopener noreferrer">{copy.ledger}</a><a class="inline-flex min-h-11 items-center rounded-[6px] border border-line px-4 py-2.5 text-sm font-[680]" href="https://github.com/sonofmagic/sponsors" target="_blank" rel="noopener noreferrer">{copy.repository}</a></div></section>
   <section class:list={[section, shell, 'border-t border-line']} aria-label={locale === 'zh-CN' ? '赞助图谱与可读数据' : 'Sponsor graphs and accessible data'}><SponsorGraphs locale={locale} graph={graph} /></section>
   <section class:list={[section, shell, 'border-t border-line']} aria-labelledby="public-sponsors-title"><h2 id="public-sponsors-title" class="text-2xl font-[680]">{locale === 'zh-CN' ? '公开赞助记录' : 'Public sponsors'}</h2>{visibleSnapshot.items.length ? <ul class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{visibleSnapshot.items.map(sponsor => { const name = sponsor.brandName || sponsor.login || sponsor.id; const href = sponsor.brandUrl || sponsor.profileUrl; return <li class="border border-line bg-panel p-4">{href ? <a class="font-[680] text-ink underline decoration-line underline-offset-4 hover:text-brand" href={href} target="_blank" rel="noopener noreferrer">{name}</a> : <strong>{name}</strong>}<span class="mt-1 block text-sm text-copy-muted">{tierLabels[sponsor.tier]}</span></li> })}</ul> : <p class="mt-4 text-copy-muted">{copy.empty}</p>}</section>
-</main>
+</main>}
 <style>.sponsors-hero { padding-top:3.5rem; padding-bottom:3.5rem; }</style>

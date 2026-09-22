@@ -5,8 +5,8 @@
 ## 职责与数据流
 
 - `HomePage.astro` 只组合章节和读取首页数据；`home.css` 负责章节布局和响应式断点。
-- 章节阅读顺序（证明弧先于商业化）：Hero → About → weapp 项目（含 weapp-vite 交互演示）→ Taro → Vue Mini / Rezor / uni-app → Toolchain map → BuildRail → Commercial → Vision → Releases → Collaboration。
-- 第一屏只保留词标 `weapp.dev` 与同等权重的项目徽标星座；项目入口和交互演示放在第一屏之后，不进入首屏文案。星座不按轨道远近分等级，weapp-sqlite 与 Rezor 不进星座。
+- 两站共用 Hero → About → weapp 项目（含 weapp-vite 交互演示）→ Taro → Vue Mini / Rezor / uni-app → Toolchain map → Releases → Collaboration。weapp.dev 在 Toolchain map 与 Releases 之间保留 BuildRail、Commercial 与 Vision，以工程交付、迁移、培训和开源资金用途为入口；weapp.js.org 不渲染这三个章节。
+- 第一屏只保留 profile 词标（weapp.dev 为 `weapp.dev`，weapp.js.org 为 `weapp`） 与同等权重的项目徽标星座；项目入口和交互演示放在第一屏之后，不进入首屏文案。星座不按轨道远近分等级，weapp-sqlite 与 Rezor 不进星座。
 - 首页项目按 `ecosystem` 分区：weapp 原生四件套、Taro（VPT）、Vue Mini、Rezor、uni-app（Uni Helper / Wot UI）。不用精选三图或编号排名。
 - `HomeVision` 用「负责 / 不负责」边界卡替代抽象原则文案，避免证明区之后情绪低谷。
 - `content/home-projects.ts` 显式指定项目顺序、演示类型、反向布局和双语阶段标签。新增目录项目不会自动进入首页。
@@ -30,6 +30,12 @@ flowchart LR
   C --> R
 ```
 
+## 双站数据边界
+
+`src/lib/deployment.ts` 的 `getSiteProfile()` 在构建时选择目标，提供站名、hero 词标、规范域名、输出目录、导航、组织与源码入口及功能开关。`WEAPP_DEPLOY_TARGET=weapp` 输出 `dist`，`github-pages` 输出 `dist-pages`。两份产物共享九个项目的真实状态、文档域名和源码地址；不得为开源站重写项目成熟度或暗示文档已迁移。
+
+weapp.js.org 的 Header 导航为项目、生态介绍、最近发布和参与贡献。Footer、项目目录、详情、隐私、404、SEO 和发现资源沿用开源身份，不出现服务、赞助、资金、基金或通向 weapp.dev 的商业入口。旧 pricing/sponsors/contributors 中英六页由独立静态跳转页承接，同语种跳到 projects，保留 noindex、meta refresh 和可见相对链接，并排除出 sitemap。
+
 ## 演示来源与行为
 
 - Tailwind 示例由本仓库已有 weapp-tailwindcss Vite 插件生成 Web CSS。有限类名写成完整字面量，`@source '../**/*.{astro,ts}'` 能扫描全部状态。预览类名和展示代码来自同一状态函数。
@@ -43,13 +49,15 @@ flowchart LR
 
 演示变更只修改对应视图、预设和测试；资料变更只修改项目 JSON。截图生成器不得改写演示选品或产品资料。不要用 Git ours/theirs 策略掩盖语义冲突。
 
-单测覆盖目录扩展与排序、元数据与展示配置独立性、预设到代码和命令的一致性。E2E 覆盖真实计算样式、平台输出、组件选择边界、实例隔离、标签键盘操作、剪贴板错误和无 JS 降级，并保留 SEO、analytics、主题、reveal 与详情页图片检查。
+单测覆盖目录扩展与排序、元数据与展示配置独立性、预设到代码和命令的一致性。两份产物分别运行桌面和移动 E2E，任一失败都阻止部署。Pages 还用同一产物在 `/weapp.dev/` 下验收资源、语言和无 JS 跳转。E2E 覆盖真实计算样式、平台输出、组件选择边界、实例隔离、标签键盘操作、剪贴板错误和无 JS 降级，并保留 SEO、analytics、主题、reveal 与详情页图片检查。
 
 ```bash
 rtk pnpm --filter @weapp.dev/web check
 rtk pnpm --filter @weapp.dev/web test
 rtk pnpm --filter @weapp.dev/web build
 rtk pnpm --filter @weapp.dev/web test:e2e
+rtk pnpm --filter @weapp.dev/web build:pages
+WEAPP_DEPLOY_TARGET=github-pages rtk pnpm --filter @weapp.dev/web exec playwright test
 rtk pnpm --filter @weapp.dev/web lint
 rtk pnpm --filter @weapp.dev/web lint:styles
 rtk pnpm --filter @weapp.dev/web media:verify-home

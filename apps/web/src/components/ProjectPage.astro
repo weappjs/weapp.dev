@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowUpRight, BookOpen, ChevronDown, GitFork, Package, Star 
 import type { Locale, ProjectMetrics } from '../types/project'
 import type { ProjectEntry } from '../lib/projects'
 import { formatCompactNumber, formatReleaseDate, showsPublicMetrics } from '../lib/metrics'
-import { localizePath, projectPath, siteCopy } from '../i18n/ui'
+import { localizePath, projectPath, getSiteCopy } from '../i18n/ui'
 import { buttonPrimary, buttonSecondary, featuredTitle, iconControl, platformPill, section, sectionTitle, shell } from '../styles/classes'
 import ProjectProofPanel from './ProjectProofPanel.astro'
 import RoadmapStrip from './RoadmapStrip.astro'
@@ -19,7 +19,7 @@ interface Props {
 }
 
 const { locale, project, projects, metrics } = Astro.props
-const copy = siteCopy[locale]
+const copy = getSiteCopy(locale)
 const content = project.data.locales[locale]
 const roleLabel = locale === 'zh-CN' ? ({ Engineering: '工程与构建', Styling: '样式系统', Components: '组件与交付', 'Local data': '本地数据', Migration: 'Taro / React 迁移', Framework: '小程序框架', Ecosystem: '生态伙伴' } as Record<string, string>) : ({ Engineering: 'Engineering', Styling: 'Styling', Components: 'Components', 'Local data': 'Local data', Migration: 'Taro / React migration', Framework: 'Framework', Ecosystem: 'Ecosystem' } as Record<string, string>)
 const numberLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
@@ -52,6 +52,7 @@ const installCommand = project.data.installCommand ?? project.data.quickStart?.c
       <h1 id="project-title" class="mb-5 font-display text-[clamp(2.125rem,5.4vw,4.5rem)] font-[700] [overflow-wrap:anywhere]">{content.name}</h1>
       <p class="mb-3 text-2xl font-[620] leading-[1.35] max-[720px]:text-xl">{content.tagline}</p>
       <p class="mb-6 max-w-[630px] text-lg leading-[1.7] text-copy-muted">{content.description}</p>
+      <p class="mb-6 text-sm text-copy-muted">{locale === 'zh-CN' ? '维护者：' : 'Maintained by: '}{project.data.maintainer}</p>
       {project.id === 'vite-plugin-taro' ? (
         <p class="mb-6 max-w-[630px] rounded-[6px] border border-line bg-panel-soft px-4 py-3 font-mono text-xs leading-[1.6] text-copy-muted" data-project-adjacent>
           {copy.project.adjacentNote}

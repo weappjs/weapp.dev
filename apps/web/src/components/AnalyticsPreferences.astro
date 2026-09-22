@@ -1,7 +1,7 @@
 ---
 import { ShieldCheck, X } from '@lucide/astro'
 import type { Locale } from '../types/project'
-import { siteCopy } from '../i18n/ui'
+import { getSiteCopy } from '../i18n/ui'
 import { buttonPrimary, iconControl } from '../styles/classes'
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 }
 
 const { locale } = Astro.props
-const copy = siteCopy[locale].analytics
+const copy = getSiteCopy(locale).analytics
 ---
 
 <dialog data-analytics-dialog class="m-auto w-[min(590px,calc(100vw-32px))] rounded-panel border border-line bg-panel p-0 text-ink shadow-panel" aria-labelledby="analytics-dialog-title" aria-describedby="analytics-dialog-description">

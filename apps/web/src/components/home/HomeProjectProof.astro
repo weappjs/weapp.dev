@@ -2,7 +2,7 @@
 import type { Locale } from '../../types/project'
 import type { ProjectDefinition } from '../../types/project'
 import type { HomeDemoKind } from '../../lib/home-projects'
-import { siteCopy } from '../../i18n/ui'
+import { getSiteCopy } from '../../i18n/ui'
 import { defaultStyle, styleCode } from './demos/style'
 import { buildExample } from './demos/build'
 import { registryCode } from './demos/registry'
@@ -22,7 +22,7 @@ interface Props {
 }
 
 const { kind, locale, projectName, status, proof: projectProof, proofId } = Astro.props
-const proof = siteCopy[locale].projects.proof
+const proof = getSiteCopy(locale).projects.proof
 const build = buildExample(0)
 
 const artifacts: Record<HomeDemoKind, { label: string, file: string, parts: CodePart[], command?: string }> = {
