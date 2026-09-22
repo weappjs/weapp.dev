@@ -62,6 +62,14 @@ describe('SEO helpers', () => {
     expect(JSON.stringify(schema)).not.toContain('Offer')
   })
 
+  it.each(['zh-CN', 'en'] as const)('keeps only sponsorship entities in the %s Pages schema', (locale) => {
+    const schema = pricingSchema(locale, true)
+    expect(schema.hasPart.map(part => part['@type'])).toEqual(['DonateAction', 'WebPage'])
+    expect(JSON.stringify(schema)).not.toMatch(/Service|delivery|迁移|交付|定制|Gold/)
+    expect(schema.url).toBe(`https://weapp.dev/${locale === 'en' ? 'en/' : ''}pricing/`)
+    expect(pricingSchema(locale, false).hasPart.map(part => part['@type'])).toContain('Service')
+  })
+
   it('describes the sponsor graph as a bilingual collection page', () => {
     expect(sponsorsSchema('zh-CN')).toMatchObject({ '@type': 'CollectionPage', 'url': 'https://weapp.dev/sponsors/', 'inLanguage': 'zh-CN' })
     expect(sponsorsSchema('en')).toMatchObject({ '@type': 'CollectionPage', 'url': 'https://weapp.dev/en/sponsors/', 'inLanguage': 'en-US' })

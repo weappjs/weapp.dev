@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { loadPublicSponsors, sponsorGraphData } from './sponsors'
+import { siteCopy } from '../i18n/ui'
+import { filterOpenSourceSponsors, isOpenSourceSponsorTier, loadPublicSponsors, sponsorGraphData } from './sponsors'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -7,6 +8,33 @@ afterEach(() => {
 })
 
 describe('sponsor graph data', () => {
+  it('filters Gold records from the public Pages sponsor view', () => {
+    const snapshot = {
+      version: 1,
+      repositoryUrl: 'https://github.com/sonofmagic/sponsors',
+      total: 2,
+      items: [
+        { id: 'supporter', kind: 'individual' as const, tier: 'supporter' as const, displaySites: ['weapp' as const] },
+        { id: 'bronze', kind: 'individual' as const, tier: 'bronze' as const, displaySites: ['weapp' as const] },
+        { id: 'silver', kind: 'business' as const, tier: 'silver' as const, displaySites: ['weapp' as const] },
+        { id: 'business', kind: 'business' as const, tier: 'gold' as const, displaySites: ['weapp' as const] },
+      ],
+    }
+
+    const visible = filterOpenSourceSponsors(snapshot)
+    expect(visible.items.map(item => item.id)).toEqual(['supporter', 'bronze', 'silver'])
+    expect(visible.total).toBe(3)
+    expect(snapshot.items).toHaveLength(4)
+    const graph = sponsorGraphData(visible)
+    expect(graph.nodes.filter(node => node.kind === 'sponsor').map(node => node.id)).toEqual(['sponsor:supporter', 'sponsor:bronze', 'sponsor:silver'])
+    expect(graph.relationEdges.some(edge => edge.source === 'sponsor:business')).toBe(false)
+  })
+
+  it.each(['zh-CN', 'en'] as const)('keeps the three open-source tiers in %s regardless of order', (locale) => {
+    const tiers = [...siteCopy[locale].pricing.sponsorTiers].reverse()
+    expect(tiers.filter(tier => isOpenSourceSponsorTier(tier.id)).map(tier => tier.id)).toEqual(['silver', 'bronze', 'supporter'])
+  })
+
   it('does not infer project funding from sponsor order or display consent', () => {
     const snapshot = {
       version: 1,

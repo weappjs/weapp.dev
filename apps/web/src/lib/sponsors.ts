@@ -1,5 +1,6 @@
 export type SponsorSite = 'icebreaker' | 'weapp' | 'tw' | 'vite'
 export type SponsorTier = 'supporter' | 'bronze' | 'silver' | 'gold'
+export const openSourceSponsorTiers: readonly SponsorTier[] = ['supporter', 'bronze', 'silver']
 
 export interface PublicSponsor {
   id: string
@@ -19,6 +20,15 @@ export interface SponsorSnapshot {
   repositoryUrl: string
   total: number
   items: PublicSponsor[]
+}
+
+export function isOpenSourceSponsorTier(tier: SponsorTier): boolean {
+  return openSourceSponsorTiers.includes(tier)
+}
+
+export function filterOpenSourceSponsors(snapshot: SponsorSnapshot): SponsorSnapshot {
+  const items = snapshot.items.filter(item => isOpenSourceSponsorTier(item.tier))
+  return { ...snapshot, total: items.length, items }
 }
 
 export type SponsorGraphNodeKind = 'sponsor' | 'project' | 'fund' | 'site'

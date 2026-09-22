@@ -4,6 +4,7 @@ import type { Locale } from '../types/project'
 import type { ProjectEntry } from '../lib/projects'
 import { alternatePath, localizePath, projectPath, siteCopy } from '../i18n/ui'
 import { localeChoiceScript } from '../lib/locale-redirect'
+import { isGithubPagesBuild } from '../lib/deployment'
 import { iconControl, shell, wordmark, wordmarkMark } from '../styles/classes'
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 
 const { locale, projects, currentPath } = Astro.props
 const copy = siteCopy[locale]
+const pricingLabel = isGithubPagesBuild() ? (locale === 'zh-CN' ? '开源赞助' : 'Open-source sponsorship') : copy.nav.pricing
 const home = localizePath(locale)
 const languageUrl = alternatePath(locale, currentPath)
 const navLink = 'inline-flex items-center gap-1.5 whitespace-nowrap py-2 text-sm font-[590] text-copy-muted transition-colors duration-200 hover:text-ink'
@@ -55,7 +57,7 @@ const siteGithubUrl = 'https://github.com/weappjs/weapp.dev'
       <a class={navLink} href={`${home}#about`} data-analytics-event="navigate_section" data-analytics-section="about">{copy.nav.about}</a>
       <a class={navLink} href={`${home}#vision`} data-analytics-event="navigate_section" data-analytics-section="vision">{copy.nav.vision}</a>
       <a class={navLink} href={`${home}#releases`} data-analytics-event="navigate_section" data-analytics-section="releases">{copy.nav.releases}</a>
-      <a class={navLink} href={pricingPath} aria-current={isPricing ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="pricing">{copy.nav.pricing}</a>
+      <a class={navLink} href={pricingPath} aria-current={isPricing ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="pricing">{pricingLabel}</a>
     </nav>
 
     <div class="ml-5 flex items-center gap-1 max-[960px]:ml-auto">
@@ -89,7 +91,7 @@ const siteGithubUrl = 'https://github.com/weappjs/weapp.dev'
           <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={`${home}#about`} data-analytics-event="navigate_section" data-analytics-section="about">{copy.nav.about}</a>
           <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={`${home}#vision`} data-analytics-event="navigate_section" data-analytics-section="vision">{copy.nav.vision}</a>
           <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={`${home}#releases`} data-analytics-event="navigate_section" data-analytics-section="releases">{copy.nav.releases}</a>
-          <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={pricingPath} aria-current={isPricing ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="pricing">{copy.nav.pricing}</a>
+          <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={pricingPath} aria-current={isPricing ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="pricing">{pricingLabel}</a>
         </nav>
       </details>
     </div>

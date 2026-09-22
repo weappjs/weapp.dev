@@ -5,14 +5,16 @@ import PricingPage from '../components/PricingPage.astro'
 import Footer from '../components/Footer.astro'
 import { getProjects } from '../lib/projects'
 import { pricingSchema } from '../lib/seo'
+import { isGithubPagesBuild } from '../lib/deployment'
 
 const locale = 'zh-CN' as const
 const projects = await getProjects()
 const title = '开源赞助与分账 | weapp.dev'
-const description = 'weapp.dev 的开源赞助档位、60/25/15 分账说明，以及可交付的迁移与培训服务。'
+const githubPages = isGithubPagesBuild()
+const description = githubPages ? 'weapp.dev 的开源赞助档位、60/25/15 分账说明和贡献者基金。' : 'weapp.dev 的开源赞助档位、60/25/15 分账说明，以及可交付的迁移与培训服务。'
 ---
 
-<BaseLayout locale={locale} title={title} description={description} imageAlt="weapp.dev 商业化交付层" schemas={[pricingSchema(locale)]}>
+<BaseLayout locale={locale} title={title} description={description} imageAlt={githubPages ? 'weapp.dev 开源赞助与贡献者基金' : 'weapp.dev 商业化交付层'} schemas={[pricingSchema(locale, githubPages)]}>
   <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
   <PricingPage locale={locale} />
   <Footer locale={locale} projects={projects} currentPath={Astro.url.pathname} />

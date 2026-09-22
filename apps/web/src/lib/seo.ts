@@ -1,4 +1,5 @@
 import type { Locale, ProjectDefinition, ProjectMetrics } from '../types/project'
+import { isGithubPagesBuild } from './deployment'
 
 export const siteUrl = 'https://weapp.dev'
 export const organizationId = `${siteUrl}/#organization`
@@ -125,9 +126,11 @@ export function contributorsSchema(locale: Locale, title: string, description: s
   }
 }
 
-export function pricingSchema(locale: Locale) {
+export function pricingSchema(locale: Locale, githubPages = isGithubPagesBuild()) {
   const path = locale === 'zh-CN' ? '/pricing/' : '/en/pricing/'
-  const name = locale === 'zh-CN' ? 'weapp.dev 交付与开源赞助' : 'weapp.dev delivery and open-source support'
+  const name = githubPages
+    ? (locale === 'zh-CN' ? 'weapp.dev 开源赞助' : 'weapp.dev open-source sponsorship')
+    : (locale === 'zh-CN' ? 'weapp.dev 交付与开源赞助' : 'weapp.dev delivery and open-source support')
 
   return {
     '@context': 'https://schema.org',
@@ -140,15 +143,17 @@ export function pricingSchema(locale: Locale) {
     'about': [
       locale === 'zh-CN' ? '开源赞助与分账' : 'Open-source sponsorship and fund splits',
       locale === 'zh-CN' ? '贡献者计划' : 'Contributor program',
-      locale === 'zh-CN' ? '小程序工程迁移实施' : 'Mini-app engineering migration services',
+      ...(githubPages ? [] : [locale === 'zh-CN' ? '小程序工程迁移实施' : 'Mini-app engineering migration services']),
     ],
     'hasPart': [
-      {
-        '@type': 'Service',
-        'name': locale === 'zh-CN' ? '小程序工程迁移与培训' : 'Mini-app engineering migration and training',
-        'provider': { '@id': organizationId },
-        'description': locale === 'zh-CN' ? '按项目范围人工交付的迁移、培训和模板定制服务。' : 'Human-delivered migration, training, and template customization scoped per project.',
-      },
+      ...(!githubPages
+        ? [{
+            '@type': 'Service',
+            'name': locale === 'zh-CN' ? '小程序工程迁移与培训' : 'Mini-app engineering migration and training',
+            'provider': { '@id': organizationId },
+            'description': locale === 'zh-CN' ? '按项目范围人工交付的迁移、培训和模板定制服务。' : 'Human-delivered migration, training, and template customization scoped per project.',
+          }]
+        : []),
       {
         '@type': 'DonateAction',
         'name': locale === 'zh-CN' ? '支持 weapp.dev 开源' : 'Support weapp.dev open source',

@@ -51,9 +51,12 @@ jobs:
           retention-days: 1
 
       - name: Prepare the GitHub Pages site
+        env:
+          WEAPP_DEPLOY_TARGET: github-pages
         run: |
-          cp -R apps/web/dist apps/web/dist-pages
+          pnpm --filter @weapp.dev/web build:pages
           pnpm --filter @weapp.dev/web pages:rewrite dist-pages
+          pnpm --filter @weapp.dev/web exec tsx scripts/validate-build.ts
 
       - name: Upload the GitHub Pages site
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

@@ -4,9 +4,11 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "pnpm og:generate && pnpm metrics && astro build && tsx scripts/validate-build.ts",
+    "build": "pnpm og:generate && pnpm metrics && astro build && tsx scripts/prepare-pages-content.ts && tsx scripts/validate-build.ts",
+    "build:pages": "WEAPP_DEPLOY_TARGET=github-pages pnpm build",
     "build:cloudflare": "pnpm build",
     "pages:rewrite": "tsx scripts/rewrite-github-pages-paths.ts",
+    "pages:prepare": "tsx scripts/prepare-pages-content.ts",
     "check": "astro check && tsc --noEmit",
     "deploy": "pnpm build && wrangler deploy",
     "deploy:dry-run": "pnpm build && wrangler deploy --dry-run",

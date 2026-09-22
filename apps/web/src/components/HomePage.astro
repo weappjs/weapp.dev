@@ -4,6 +4,7 @@ import type { Locale, ProjectMetricsMap } from '../types/project'
 import type { ProjectEntry } from '../lib/projects'
 import { formatReleaseDate } from '../lib/metrics'
 import { localizePath, siteCopy } from '../i18n/ui'
+import { isGithubPagesBuild } from '../lib/deployment'
 import { buttonPrimary, buttonSecondary, iconControl, section, shell } from '../styles/classes'
 import BuildRail from './BuildRail.astro'
 import HomeHero from './home/HomeHero.astro'
@@ -22,6 +23,7 @@ interface Props {
 
 const { locale, projects, metrics, homeProjects = [] } = Astro.props
 const copy = siteCopy[locale]
+const githubPages = isGithubPagesBuild()
 const numberLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
 const ecosystemGroups = getCatalogEcosystemGroups(projects)
 const weappHome = homeProjects.filter(project => project.data.ecosystem === 'weapp')
@@ -93,11 +95,11 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
   <section class="border-y border-line bg-panel-soft" id="commercial">
     <div class:list={[section, shell]}>
       <header data-reveal class="mb-12 max-w-[720px]">
-        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{copy.commercial.title}</h2>
-        <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{copy.commercial.description}</p>
+        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{githubPages ? copy.commercial.pagesTitle : copy.commercial.title}</h2>
+        <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{githubPages ? copy.commercial.pagesDescription : copy.commercial.description}</p>
       </header>
-      <div class="grid grid-cols-3 gap-px overflow-hidden border border-line bg-line max-[760px]:grid-cols-1">
-        {copy.commercial.cards.map((card, index) => (
+      <div class:list={["grid gap-px overflow-hidden border border-line bg-line max-[760px]:grid-cols-1", githubPages ? "grid-cols-1" : "grid-cols-3"]}>
+        {copy.commercial.cards.filter(card => !githubPages || (card.kind !== 'service' && card.kind !== 'roadmap')).map((card, index) => (
           <article data-reveal style={`--reveal-delay: ${index * 70}ms`} class="bg-panel p-7">
             <h3 class="mb-3 text-2xl font-[660]">{card.title}</h3>
             <p class="mb-0 text-sm leading-[1.7] text-copy-muted">{card.body}</p>
@@ -106,8 +108,8 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
       </div>
       <div class="mt-8 flex flex-wrap items-center gap-3">
         <a class={buttonPrimary} href={`${localizePath(locale, '/pricing/')}#sponsor`} data-analytics-event="navigate_section" data-analytics-section="sponsor">{copy.commercial.trial}<Heart size={17} stroke-width={1.9} aria-hidden="true" /></a>
-        <a class={buttonSecondary} href={`${localizePath(locale, '/pricing/')}#services`} data-analytics-event="navigate_section" data-analytics-section="services"><ArrowRight size={17} stroke-width={1.9} aria-hidden="true" />{copy.commercial.services}</a>
-        <a class="inline-flex min-h-11 items-center gap-2 px-2 text-sm font-[650] text-copy-muted transition-colors hover:text-ink" href={`${localizePath(locale, '/pricing/')}#roadmap`} data-analytics-event="navigate_section" data-analytics-section="roadmap">{copy.commercial.pricing}<ArrowUpRight size={16} stroke-width={1.8} aria-hidden="true" /></a>
+        {!githubPages && <a class={buttonSecondary} href={`${localizePath(locale, '/pricing/')}#services`} data-analytics-event="navigate_section" data-analytics-section="services"><ArrowRight size={17} stroke-width={1.9} aria-hidden="true" />{copy.commercial.services}</a>}
+        {!githubPages && <a class="inline-flex min-h-11 items-center gap-2 px-2 text-sm font-[650] text-copy-muted transition-colors hover:text-ink" href={`${localizePath(locale, '/pricing/')}#roadmap`} data-analytics-event="navigate_section" data-analytics-section="roadmap">{copy.commercial.pricing}<ArrowUpRight size={16} stroke-width={1.8} aria-hidden="true" /></a>}
       </div>
     </div>
   </section>

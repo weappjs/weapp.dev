@@ -2,7 +2,8 @@
 import { ArrowRight, Check, Cloud, ExternalLink, GitFork, Heart, Layers2, LockKeyhole, ShieldCheck } from '@lucide/astro'
 import type { Locale } from '../types/project'
 import { localizePath, siteCopy } from '../i18n/ui'
-import { loadPublicSponsors } from '../lib/sponsors'
+import { isGithubPagesBuild } from '../lib/deployment'
+import { filterOpenSourceSponsors, isOpenSourceSponsorTier, loadPublicSponsors } from '../lib/sponsors'
 import { buttonPrimary, buttonSecondary, section, shell } from '../styles/classes'
 
 interface Props {
@@ -12,23 +13,42 @@ interface Props {
 const { locale } = Astro.props
 const copy = siteCopy[locale]
 const pricing = copy.pricing
+const githubPages = isGithubPagesBuild()
 const sponsorSnapshot = await loadPublicSponsors()
-const publicSponsors = sponsorSnapshot.items
+const publicSponsors = (githubPages ? filterOpenSourceSponsors(sponsorSnapshot) : sponsorSnapshot).items
 const githubUrl = 'https://github.com/sonofmagic/weapp.dev'
 const planIcons = [Layers2, Cloud, LockKeyhole, ShieldCheck]
+const hero = githubPages
+  ? locale === 'zh-CN'
+    ? { eyebrow: '开源赞助', title: '支持工具链继续开源', description: '通过公开赞助支持 weapp.dev 的维护、文档、测试和贡献者基金。', early: '赞助用于支持开源维护和贡献者基金。', ctaTitle: '让开源项目有继续维护的预算', ctaBody: '通过 GitHub 查看开源赞助方式和公开记录。', ctaAction: '在 GitHub 了解方式' }
+    : { eyebrow: 'Open-source sponsorship', title: 'Keep the toolchain open', description: 'Support weapp.dev maintenance, documentation, testing, and the contributors fund through public sponsorship.', early: 'Sponsorship supports open-source maintenance and the contributors fund.', ctaTitle: 'Give open source a budget to keep going', ctaBody: 'Use GitHub to see sponsorship details and public records.', ctaAction: 'Learn how on GitHub' }
+  : { eyebrow: pricing.eyebrow, title: pricing.title, description: pricing.description, early: pricing.early, ctaTitle: pricing.ctaTitle, ctaBody: pricing.ctaBody, ctaAction: pricing.ctaAction }
+const sponsorNote = githubPages
+  ? locale === 'zh-CN'
+    ? '赞助用于开源维护、文档、测试和贡献者基金。公开展示需完成 GitHub 身份确认、维护者审核和明确授权。'
+    : 'Sponsorship supports open-source maintenance, documentation, testing, and the contributors fund. Public display requires GitHub identity confirmation, maintainer review, and explicit authorization.'
+  : pricing.sponsorNote
+const sponsorDescription = githubPages
+  ? locale === 'zh-CN'
+    ? '通过一次性赞助支持 weapp.dev 的维护、文档、测试和贡献者基金。'
+    : 'Support weapp.dev maintenance, documentation, testing, and the contributors fund through one-time sponsorship.'
+  : pricing.sponsorDescription
+const sponsorSites = githubPages
+  ? locale === 'zh-CN' ? '公开名单（仅展示已确认并授权的 GitHub 信息）' : 'Public recognition (confirmed and authorized GitHub details only)'
+  : pricing.sponsorSites
 ---
 
 <main id="main-content">
   <section class="pricing-hero">
     <div class:list={[shell, 'pricing-hero-inner']}>
       <div data-reveal>
-        <p class="mb-4 font-mono text-xs font-[650] uppercase tracking-[0.12em] text-brand">{pricing.eyebrow}</p>
-        <h1 class="mb-6 max-w-[780px] text-[64px] font-[740] leading-[1.15] max-[1000px]:text-[52px] max-[720px]:text-[36px]">{pricing.title}</h1>
-        <p class="mb-8 max-w-[650px] text-xl leading-[1.5] text-copy-muted max-[720px]:text-base">{pricing.description}</p>
+        <p class="mb-4 font-mono text-xs font-[650] uppercase tracking-[0.12em] text-brand">{hero.eyebrow}</p>
+        <h1 class="mb-6 max-w-[780px] text-[64px] font-[740] leading-[1.15] max-[1000px]:text-[52px] max-[720px]:text-[36px]">{hero.title}</h1>
+        <p class="mb-8 max-w-[650px] text-xl leading-[1.5] text-copy-muted max-[720px]:text-base">{hero.description}</p>
         <div class="flex flex-wrap items-center gap-3">
           <a class={buttonPrimary} href={githubUrl} target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="pricing_github">
             <GitFork size={18} stroke-width={1.9} aria-hidden="true" />
-            {pricing.ctaAction}
+            {hero.ctaAction}
           </a>
           <a class={buttonSecondary} href={`${localizePath(locale)}#projects`} data-analytics-event="navigate_section" data-analytics-section="pricing_projects">
             {locale === 'zh-CN' ? '先看开源项目' : 'Explore open source'}
@@ -38,11 +58,12 @@ const planIcons = [Layers2, Cloud, LockKeyhole, ShieldCheck]
       </div>
       <aside class="pricing-hero-note" data-reveal style="--reveal-delay: 120ms">
         <span class="pricing-note-line" aria-hidden="true"></span>
-        <p>{pricing.early}</p>
+        <p>{hero.early}</p>
       </aside>
     </div>
   </section>
 
+  {!githubPages && <>
   <section class:list={[section, shell]} id="plans">
     <header data-reveal class="mb-12 max-w-[700px]">
       <p class="mb-3 font-mono text-xs font-[650] text-brand">01 / {locale === 'zh-CN' ? '产品货架' : 'PRODUCT SHELF'}</p>
@@ -75,16 +96,17 @@ const planIcons = [Layers2, Cloud, LockKeyhole, ShieldCheck]
       })}
     </div>
   </section>
+  </>}
 
   <section class="border-y border-line bg-panel-soft" id="sponsor">
     <div class:list={[section, shell]}>
       <header data-reveal class="mb-12 max-w-[720px]">
         <p class="mb-3 font-mono text-xs font-[650] text-brand">01A / {locale === 'zh-CN' ? '开源赞助' : 'OPEN-SOURCE SPONSORSHIP'}</p>
         <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.sponsorTitle}</h2>
-        <p class="mb-0 max-w-[650px] text-lg text-copy-muted max-[720px]:text-base">{pricing.sponsorDescription}</p>
+        <p class="mb-0 max-w-[650px] text-lg text-copy-muted max-[720px]:text-base">{sponsorDescription}</p>
       </header>
-      <div class="pricing-sponsor-grid">
-        {pricing.sponsorTiers.map((tier, index) => (
+      <div class="pricing-sponsor-grid" style={githubPages ? "--sponsor-columns: 3" : undefined}>
+        {pricing.sponsorTiers.filter(tier => !githubPages || isOpenSourceSponsorTier(tier.id)).map((tier, index) => (
           <article data-reveal class="pricing-sponsor-tier" style={`--reveal-delay: ${index * 70}ms`}>
             <Heart class="mb-8 text-brand" size={23} stroke-width={1.7} aria-hidden="true" />
             <h3 class="mb-2 text-xl font-[660]">{tier.name}</h3>
@@ -100,11 +122,19 @@ const planIcons = [Layers2, Cloud, LockKeyhole, ShieldCheck]
       </div>
       <div data-reveal class="pricing-sponsor-allocation">
         <p class="mb-2 font-[650]">{locale === 'zh-CN' ? '资金去向' : 'Where it goes'}</p>
-        <p class="mb-0 text-sm leading-[1.7] text-copy-muted">{pricing.sponsorAllocation}</p>
+        {githubPages ? <>
+          <ul class="m-0 grid list-none gap-3 p-0 text-sm leading-[1.7] text-copy-muted">
+            {pricing.sponsorAllocationBuckets.map(bucket => <li><strong class="text-ink">{bucket.share} {bucket.name}</strong> · {bucket.body}</li>)}
+          </ul>
+          <div class="mt-5 flex flex-wrap gap-4">
+            <a class="text-sm font-[650] text-brand underline underline-offset-4" href={localizePath(locale, '/contributors/')}>{locale === 'zh-CN' ? '了解贡献者基金' : 'Explore the contributors fund'}</a>
+            <a class="text-sm font-[650] text-brand underline underline-offset-4" href={localizePath(locale, '/sponsors/')}>{locale === 'zh-CN' ? '查看赞助图谱' : 'View the sponsor graph'}</a>
+          </div>
+        </> : <p class="mb-0 text-sm leading-[1.7] text-copy-muted">{pricing.sponsorAllocation}</p>}
       </div>
-      <p data-reveal class="mt-5 mb-0 text-xs text-copy-muted">{pricing.sponsorNote}</p>
+      <p data-reveal class="mt-5 mb-0 text-xs text-copy-muted">{sponsorNote}</p>
       <div data-reveal class="pricing-public-sponsors">
-        <h3 class="mb-2 text-lg font-[660]">{pricing.sponsorSites}</h3>
+        <h3 class="mb-2 text-lg font-[660]">{sponsorSites}</h3>
         {publicSponsors.length === 0 ? <p class="mb-0 text-sm text-copy-muted">{pricing.sponsorEmpty}</p> : <div class="pricing-public-sponsor-list">
           {(['gold', 'silver', 'bronze', 'supporter'] as const).map(tier => {
             const sponsors = publicSponsors.filter(sponsor => sponsor.tier === tier)
@@ -124,6 +154,7 @@ const planIcons = [Layers2, Cloud, LockKeyhole, ShieldCheck]
     </div>
   </section>
 
+  {!githubPages && <>
   <section class="border-y border-line bg-panel-soft" id="roadmap">
     <div class:list={[section, shell]}>
       <header data-reveal class="mb-12 max-w-[700px]">
@@ -208,10 +239,12 @@ const planIcons = [Layers2, Cloud, LockKeyhole, ShieldCheck]
     </div>
   </section>
 
+  </>}
+
   <section class="pricing-cta border-t border-line bg-panel-soft">
     <div data-reveal class:list={[shell, 'grid min-h-[300px] grid-cols-[1fr_auto] items-center gap-10 py-16 max-[720px]:grid-cols-1 max-[720px]:py-14']}>
-      <div><h2 class="mb-3 max-w-[700px] text-[38px] font-[680] max-[720px]:text-[30px]">{pricing.ctaTitle}</h2><p class="mb-0 max-w-[650px] text-copy-muted">{pricing.ctaBody}</p></div>
-      <a class={buttonPrimary} href={githubUrl} target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="pricing_cta"><GitFork size={18} stroke-width={1.9} aria-hidden="true" />{pricing.ctaAction}</a>
+      <div><h2 class="mb-3 max-w-[700px] text-[38px] font-[680] max-[720px]:text-[30px]">{hero.ctaTitle}</h2><p class="mb-0 max-w-[650px] text-copy-muted">{hero.ctaBody}</p></div>
+      <a class={buttonPrimary} href={githubUrl} target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="pricing_cta"><GitFork size={18} stroke-width={1.9} aria-hidden="true" />{hero.ctaAction}</a>
     </div>
   </section>
 </main>
@@ -226,7 +259,7 @@ const planIcons = [Layers2, Cloud, LockKeyhole, ShieldCheck]
   .pricing-plan-featured { background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
   .pricing-plan-badge { padding: .32rem .5rem; border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border)); color: var(--accent); font: 650 .6rem/1 var(--font-mono); letter-spacing: .04em; }
   .pricing-plan-status-planned { color: var(--muted); border-color: var(--border); }
-  .pricing-sponsor-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--border); background: var(--border); }
+  .pricing-sponsor-grid { display: grid; grid-template-columns: repeat(var(--sponsor-columns, 4), minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--border); background: var(--border); }
   .pricing-sponsor-tier { display: flex; flex-direction: column; min-width: 0; min-height: 280px; padding: 1.75rem; background: var(--surface); }
   .pricing-sponsor-button { margin-top: auto; width: fit-content; }
   .pricing-sponsor-allocation { max-width: 760px; margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }

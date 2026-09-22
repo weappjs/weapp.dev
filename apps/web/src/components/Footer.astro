@@ -3,6 +3,7 @@ import { ArrowUpRight, GitFork, Rss, SlidersHorizontal } from '@lucide/astro'
 import type { Locale } from '../types/project'
 import type { ProjectEntry } from '../lib/projects'
 import { localizePath, projectPath, siteCopy } from '../i18n/ui'
+import { isGithubPagesBuild } from '../lib/deployment'
 import { shell, wordmark, wordmarkMark } from '../styles/classes'
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 
 const { locale, projects, currentPath } = Astro.props
 const copy = siteCopy[locale]
+const pricingLabel = isGithubPagesBuild() ? (locale === 'zh-CN' ? '开源赞助' : 'Open-source sponsorship') : copy.nav.pricing
 const projectsPath = localizePath(locale, '/projects/')
 const pricingPath = localizePath(locale, '/pricing/')
 const contributorsPath = localizePath(locale, '/contributors/')
@@ -48,7 +50,7 @@ const privacyPath = localizePath(locale, '/privacy/')
         {copy.footer.source}
       </a>
       <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={privacyPath} aria-current={currentPath === privacyPath ? 'page' : undefined}>{copy.footer.privacy}</a>
-      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={pricingPath} aria-current={currentPath === pricingPath ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="pricing">{copy.nav.pricing}</a>
+      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={pricingPath} aria-current={currentPath === pricingPath ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="pricing">{pricingLabel}</a>
       <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={contributorsPath} aria-current={currentPath === contributorsPath ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="contributors">{copy.footer.contributors}</a>
       <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={localizePath(locale, '/sponsors/')} aria-current={currentPath === localizePath(locale, '/sponsors/') ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="sponsors">{locale === 'zh-CN' ? '赞助图谱' : 'Sponsor graph'}</a>
       <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href="/releases.xml" data-analytics-event="navigate_section" data-analytics-section="release_feed">

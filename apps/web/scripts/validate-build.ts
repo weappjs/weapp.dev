@@ -2,9 +2,11 @@ import { access, readdir, readFile } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
 import process from 'node:process'
 import { parse } from 'node-html-parser'
+import { getBuildOutputDir, isGithubPagesBuild } from '../src/lib/deployment'
 
 const root = resolve(import.meta.dirname, '..')
-const dist = resolve(root, 'dist')
+const dist = resolve(root, getBuildOutputDir())
+const githubPages = isGithubPagesBuild()
 const expectedFiles = [
   'index.html',
   'en/index.html',
@@ -154,12 +156,21 @@ for (const file of await collectHtml(dist)) {
 
   for (const anchor of document.querySelectorAll('a[href]')) {
     const href = anchor.getAttribute('href')
-    if (!href || href.startsWith('#') || /^(?:https?:|mailto:|tel:)/.test(href)) {
+    if (!href || /^(?:https?:|mailto:|tel:)/.test(href)) {
       continue
     }
-    const pathname = new URL(href, 'https://weapp.dev').pathname
+    const pagePath = `/${label.replace(/index\.html$/, '')}`
+    const targetUrl = new URL(href, `https://weapp.dev${pagePath}`)
     try {
-      await access(outputPathForUrl(pathname))
+      const targetPath = outputPathForUrl(targetUrl.pathname)
+      await access(targetPath)
+      if (targetUrl.hash) {
+        const target = parse(await readFile(targetPath, 'utf8'))
+        const id = decodeURIComponent(targetUrl.hash.slice(1))
+        if (!target.querySelectorAll('[id]').some(node => node.id === id)) {
+          errors.push(`${label}: broken internal anchor ${href}`)
+        }
+      }
     }
     catch {
       errors.push(`${label}: broken internal link ${href}`)
@@ -181,6 +192,56 @@ for (const file of ['sitemap-index.xml', 'robots.txt', 'llms.txt', 'llms-full.tx
   }
   catch {
     errors.push(`Unable to read required SEO output: ${file}`)
+  }
+}
+
+// Verify the target-specific public content as part of every build, including CI.
+for (const prefix of ['', 'en/']) {
+  const home = parse(await readFile(resolve(dist, `${prefix}index.html`), 'utf8'))
+  const pricing = parse(await readFile(resolve(dist, `${prefix}pricing/index.html`), 'utf8'))
+  const sponsorTiers = pricing.querySelectorAll('.pricing-sponsor-tier h3').map(node => node.text)
+  const expectedTiers = prefix ? ['Supporter', 'Bronze sponsor', 'Silver sponsor'] : ['普通支持', '铜牌赞助', '银牌赞助']
+  if (JSON.stringify(sponsorTiers.slice(0, 3)) !== JSON.stringify(expectedTiers) || sponsorTiers.length !== (githubPages ? 3 : 4)) {
+    errors.push(`${prefix}pricing/: incorrect sponsorship tiers for this target`)
+  }
+  for (const id of ['plans', 'roadmap', 'cloud-build', 'services', 'support', 'boundary', 'faq']) {
+    if (Boolean(pricing.querySelector(`#${id}`)) === githubPages) {
+      errors.push(`${prefix}pricing/: incorrect visibility for #${id}`)
+    }
+  }
+  for (const id of ['services', 'roadmap']) {
+    if (Boolean(home.querySelector(`a[href$="#${id}"]`)) === githubPages) {
+      errors.push(`${prefix}index.html: incorrect visibility for ${id} link`)
+    }
+  }
+  if (githubPages) {
+    for (const share of ['60%', '25%', '15%']) {
+      if (!pricing.querySelector('.pricing-sponsor-allocation')?.text.includes(share)) {
+        errors.push(`${prefix}pricing/: missing allocation ${share}`)
+      }
+    }
+  }
+}
+
+if (githubPages) {
+  const surfaces = ['index.html', 'en/index.html', 'pricing/index.html', 'en/pricing/index.html', 'contributors/index.html', 'en/contributors/index.html', 'sponsors/index.html', 'en/sponsors/index.html', 'llms.txt', 'llms-full.txt']
+  const commercialCopy = /\bgold\b|\benterprise\b|\bservices?\b|\btraining\b|cloud[ -]build|定制|人工服务|服务报价|迁移与培训|建设中的能力|云构建|企业合作|商业化/i
+  for (const file of surfaces) {
+    const contents = await readFile(resolve(dist, file), 'utf8')
+    // Keep the open-source project's data-roadmap-count attribute; ban the commercial section.
+    if (commercialCopy.test(contents)) {
+      errors.push(`${file}: Pages output contains commercial content`)
+    }
+    if (file.endsWith('.html')) {
+      const doc = parse(contents)
+      doc.querySelectorAll('style, script:not([type="application/ld+json"])').forEach(node => node.remove())
+      if (/\broadmap\b|路线图/i.test(doc.text)) {
+        errors.push(`${file}: Pages output contains commercial roadmap copy`)
+      }
+    }
+    else if (/\broadmap\b|路线图/i.test(contents)) {
+      errors.push(`${file}: Pages LLM reference contains roadmap copy`)
+    }
   }
 }
 
