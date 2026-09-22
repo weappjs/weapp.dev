@@ -175,3 +175,55 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
     </div>
   </section>
 </main>
+<script is:inline>
+  (() => {
+    const proofs = [...document.querySelectorAll('[data-scroll-proof]')]
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    if (!proofs.length) return
+
+    const resetProofs = () => {
+      proofs.forEach((proof) => {
+        proof.style.removeProperty('--proof-opacity')
+        proof.style.removeProperty('--proof-rotate')
+        proof.style.removeProperty('--proof-lift')
+        proof.style.removeProperty('--proof-scale')
+      })
+    }
+
+    const syncProofs = () => {
+      const start = innerHeight * 0.92
+      const end = innerHeight * 0.18
+      const distance = Math.max(1, start - end)
+
+      proofs.forEach((proof) => {
+        const progress = Math.min(1, Math.max(0, (start - proof.getBoundingClientRect().top) / distance))
+        proof.style.setProperty('--proof-opacity', String(0.62 + progress * 0.38))
+        proof.style.setProperty('--proof-rotate', `${18 - progress * 18}deg`)
+        proof.style.setProperty('--proof-lift', `${(1 - progress) * 3.5}rem`)
+        proof.style.setProperty('--proof-scale', String(0.84 + progress * 0.16))
+      })
+    }
+
+    const syncMotion = () => {
+      const enabled = !motionQuery.matches
+      document.documentElement.toggleAttribute('data-project-proof-motion', enabled)
+      if (enabled) syncProofs()
+      else resetProofs()
+    }
+
+    let scheduled = false
+    const requestSync = () => {
+      if (scheduled) return
+      scheduled = true
+      window.setTimeout(() => {
+        scheduled = false
+        if (!motionQuery.matches) syncProofs()
+      }, 16)
+    }
+
+    addEventListener('scroll', requestSync, { passive: true })
+    addEventListener('resize', requestSync)
+    motionQuery.addEventListener('change', syncMotion)
+    syncMotion()
+  })()
+</script>

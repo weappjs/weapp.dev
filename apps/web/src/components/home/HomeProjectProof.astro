@@ -58,14 +58,103 @@ const artifact = artifacts[kind]
 const planned = status === 'planned'
 ---
 
-<aside id={proofId} class="home-project-proof" data-proof-count={projectProof?.length ?? 0} aria-label={`${projectName} · ${artifact.label}`}>
+<aside id={proofId} class="home-project-proof" data-scroll-proof data-proof-count={projectProof?.length ?? 0} aria-label={`${projectName} · ${artifact.label}`}>
   <div class="home-project-proof-heading">
-    <span class="home-project-proof-label">{artifact.label}</span>
+    <div>
+      <strong class="home-project-proof-project">{projectName}</strong>
+      <span class="home-project-proof-label">{artifact.label}</span>
+    </div>
+    <span class="home-project-proof-marker">PROOF</span>
   </div>
   {planned ? <p class="home-project-proof-planned">{locale === 'zh-CN' ? '规划中 · 当前不提供可安装命令' : 'Planned · no install command is available yet'}</p> : artifact.command ? <p class="home-project-proof-command"><code>{artifact.command}</code></p> : null}
   {planned && projectProof?.length ? <ul class="home-project-proof-list" aria-label={locale === 'zh-CN' ? '规划证明条目' : 'Planning proof items'}>{projectProof.map(item => <li>{typeof item === 'string' ? item : item[locale]}</li>)}</ul> : <CodePanel parts={planned ? [{ text: 'status: planned\\napi: to be confirmed\\nplatforms: to be confirmed' }] : artifact.parts} locale={locale} filename={planned ? 'planning.md' : artifact.file} />}
 </aside>
 <style>
-  .home-project-proof-planned { margin: 0; color: var(--muted); font: 650 .75rem/1.5 var(--font-mono); }
-  .home-project-proof-list { display:grid; gap:.5rem; margin:0; padding:.8rem 1rem .9rem 2rem; color:var(--muted); font:500 .75rem/1.5 var(--font-mono); }
+  .home-project-proof {
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+    height: 100%;
+    padding: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 14px 34px var(--shadow);
+  }
+  .home-project-proof-heading {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .home-project-proof-project {
+    display: block;
+    color: var(--text);
+    font: 680 1rem/1.25 var(--font-display);
+  }
+  .home-project-proof-label {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--accent);
+    font: 650 0.68rem/1.4 var(--font-mono);
+  }
+  .home-project-proof-marker {
+    flex-shrink: 0;
+    padding: 0.3rem 0.45rem;
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--border));
+    border-radius: 999px;
+    font: 650 0.6rem/1 var(--font-mono);
+    letter-spacing: 0.08em;
+  }
+  .home-project-proof-planned {
+    margin: 0;
+    color: var(--muted);
+    font: 650 0.75rem/1.5 var(--font-mono);
+  }
+  .home-project-proof-list {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.8rem 1rem 0.9rem 2rem;
+    color: var(--muted);
+    font: 500 0.75rem/1.5 var(--font-mono);
+  }
+  .home-project-proof-command {
+    padding: 0.65rem 0.75rem;
+    margin: 0;
+    overflow: auto;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .home-project-proof-command code {
+    color: var(--text);
+    font: 650 0.72rem/1.5 var(--font-mono);
+    white-space: nowrap;
+  }
+  .home-project-proof :global(.demo-code) {
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .home-project-proof :global(.demo-code pre) {
+    height: auto;
+    max-height: 15rem;
+    min-height: 12rem;
+    padding: 0.85rem 1rem 1rem;
+    overflow: auto;
+    font-size: 0.76rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .home-project-proof :global(.demo-pane-heading) {
+    height: 2.5rem;
+    padding: 0.45rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
 </style>

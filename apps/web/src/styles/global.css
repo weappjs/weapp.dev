@@ -529,6 +529,18 @@
   box-shadow: none;
 }
 
+/* Proof evidence enters each project row with a restrained perspective reveal. */
+.home-project-proof[data-scroll-proof] {
+  transform-origin: center bottom;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html[data-project-proof-motion] [data-scroll-proof] {
+    opacity: var(--proof-opacity, 0.62);
+    transform: perspective(1400px) rotateX(var(--proof-rotate, 18deg)) translateY(var(--proof-lift, 3.5rem))
+      scale(var(--proof-scale, 0.84));
+  }
+}
+
 .section-intro {
   max-width: 720px;
   margin-bottom: 2.25rem;

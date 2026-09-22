@@ -40,6 +40,7 @@ async function expectHomeVisuals(page: import('@playwright/test').Page) {
   await expect(page.locator('#projects [data-project-visual]')).toHaveCount(0)
   await expect(page.locator('#projects [data-project-row]')).toHaveCount(4)
   await expect(page.locator('#ecosystem-taro [data-project-row]')).toHaveCount(1)
+  await expect(page.locator('[data-scroll-proof]')).toHaveCount(4)
   await expect(page.locator('.home-project-rail-group')).toHaveCount(5)
 }
 
@@ -242,7 +243,7 @@ test('hero planets stay between the wordmark and the first-screen edges', async 
 test('reduced motion keeps content visible and product interactions stationary', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
-  const movingOrHidden = () => page.locator('[data-reveal], [data-hero-enter], [data-project-visual] img').evaluateAll(elements => elements.filter((element) => {
+  const movingOrHidden = () => page.locator('[data-reveal], [data-hero-enter], [data-project-visual] img, [data-scroll-proof]').evaluateAll(elements => elements.filter((element) => {
     const style = getComputedStyle(element)
     return style.opacity !== '1' || style.transform !== 'none' || style.animationName !== 'none' || style.transitionDuration !== '0s'
   }).map(element => element.tagName))
@@ -256,6 +257,54 @@ test('reduced motion keeps content visible and product interactions stationary',
   await page.locator('[data-principle-card]').first().hover()
   expect(await movingOrHidden()).toEqual([])
   expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
+})
+
+test('disables proof motion when reduced motion changes at runtime', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  await expect(page.locator('html')).toHaveAttribute('data-project-proof-motion', '')
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect.poll(() => page.locator('html').getAttribute('data-project-proof-motion')).toBeNull()
+  await expect.poll(() => page.locator('[data-scroll-proof]').first().evaluate(element => ({
+    opacity: getComputedStyle(element).opacity,
+    transform: getComputedStyle(element).transform,
+  }))).toEqual({ opacity: '1', transform: 'none' })
+})
+
+test('scrolls project proof cards into place', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  const proof = page.locator('[data-scroll-proof]').first()
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+  await page.waitForTimeout(50)
+  const initial = await proof.evaluate(element => ({
+    opacity: getComputedStyle(element).opacity,
+    transform: getComputedStyle(element).transform,
+  }))
+  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }))
+  await page.waitForTimeout(100)
+  const settled = await proof.evaluate(element => ({
+    opacity: getComputedStyle(element).opacity,
+    transform: getComputedStyle(element).transform,
+  }))
+  expect(Number(settled.opacity)).toBeGreaterThan(Number(initial.opacity))
+  expect(settled.transform).not.toBe(initial.transform)
+})
+
+test('keeps project proof cards within responsive viewports', async ({ page }) => {
+  for (const viewport of [1440, 700, 390]) {
+    await page.setViewportSize({ width: viewport, height: 900 })
+    await page.goto('/')
+    const layout = await page.locator('[data-scroll-proof]').evaluateAll(elements => ({
+      cards: elements.length,
+      boxes: elements.map((element) => {
+        const box = element.getBoundingClientRect()
+        return { left: box.left, right: box.right, width: box.width }
+      }),
+    }))
+    expect(layout.cards, `${viewport}px proof card count`).toBe(4)
+    expect(layout.boxes.every(box => box.width > 0 && box.left >= -1 && box.right <= viewport + 1), `${viewport}px proof card bounds`).toBe(true)
+  }
 })
 
 test('reveals content after the timeout when the observer never reports visibility', async ({ page }) => {
