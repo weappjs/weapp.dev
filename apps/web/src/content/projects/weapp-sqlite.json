@@ -3,7 +3,7 @@
   "status": "planned",
   "packageName": "weapp-sqlite",
   "github": "weapp-sqlite/weapp-sqlite",
-  "docsUrl": "https://github.com/weapp-sqlite/weapp-sqlite#readme",
+  "docsUrl": "https://sqlite.weapp.dev/",
   "maintainer": "weapp-sqlite contributors",
   "keywords": [
     "SQLite",

@@ -3,7 +3,7 @@
   "status": "stable",
   "packageName": "@varo-ui/cli",
   "github": "daguanren21/Varo",
-  "docsUrl": "https://daguanren21.github.io/Varo/",
+  "docsUrl": "https://varo.weapp.dev/",
   "npmUrl": "https://www.npmjs.com/package/@varo-ui/cli",
   "license": "https://opensource.org/license/mit",
   "maintainer": "daguanren21 and contributors",

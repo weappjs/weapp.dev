@@ -74,7 +74,7 @@ pnpm add -D weapp-vite
 pnpm dlx @varo-ui/cli add --target weapp button input card
 ```
 
-[文档](https://daguanren21.github.io/Varo/) · [源码](https://github.com/daguanren21/Varo) · [npm](https://www.npmjs.com/package/@varo-ui/cli)
+[文档](https://varo.weapp.dev/) · [源码](https://github.com/daguanren21/Varo) · [npm](https://www.npmjs.com/package/@varo-ui/cli)
 
 ## 更多生态项目
 

@@ -32,7 +32,7 @@ const projectMedia = [
   },
   {
     repository: 'daguanren21/Varo',
-    page: 'https://daguanren21.github.io/Varo/',
+    page: 'https://varo.weapp.dev/',
     localSource: '../media-source/varo-homepage-latest.png',
     output: 'projects/varo-home',
     width: 1440,

@@ -28,7 +28,7 @@ weapp.dev hosts tools for real mini-app repos. weapp-tailwindcss handles styles,
 
 - Canonical Chinese page: https://weapp.dev/projects/varo/
 - Canonical English page: https://weapp.dev/en/projects/varo/
-- Documentation: https://daguanren21.github.io/Varo/
+- Documentation: https://varo.weapp.dev/
 - Source: https://github.com/daguanren21/Varo
 - npm: https://www.npmjs.com/package/@varo-ui/cli
 - Install: `pnpm dlx @varo-ui/cli add --target weapp button input card`

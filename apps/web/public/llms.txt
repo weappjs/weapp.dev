@@ -26,7 +26,7 @@
 - [weapp-tailwindcss on npm](https://www.npmjs.com/package/weapp-tailwindcss)
 - [weapp-vite on npm](https://www.npmjs.com/package/weapp-vite)
 - [Varo source](https://github.com/daguanren21/Varo)
-- [Varo documentation](https://daguanren21.github.io/Varo/)
+- [Varo documentation](https://varo.weapp.dev/)
 - [@varo-ui/cli on npm](https://www.npmjs.com/package/@varo-ui/cli)
 - [VPT source](https://github.com/sep2/vite-plugin-taro)
 - [VPT documentation](https://vpt.js.org/)

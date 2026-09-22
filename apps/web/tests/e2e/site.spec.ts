@@ -6,7 +6,7 @@ const retiredVisuals = 'canvas:not(.home-hero-particle-canvas), [data-shader-can
 const constellationLinks = [
   { href: 'https://vite.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
   { href: 'https://tw.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
-  { href: 'https://daguanren21.github.io/Varo/', target: '_blank', rel: 'noopener noreferrer' },
+  { href: 'https://varo.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
   { href: 'https://vpt.js.org/', target: '_blank', rel: 'noopener noreferrer' },
   { href: 'https://vuemini.org/', target: '_blank', rel: 'noopener noreferrer' },
   { href: 'https://uni-helper.cn/', target: '_blank', rel: 'noopener noreferrer' },
@@ -15,8 +15,8 @@ const constellationLinks = [
 const railLinks = [
   'https://vite.weapp.dev/',
   'https://tw.weapp.dev/',
-  'https://daguanren21.github.io/Varo/',
-  'https://github.com/weapp-sqlite/weapp-sqlite#readme',
+  'https://varo.weapp.dev/',
+  'https://sqlite.weapp.dev/',
   'https://vpt.js.org/',
   'https://vuemini.org/',
   'https://github.com/rezorjs/rezor',
@@ -86,8 +86,8 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
   await expect(docsLinks.evaluateAll(links => links.map(link => link.getAttribute('href')))).resolves.toEqual([
     'https://vite.weapp.dev/',
     'https://tw.weapp.dev/',
-    'https://daguanren21.github.io/Varo/',
-    'https://github.com/weapp-sqlite/weapp-sqlite#readme',
+    'https://varo.weapp.dev/',
+    'https://sqlite.weapp.dev/',
   ])
   const projectHomeLinks = page.locator('.home-project-rail a')
   await expect(projectHomeLinks.evaluateAll(links => links.map(link => ({ href: link.getAttribute('href'), target: link.getAttribute('target'), rel: link.getAttribute('rel') })))).resolves.toEqual(
@@ -351,7 +351,7 @@ test('published Varo project exposes current release data', async ({ page }) => 
   await page.goto('/projects/varo/')
   await expect(page.getByRole('heading', { level: 1, name: 'Varo' })).toBeVisible()
   await expect(page.getByRole('link', { name: '查看源码' })).toHaveAttribute('href', 'https://github.com/daguanren21/Varo')
-  await expect(page.getByRole('link', { name: '阅读文档' }).first()).toHaveAttribute('href', 'https://daguanren21.github.io/Varo/')
+  await expect(page.getByRole('link', { name: '阅读文档' }).first()).toHaveAttribute('href', 'https://varo.weapp.dev/')
   await expect(page.getByLabel('安装命令', { exact: true })).toContainText('pnpm dlx @varo-ui/cli add --target weapp button input card')
   await expect(page.getByText('v2.1.0')).toBeVisible()
   await expect(page.getByText('/docs/varo/')).toBeVisible()
