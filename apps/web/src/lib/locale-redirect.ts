@@ -12,8 +12,8 @@ export function desiredSiteLocale(saved: string | null, languages: readonly stri
   if (saved === 'zh-CN' || saved === 'en') {
     return saved
   }
-  const primary = String(languages[0] ?? '').toLowerCase()
-  return primary.startsWith('zh') ? 'zh-CN' : 'en'
+  const hasChinese = languages.some(tag => String(tag ?? '').toLowerCase().startsWith('zh'))
+  return hasChinese ? 'zh-CN' : 'en'
 }
 
 export function localeRedirectHref(input: {
@@ -60,8 +60,8 @@ export function localeRedirectScript(): string {
       saved = null
     }
     const tags = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || '']
-    const primary = String(tags[0] || '').toLowerCase()
-    const systemLocale = primary.startsWith('zh') ? 'zh-CN' : 'en'
+    const hasChinese = Array.from(tags).some(tag => String(tag || '').toLowerCase().startsWith('zh'))
+    const systemLocale = hasChinese ? 'zh-CN' : 'en'
     const desired = saved === 'zh-CN' || saved === 'en' ? saved : systemLocale
     if (desired === pageLocale) return
     const link = document.querySelector('[data-locale-switch]')

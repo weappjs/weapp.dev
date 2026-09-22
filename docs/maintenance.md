@@ -103,7 +103,7 @@ GA4 首屏浏览由一次 `config` 命令产生，`page_location`、`page_path` 
 
 ## SEO 与 GEO
 
-站点为中文默认、英文 `/en/` 的静态双语站点。语言跳转只在浏览器里完成：有保存的选择就用选择，否则看系统语言，服务端不判断。每个公开页面都会生成规范 canonical、双向 hreflang、Open Graph/Twitter 分享元数据和 JSON-LD；项目页的实体信息以仓库、文档和 npm 官方链接为准。404 页面使用 `noindex, follow`，不会进入 sitemap。
+站点为中文默认、英文 `/en/` 的静态双语站点。语言跳转只在浏览器里完成：有保存的选择就用选择，否则在浏览器语言列表里看到中文就用中文，服务端不判断。每个公开页面都会生成规范 canonical、双向 hreflang、Open Graph/Twitter 分享元数据和 JSON-LD；项目页的实体信息以仓库、文档和 npm 官方链接为准。404 页面使用 `noindex, follow`，不会进入 sitemap。
 
 面向生成式搜索的可引用入口为 [`/llms.txt`](https://weapp.dev/llms.txt) 和 [`/llms-full.txt`](https://weapp.dev/llms-full.txt)。维护项目内容时应同步更新中英文的一句话定义、适用对象、用例、安装命令和问答，避免只增加关键词而没有可验证事实。
 

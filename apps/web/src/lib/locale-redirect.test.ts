@@ -92,10 +92,31 @@ describe('client locale redirect', () => {
         expected: null,
       },
       {
-        name: 'chinese page with an english system goes to english once',
+        name: 'english listed before chinese still stays on the chinese page',
         input: {
           pageLocale: 'zh-CN',
           languages: ['en-US', 'zh-CN'],
+          switchHref: '/en/',
+          pageHref: 'https://weapp.dev/?utm_source=e2e#projects',
+        },
+        expected: null,
+      },
+      {
+        name: 'a saved english choice overrides a chinese language list',
+        input: {
+          pageLocale: 'zh-CN',
+          saved: 'en',
+          languages: ['zh-CN', 'en-US'],
+          switchHref: '/en/',
+          pageHref: 'https://weapp.dev/',
+        },
+        expected: 'https://weapp.dev/en/',
+      },
+      {
+        name: 'an english-only list leaves the chinese page once',
+        input: {
+          pageLocale: 'zh-CN',
+          languages: ['en-US'],
           switchHref: '/en/',
           pageHref: 'https://weapp.dev/?utm_source=e2e#projects',
         },
