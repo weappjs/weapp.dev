@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test'
 import { ANALYTICS_SITE_IDS } from '../../src/scripts/analytics'
+import { expect, test } from './test'
 
 const GA4_COLLECT_URL = /^https:\/\/(?:[^/]+\.)?(?:google-analytics\.com|analytics\.google\.com)\/g\/(?:s\/)?collect(?:\?|$)/
 

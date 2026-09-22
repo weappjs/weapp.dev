@@ -5,6 +5,7 @@ import '@fontsource-variable/sora/index.css'
 import '../styles/global.css'
 import type { Locale } from '../types/project'
 import { alternatePath } from '../i18n/ui'
+import { localeRedirectScript } from '../lib/locale-redirect'
 import { canonicalUrl, serializeJsonLd, webPageSchema } from '../lib/seo'
 import AnalyticsPreferences from '../components/AnalyticsPreferences.astro'
 
@@ -37,6 +38,7 @@ const {
 } = Astro.props
 const canonical = canonicalUrl(Astro.url.pathname)
 const alternate = new URL(alternatePath(locale, Astro.url.pathname), Astro.site)
+const localeSwitch = noindex ? null : alternatePath(locale, Astro.url.pathname)
 const imageUrl = new URL(image, Astro.site)
 const languageTag = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
 const alternateTag = locale === 'zh-CN' ? 'en-US' : 'zh-CN'
@@ -44,9 +46,11 @@ const skipLabel = locale === 'zh-CN' ? '跳到主要内容' : 'Skip to main cont
 ---
 
 <!doctype html>
-<html lang={languageTag}>
+<html lang={languageTag} data-locale={locale}>
   <head>
     <meta charset="UTF-8" />
+    {localeSwitch && <link data-locale-switch href={localeSwitch} />}
+    <script is:inline set:html={localeRedirectScript()}></script>
     <meta name="viewport" content="width=device-width" />
     <meta name="theme-color" content="#f4f7f5" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b110e" media="(prefers-color-scheme: dark)" />

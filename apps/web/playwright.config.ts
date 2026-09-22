@@ -14,11 +14,12 @@ export default defineConfig({
   },
   use: {
     baseURL: 'http://127.0.0.1:4321',
+    locale: 'zh-CN',
     ...(browserChannel ? { channel: browserChannel } : {}),
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile', use: { ...devices['Pixel 7'] } },
+    { name: 'desktop', use: { ...devices['Desktop Chrome'], locale: 'zh-CN' } },
+    { name: 'mobile', use: { ...devices['Pixel 7'], locale: 'zh-CN' } },
   ],
 })

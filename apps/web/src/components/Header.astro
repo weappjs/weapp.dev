@@ -3,6 +3,7 @@ import { ChevronDown, Languages, Menu, Moon, Sun, X } from '@lucide/astro'
 import type { Locale } from '../types/project'
 import type { ProjectEntry } from '../lib/projects'
 import { alternatePath, localizePath, projectPath, siteCopy } from '../i18n/ui'
+import { localeChoiceScript } from '../lib/locale-redirect'
 import { iconControl, shell, wordmark, wordmarkMark } from '../styles/classes'
 
 interface Props {
@@ -58,7 +59,7 @@ const siteGithubUrl = 'https://github.com/weappjs/weapp.dev'
     </nav>
 
     <div class="ml-5 flex items-center gap-1 max-[960px]:ml-auto">
-      <a class:list={[iconControl, 'w-auto grid-cols-[auto_auto] gap-1.5 px-2.5 font-mono text-xs font-bold max-[720px]:w-10 max-[720px]:px-0']} href={languageUrl} aria-label={copy.alternateLanguage} title={copy.alternateLanguage} data-analytics-event="switch_language" data-analytics-from={locale} data-analytics-to={locale === 'zh-CN' ? 'en' : 'zh-CN'}>
+      <a class:list={[iconControl, 'w-auto grid-cols-[auto_auto] gap-1.5 px-2.5 font-mono text-xs font-bold max-[720px]:w-10 max-[720px]:px-0']} href={languageUrl} aria-label={copy.alternateLanguage} title={copy.alternateLanguage} data-locale-choice={locale === 'zh-CN' ? 'en' : 'zh-CN'} data-analytics-event="switch_language" data-analytics-from={locale} data-analytics-to={locale === 'zh-CN' ? 'en' : 'zh-CN'}>
         <Languages size={18} stroke-width={1.8} aria-hidden="true" />
         <span class="max-[720px]:hidden">{locale === 'zh-CN' ? 'EN' : '中'}</span>
       </a>
@@ -133,3 +134,4 @@ const siteGithubUrl = 'https://github.com/weappjs/weapp.dev'
     link.addEventListener('click', () => link.closest('details')?.removeAttribute('open'))
   })
 </script>
+<script is:inline set:html={localeChoiceScript()}></script>

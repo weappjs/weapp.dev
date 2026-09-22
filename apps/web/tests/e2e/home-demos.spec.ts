@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test'
 import { demoCopy } from '../../src/components/home/demos/copy'
+import { expect, test } from './test'
 
 for (const locale of ['zh-CN', 'en'] as const) {
   const copy = demoCopy[locale]

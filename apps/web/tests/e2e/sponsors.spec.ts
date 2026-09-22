@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './test'
 import { applyTheme } from './theme'
 
 for (const route of ['/sponsors/', '/en/sponsors/']) {

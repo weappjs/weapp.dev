@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
 import vpt from '../../src/content/projects/vite-plugin-taro.json' with { type: 'json' }
+import { expect, test } from './test'
 
 for (const locale of ['zh-CN', 'en'] as const) {
   const home = locale === 'zh-CN' ? '/' : '/en/'
