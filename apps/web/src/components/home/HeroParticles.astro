@@ -1,7 +1,12 @@
 ---
+interface Props {
+  wordmark: string
+}
+
+const { wordmark } = Astro.props
 ---
 
-<hero-particles class="home-hero-particles" data-hero-particles aria-hidden="true">
+<hero-particles class="home-hero-particles" data-hero-particles data-wordmark={wordmark} aria-hidden="true">
   <canvas class="home-hero-particle-canvas"></canvas>
 </hero-particles>
 <script>

@@ -273,13 +273,23 @@ export function sampleWordmark(options: SampleWordmarkOptions): GlyphPoint[] {
     return []
   }
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.font = `${options.fontWeight} ${options.fontSize}px ${options.fontFamily}`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
-  const tracking = options.letterSpacingEm * options.fontSize
   const chars = [...options.text]
-  const widths = chars.map(char => ctx.measureText(char).width)
-  const total = widths.reduce((sum, width) => sum + width, 0) + tracking * Math.max(0, chars.length - 1)
+  const measure = (fontSize: number) => {
+    ctx.font = `${options.fontWeight} ${fontSize}px ${options.fontFamily}`
+    const tracking = options.letterSpacingEm * fontSize
+    const widths = chars.map(char => ctx.measureText(char).width)
+    const total = widths.reduce((sum, width) => sum + width, 0) + tracking * Math.max(0, chars.length - 1)
+    return { tracking, widths, total }
+  }
+  let layout = measure(options.fontSize)
+  const maxWidth = canvas.width * 0.9
+  if (layout.total > maxWidth) {
+    // Keep both brands centered and leave room for particle motion at the edges.
+    layout = measure(options.fontSize * maxWidth / layout.total)
+  }
+  const { tracking, widths, total } = layout
   const cy = canvas.height / 2
   let cursor = canvas.width / 2 - total / 2
   chars.forEach((char, index) => {
@@ -399,7 +409,7 @@ interface Engine {
   stop: () => void
 }
 
-function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTMLElement): Engine | null {
+function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTMLElement, wordmark: string): Engine | null {
   const gl = canvas.getContext('webgl2', {
     alpha: true,
     antialias: false,
@@ -498,7 +508,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const glyphBudget = mobile ? 900 : 2400
     const fieldBudget = mobile ? 320 : 800
     const word = downsamplePoints(sampleWordmark({
-      text: 'weapp.dev',
+      text: wordmark,
       fontFamily: titleStyle.fontFamily || 'Sora Variable, sans-serif',
       fontWeight: titleStyle.fontWeight || '740',
       fontSize,
@@ -723,15 +733,17 @@ export function defineHeroParticles() {
       const canvas = this.querySelector('canvas')
       const screen = this.closest<HTMLElement>('.home-hero-screen')
       const title = document.getElementById('home-hero-title')
+      const wordmark = this.dataset.wordmark?.trim()
       if (!screen) {
         return
       }
       const unbind = bindHeroCosmos(screen)
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !canvas || !title) {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !canvas || !title || !wordmark) {
+        delete screen.dataset.particlesActive
         this.#stop = unbind
         return
       }
-      const engine = createEngine(canvas, screen, title)
+      const engine = createEngine(canvas, screen, title, wordmark)
       if (!engine) {
         delete screen.dataset.particlesActive
         this.#stop = unbind
