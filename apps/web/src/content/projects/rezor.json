@@ -15,7 +15,7 @@
   ],
   "installCommand": "npm create rezor@latest",
   "futureDocsPath": "/docs/rezor/",
-  "logo": "/brands/react.svg",
+  "logo": "/brands/rezor.png",
   "accent": "#61dafb",
   "role": "Framework",
   "ecosystem": "rezor",
