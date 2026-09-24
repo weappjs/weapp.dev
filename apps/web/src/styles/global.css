@@ -779,7 +779,7 @@
     height: 2.75rem;
 
     /* Keep enlarged logos clear of the longest wordmark and both screen edges. */
-    --orbit-rx: calc(50vw - 2.5rem);
+    --orbit-rx: calc(50vw - 1.5rem);
     --orbit-ry: 36vh;
   }
   .home-hero-orbit {
