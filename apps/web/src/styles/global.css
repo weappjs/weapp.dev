@@ -779,7 +779,7 @@
     height: 2.75rem;
 
     /* Keep enlarged logos clear of the longest wordmark and both screen edges. */
-    --orbit-rx: calc(50vw - 1.5rem);
+    --orbit-rx: calc(50vw - 2rem);
     --orbit-ry: 36vh;
   }
   .home-hero-orbit {
@@ -824,6 +824,11 @@
   }
   .code-window pre {
     font-size: 0.68rem;
+  }
+}
+@media (max-width: 350px) {
+  .home-hero-planet {
+    --orbit-rx: calc(50vw - 1.5rem);
   }
 }
 @media (max-width: 520px) {
