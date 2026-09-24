@@ -47,6 +47,7 @@ jobs:
         with:
           name: web-dist
           path: apps/web/dist
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
 
