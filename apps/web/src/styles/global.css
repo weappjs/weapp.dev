@@ -778,8 +778,8 @@
     width: 2.75rem;
     height: 2.75rem;
 
-    /* Keep the enlarged logos clear of the longest wordmark on narrow screens. */
-    --orbit-rx: calc(50vw - 1.5rem);
+    /* Keep enlarged logos clear of the longest wordmark and both screen edges. */
+    --orbit-rx: calc(50vw - 2.5rem);
     --orbit-ry: 26vh;
   }
   .home-hero-orbit {
