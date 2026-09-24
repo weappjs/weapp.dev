@@ -10,6 +10,7 @@ const constellationLinks = [
   { href: 'https://varo.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
   { href: 'https://vpt.js.org/', target: '_blank', rel: 'noopener noreferrer' },
   { href: 'https://vuemini.org/', target: '_blank', rel: 'noopener noreferrer' },
+  { href: 'https://github.com/rezorjs/rezor', target: '_blank', rel: 'noopener noreferrer' },
   { href: 'https://uni-helper.cn/', target: '_blank', rel: 'noopener noreferrer' },
   { href: 'https://wot-ui.cn/', target: '_blank', rel: 'noopener noreferrer' },
 ]
@@ -29,7 +30,7 @@ async function expectHomeVisuals(page: import('@playwright/test').Page) {
   await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeAttached()
   await expect(page.locator('#home-hero-title')).toHaveText(heroWordmark)
   await expect(page.locator('.home-hero-screen')).toBeVisible()
-  await expect(page.locator('.home-hero-constellation .home-hero-tile')).toHaveCount(7)
+  await expect(page.locator('.home-hero-constellation .home-hero-tile')).toHaveCount(8)
   await expect(page.locator('.home-hero-orbit-inner, .home-hero-orbit-mid, .home-hero-orbit-outer, .home-hero-planet--ring')).toHaveCount(0)
   await expect(page.locator('.home-hero-constellation a.home-hero-tile').evaluateAll(links => links.map(link => ({
     href: link.getAttribute('href'),
@@ -227,33 +228,34 @@ test('home hero keeps a cosmic first screen while the rest of the page follows t
   }
 })
 
-test('hero planets stay between the wordmark and the first-screen edges', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 })
+test('hero planets stay clear of the wordmark, each other and the first-screen edges', async ({ page }) => {
   await page.goto('/')
   const planets = page.locator('.home-hero-planet')
-  await expect(planets).toHaveCount(7)
-  for (const turn of [0, 0.25, 0.5, 0.75]) {
-    await planets.evaluateAll((elements, value) => {
-      for (const element of elements) {
-        const node = element as HTMLElement
-        node.style.animation = 'none'
-        node.style.setProperty('--orbit-turn', String(value))
-      }
-    }, turn)
-    const stray = await page.evaluate(() => {
-      const word = document.querySelector('#home-hero-title')!.getBoundingClientRect()
-      const screen = document.querySelector('.home-hero-screen')!.getBoundingClientRect()
-      return [...document.querySelectorAll('.home-hero-planet')].flatMap((element) => {
-        const box = element.getBoundingClientRect()
-        const hitsWord = !(box.right < word.left || box.left > word.right || box.bottom < word.top || box.top > word.bottom)
-        const outside = box.left < screen.left - 4 || box.right > screen.right + 4 || box.top < screen.top - 4 || box.bottom > screen.bottom + 4
-        if (!hitsWord && !outside) {
-          return []
+  await expect(planets).toHaveCount(8)
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 820, height: 1180 }, { width: 390, height: 844 }, { width: 320, height: 568 }]) {
+    await page.setViewportSize(viewport)
+    for (let step = 0; step < 36; step++) {
+      await planets.evaluateAll((elements, turn) => {
+        for (const element of elements) {
+          const node = element as HTMLElement
+          node.style.animation = 'none'
+          node.style.setProperty('--orbit-turn', String(turn))
         }
-        return [{ id: (element as HTMLElement).dataset.analyticsProject, hitsWord, outside }]
+      }, step / 36)
+      const collisions = await page.evaluate(() => {
+        const word = document.querySelector('#home-hero-title')!.getBoundingClientRect()
+        const screen = document.querySelector('.home-hero-screen')!.getBoundingClientRect()
+        const planets = [...document.querySelectorAll<HTMLElement>('.home-hero-planet')].map(element => ({ id: element.dataset.analyticsProject, box: element.getBoundingClientRect() }))
+        const overlaps = (a: DOMRect, b: DOMRect) => !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom)
+        return planets.flatMap(({ id, box }, index) => {
+          const hitsWord = overlaps(box, word)
+          const outside = box.left < screen.left || box.right > screen.right || box.top < screen.top || box.bottom > screen.bottom
+          const hitsPlanet = planets.slice(index + 1).filter(other => overlaps(box, other.box)).map(other => other.id)
+          return hitsWord || outside || hitsPlanet.length ? [{ id, hitsWord, outside, hitsPlanet }] : []
+        })
       })
-    })
-    expect(stray, String(turn)).toEqual([])
+      expect(collisions, `${viewport.width}px at ${step * 10} degrees`).toEqual([])
+    }
   }
 })
 

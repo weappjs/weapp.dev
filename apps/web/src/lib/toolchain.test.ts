@@ -149,6 +149,7 @@ describe('toolchain project ordering', () => {
       'varo',
       'vite-plugin-taro',
       'vue-mini',
+      'rezor',
       'uni-helper',
       'wot-ui',
     ])

@@ -58,7 +58,7 @@ export function getEcosystemProjects(projects: ProjectEntry[]) {
   return getProjectsInEcosystem(projects, 'uni-app')
 }
 
-const constellationExcludedIds = new Set(['weapp-sqlite', 'rezor'])
+const constellationExcludedIds = new Set(['weapp-sqlite'])
 
 /** Marks that have a dedicated logo and belong on the homepage constellation. */
 export function getConstellationProjects(projects: ProjectEntry[]) {
