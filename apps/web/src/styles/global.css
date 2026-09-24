@@ -780,7 +780,7 @@
 
     /* Keep enlarged logos clear of the longest wordmark and both screen edges. */
     --orbit-rx: calc(50vw - 2.5rem);
-    --orbit-ry: 32vh;
+    --orbit-ry: 36vh;
   }
   .home-hero-orbit {
     width: calc(100vw - 3rem);
