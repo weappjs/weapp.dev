@@ -1,17 +1,12 @@
 import type { ProjectDefinition } from '../types/project'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import varo from '../content/projects/varo.json'
-import taro from '../content/projects/vite-plugin-taro.json'
-import sqlite from '../content/projects/weapp-sqlite.json'
-import tailwind from '../content/projects/weapp-tailwindcss.json'
-import vite from '../content/projects/weapp-vite.json'
-import fallbackMetrics from '../data/project-metrics.fallback.json'
-import { breadcrumbSchema, canonicalUrl, contributorsSchema, organizationSchema, pricingSchema, projectListSchema, projectSchema, projectsIndexSchema, serializeJsonLd, sponsorsSchema } from './seo'
-
-afterEach(() => {
-  vi.unstubAllEnvs()
-  vi.resetModules()
-})
+import varo from '@weapp/project-catalog/projects/varo.json'
+import taro from '@weapp/project-catalog/projects/vite-plugin-taro.json'
+import sqlite from '@weapp/project-catalog/projects/weapp-sqlite.json'
+import tailwind from '@weapp/project-catalog/projects/weapp-tailwindcss.json'
+import vite from '@weapp/project-catalog/projects/weapp-vite.json'
+import fallbackMetrics from '@weapp/project-catalog/snapshot'
+import { describe, expect, it } from 'vitest'
+import { breadcrumbSchema, canonicalUrl, contributorsSchema, pricingSchema, projectListSchema, projectSchema, projectsIndexSchema, serializeJsonLd, sponsorsSchema } from './seo'
 
 describe('SEO helpers', () => {
   it('normalizes canonical URLs without query strings or hashes', () => {
@@ -19,45 +14,24 @@ describe('SEO helpers', () => {
       .toBe('https://weapp.dev/projects/weapp-tailwindcss/')
   })
 
-  it('creates official project entity and breadcrumb schemas', () => {
+  it('describes confirmed implementation services and links the open-source reference', () => {
     const project = { id: 'weapp-tailwindcss', data: tailwind as unknown as ProjectDefinition }
-    const entity = projectSchema('zh-CN', project, fallbackMetrics['weapp-tailwindcss'])
-    const breadcrumb = breadcrumbSchema('zh-CN', project)
-
-    expect(entity['@type']).toBe('SoftwareSourceCode')
-    expect(entity.codeRepository).toBe('https://github.com/sonofmagic/weapp-tailwindcss')
-    expect(entity.sameAs).toContain('https://www.npmjs.com/package/weapp-tailwindcss')
-    expect(breadcrumb.itemListElement).toHaveLength(3)
-    expect(breadcrumb.itemListElement[1].item).toBe('https://weapp.dev/projects/')
+    const entity = projectSchema('en', project, fallbackMetrics['weapp-tailwindcss'])
+    expect(entity['@type']).toBe('WebPage')
+    expect(entity.mainEntity?.['@type']).toBe('Service')
+    expect(entity.relatedLink).toBe('https://weapp.js.org/en/projects/weapp-tailwindcss/')
+    expect(entity).not.toHaveProperty('codeRepository')
     expect(breadcrumbSchema('en', project).itemListElement[1].item).toBe('https://weapp.dev/en/projects/')
     expect(JSON.parse(serializeJsonLd(entity))).toEqual(entity)
   })
 
-  it('publishes release and package claims for Varo', () => {
-    const project = { id: 'varo', data: varo as unknown as ProjectDefinition }
-    const entity = projectSchema('en', project, fallbackMetrics.varo)
-    expect(entity.version).toBe('2.1.0')
-    expect(entity.dateModified).toBe('2026-09-13T15:45:51.579Z')
-    expect(entity.downloadUrl).toBe('https://www.npmjs.com/package/@varo-ui/cli')
-    expect(entity.sameAs).toContain('https://www.npmjs.com/package/@varo-ui/cli')
-  })
-
-  it('keeps the planned weapp-sqlite schema free of unconfirmed runtime claims', () => {
-    const project = { id: 'weapp-sqlite', data: sqlite as unknown as ProjectDefinition }
-    const entity = projectSchema('en', project, fallbackMetrics.varo)
-    expect(entity).not.toHaveProperty('runtimePlatform')
-    expect(entity).not.toHaveProperty('version')
-    expect(entity).not.toHaveProperty('dateModified')
-    expect(entity).not.toHaveProperty('downloadUrl')
-  })
-
-  it('identifies the hub without claiming other projects are the same organization', () => {
-    const organization = organizationSchema()
-    expect(organization.sameAs).toEqual(['https://github.com/weappjs', 'https://github.com/weappjs/weapp.dev'])
-    const project = { id: 'varo', data: varo as unknown as ProjectDefinition }
-    const entity = projectSchema('en', project, fallbackMetrics.varo)
-    expect(entity.maintainer.name).toBe(varo.maintainer)
-    expect(entity).not.toHaveProperty('isPartOf')
+  it('does not promise services for planned or unconfirmed projects', () => {
+    for (const [id, data] of [['varo', varo], ['weapp-sqlite', sqlite]] as const) {
+      const entity = projectSchema('en', { id, data: data as unknown as ProjectDefinition }, fallbackMetrics.varo)
+      expect(entity).not.toHaveProperty('mainEntity')
+      expect(entity).not.toHaveProperty('offers')
+      expect(entity).not.toHaveProperty('downloadUrl')
+    }
   })
 
   it('describes delivery and sponsorship without purchasable offers', () => {
@@ -65,22 +39,6 @@ describe('SEO helpers', () => {
     expect(schema['@type']).toBe('CollectionPage')
     expect(JSON.stringify(schema)).toContain('DonateAction')
     expect(JSON.stringify(schema)).not.toContain('Offer')
-  })
-
-  it.each(['weapp', 'github-pages'] as const)('uses the %s identity without changing external project links', async (target) => {
-    vi.stubEnv('WEAPP_DEPLOY_TARGET', target)
-    vi.resetModules()
-    const seo = await import('./seo')
-    const origin = target === 'weapp' ? 'https://weapp.dev' : 'https://weapp.js.org'
-    const project = { id: 'weapp-tailwindcss', data: tailwind as unknown as ProjectDefinition }
-    expect(seo.canonicalUrl('/en/projects/weapp-tailwindcss/?q=1#start')).toBe(`${origin}/en/projects/weapp-tailwindcss/`)
-    expect(seo.websiteSchema('en').url).toBe(origin)
-    expect(seo.organizationSchema().url).toBe(origin)
-    expect(seo.projectListSchema('en', [project]).itemListElement[0].url).toBe(`${origin}/en/projects/weapp-tailwindcss/`)
-    const entity = seo.projectSchema('en', project, fallbackMetrics['weapp-tailwindcss'])
-    expect(entity.codeRepository).toBe('https://github.com/sonofmagic/weapp-tailwindcss')
-    expect(entity.sameAs).toContain('https://tw.weapp.dev/')
-    expect(seo.breadcrumbSchema('en', project).itemListElement[0].name).toBe(new URL(origin).hostname)
   })
 
   it('describes the sponsor graph as a bilingual collection page', () => {

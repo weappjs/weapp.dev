@@ -1,0 +1,149 @@
+---
+import '@weapp/site-ui/home.css'
+import { ArrowRight, ArrowUpRight, GitFork, Layers2, Package, ScanLine } from '@lucide/astro'
+import type { Locale, ProjectMetricsMap } from '../types/project'
+import type { ProjectEntry } from '../lib/projects'
+import { formatReleaseDate } from '../lib/metrics'
+import { localizePath, getSiteCopy } from '../i18n/ui'
+import { getSiteProfile } from '../lib/deployment'
+import { buttonPrimary, buttonSecondary, iconControl, homeSection as section, shell } from '../styles/classes'
+import HomeHero from '@weapp/site-ui/HomeHero.astro'
+import type { HomeProject } from '../lib/home-projects'
+import { getCatalogEcosystemGroups, getConstellationProjects } from '../lib/toolchain'
+import HomePartnerSection from './home/HomePartnerSection.astro'
+import HomeProjects from './home/HomeProjects.astro'
+import ToolchainMap from './ToolchainMap.astro'
+
+interface Props {
+  locale: Locale
+  projects: ProjectEntry[]
+  metrics: ProjectMetricsMap
+  homeProjects?: HomeProject[]
+}
+
+const { locale, projects, metrics, homeProjects = [] } = Astro.props
+const copy = getSiteCopy(locale)
+const profile = getSiteProfile()
+const numberLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
+const ecosystemGroups = getCatalogEcosystemGroups(projects)
+const weappHome = homeProjects.filter(project => project.data.ecosystem === 'weapp')
+const taroHome = homeProjects.filter(project => project.data.ecosystem === 'taro')
+const constellation = getConstellationProjects(projects).map(project => ({
+  id: project.id,
+  href: project.data.docsUrl,
+  logo: project.data.logo,
+  name: project.data.locales[locale].name,
+  accent: project.data.accent,
+}))
+const stageById = new Map(homeProjects.map(project => [project.id, project.stage]))
+const railGroups = ecosystemGroups.map(group => ({
+  id: group.id,
+  label: copy.rail[group.id],
+  projects: group.projects.map(project => ({
+    id: project.id,
+    data: project.data,
+    stage: stageById.get(project.id) ?? { 'zh-CN': copy.rail[group.id], en: copy.rail[group.id] },
+  })),
+}))
+const releaseProjects = projects.filter(project => project.data.status !== 'planned' && metrics[project.id])
+const stepIcons = [Layers2, ScanLine, Package]
+---
+
+<main id="main-content">
+  <HomeHero wordmark={profile.heroWordmark} overviewLabel={locale === 'zh-CN' ? `${profile.name} 首页概览` : `${profile.name} overview`} railLabel={copy.rail.label} locale={locale} railGroups={railGroups} constellation={constellation} />
+
+  <section class="border-y border-line bg-panel" id="about">
+    <div class:list={[section, shell]}>
+      <header data-reveal class="mb-8 max-w-[720px]">
+        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{copy.about.title}</h2>
+        <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{copy.about.description}</p>
+        {<div class="mt-7 flex flex-wrap gap-3">
+          <a class={buttonPrimary} href={localizePath(locale, '/projects/')}>{copy.hero.primary}<ArrowRight size={17} aria-hidden="true" /></a>
+          <a class={buttonSecondary} href={profile.organizationUrl} target="_blank" rel="noopener noreferrer">{copy.hero.secondary}<GitFork size={17} aria-hidden="true" /></a>
+        </div>}
+
+      </header>
+      <ol class="m-0 grid list-none grid-cols-3 gap-0 border-y border-line p-0 max-[720px]:grid-cols-1 max-[720px]:border-b-0">
+        {copy.about.items.map((item, index) => {
+          const Icon = stepIcons[index]
+          return (
+            <li data-reveal style={`--reveal-delay: ${index * 70}ms`} class="relative min-h-[200px] border-r border-line px-7 py-8 last:border-r-0 max-[720px]:min-h-0 max-[720px]:border-r-0 max-[720px]:border-b max-[720px]:px-0">
+              <div class="mb-6 flex items-center justify-between">
+                <Icon class="text-brand" size={25} stroke-width={1.65} aria-hidden="true" />
+              </div>
+              <h3 class="mb-3 text-2xl font-[660]">{item.title}</h3>
+              <p class="mb-0 max-w-[340px] text-copy-muted">{item.body}</p>
+            </li>
+          )
+        })}
+      </ol>
+      <aside class="mt-8 grid grid-cols-[.65fr_1.35fr] gap-5 border-b border-line pb-8 max-[820px]:grid-cols-1" aria-labelledby="home-start-title">
+        <h3 id="home-start-title" class="mb-0 text-xl font-[650]">{locale === 'zh-CN' ? '从你现在的项目开始' : 'Start with your current project'}</h3>
+        <div class="min-w-0">
+          <p class="mb-3 max-w-[70ch] text-copy-muted">{locale === 'zh-CN' ? '原生小程序需要改进工程构建，可以先看 weapp-vite；需要 Tailwind 样式，先看 weapp-tailwindcss；需要可编辑的组件源码，先看 Varo。已有 Taro 项目可以了解 VPT，uni-app 项目可以从 Uni Helper 与 Wot UI 开始。' : 'For native mini-program builds, start with weapp-vite; for Tailwind styling, see weapp-tailwindcss; for editable component source, explore Varo. Existing Taro projects can explore VPT, while uni-app teams can start with Uni Helper and Wot UI.'}</p>
+          <p class="mb-3 max-w-[70ch] text-sm text-copy-muted">{locale === 'zh-CN' ? '先查看项目状态与适配边界，再按官方文档在一个页面或组件中试用，验证后逐步扩展。每个项目的详情页都保留文档和源码入口。' : 'Check project status and compatibility, then follow the official docs to try one page or component before expanding. Each project page links to its documentation and source.'}</p>
+          <a class="inline-flex min-h-11 items-center gap-2 text-sm font-[650] text-brand" href={localizePath(locale, '/projects/')}>{locale === 'zh-CN' ? '按需求浏览项目' : 'Browse projects by need'}<ArrowRight size={17} aria-hidden="true" /></a>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <HomeProjects locale={locale} projects={weappHome} metrics={metrics} labProjects={homeProjects} pack="start" id="projects" eyebrow={copy.ecosystems.weapp.eyebrow} title={copy.ecosystems.weapp.title} description={copy.ecosystems.weapp.description} />
+
+  <HomeProjects locale={locale} projects={taroHome} metrics={metrics} pack="middle" id="ecosystem-taro" eyebrow={copy.ecosystems.taro.eyebrow} title={copy.ecosystems.taro.title} description={copy.ecosystems.taro.description} />
+
+  <HomePartnerSection locale={locale} pack="middle" id="ecosystem-vue-mini" projects={ecosystemGroups.find(group => group.id === 'vue-mini')?.projects ?? []} eyebrow={copy.ecosystems['vue-mini'].eyebrow} title={copy.ecosystems['vue-mini'].title} description={copy.ecosystems['vue-mini'].description} />
+
+  <HomePartnerSection locale={locale} pack="middle" id="ecosystem-rezor" projects={ecosystemGroups.find(group => group.id === 'rezor')?.projects ?? []} eyebrow={copy.ecosystems.rezor.eyebrow} title={copy.ecosystems.rezor.title} description={copy.ecosystems.rezor.description} />
+
+  <HomePartnerSection locale={locale} pack="end" id="ecosystem" projects={ecosystemGroups.find(group => group.id === 'uni-app')?.projects ?? []} eyebrow={copy.ecosystems['uni-app'].eyebrow} title={copy.ecosystems['uni-app'].title} description={copy.ecosystems['uni-app'].description} />
+
+  <section class:list={[section, shell]} aria-label={locale === 'zh-CN' ? '工具链地图' : 'Toolchain map'}>
+    <ToolchainMap locale={locale} projects={projects} />
+  </section>
+
+
+
+
+
+  <section class:list={[section, shell]} id="releases">
+    <div class="grid grid-cols-[.75fr_1.25fr] gap-16 max-[900px]:grid-cols-1 max-[900px]:gap-10">
+      <header data-reveal class="max-w-[470px]">
+        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{copy.releases.title}</h2>
+        <p class="mb-0 text-copy-muted">{copy.releases.description}</p>
+      </header>
+      <div data-reveal class="border-t border-line">
+        {releaseProjects.map(project => {
+          const projectMetrics = metrics[project.id]
+          return (
+            <article class="grid min-h-[112px] grid-cols-[48px_1fr_auto_42px] items-center gap-4 border-b border-line max-[620px]:grid-cols-[36px_minmax(0,1fr)_44px] max-[620px]:gap-x-3 max-[620px]:gap-y-1 max-[620px]:py-4">
+              <img class="size-11 object-contain max-[520px]:size-9" src={project.data.logo} width="44" height="44" alt="" />
+              <div>
+                <h3 class="mb-1 break-words text-base font-[650]">{project.data.locales[locale].name}</h3>
+                <p class="mb-0 text-xs text-copy-muted">{copy.releases.released} {formatReleaseDate(projectMetrics.releasedAt, numberLocale)}</p>
+              </div>
+              <strong class="font-mono text-sm max-[620px]:col-start-2 max-[620px]:row-start-2 max-[620px]:break-all">v{projectMetrics.version}</strong>
+              <a class:list={[iconControl, 'max-[620px]:col-start-3 max-[620px]:row-start-1 max-[620px]:row-span-2']} href={`https://www.npmjs.com/package/${project.data.packageName}`} aria-label={`${copy.releases.viewPackage}: ${project.data.packageName}`} target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="package" data-analytics-project={project.id}>
+                <ArrowUpRight size={19} stroke-width={1.8} aria-hidden="true" />
+              </a>
+            </article>
+          )
+        })}
+      </div>
+    </div>
+  </section>
+
+  <section class="border-y border-line bg-panel" id="collaboration">
+    <div data-reveal class:list={[shell, 'grid min-h-[260px] grid-cols-[72px_1fr_auto] items-center gap-8 py-12 max-[820px]:grid-cols-[58px_1fr] max-[620px]:grid-cols-1']}>
+      <img class="size-[72px] rounded-panel border border-line bg-panel-soft p-2.5 max-[820px]:size-[58px]" src="/logo.svg" width="72" height="72" alt="" />
+      <div>
+        <h2 class="mb-3 text-[34px] font-[670] max-[620px]:text-[30px]">{copy.collaboration.title}</h2>
+        <p class="mb-0 max-w-[650px] text-copy-muted">{copy.collaboration.description}</p>
+      </div>
+      <a class:list={[buttonSecondary, 'max-[820px]:col-start-2 max-[820px]:w-fit max-[620px]:col-auto']} href={profile.organizationUrl} target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="collaboration">
+        <GitFork size={18} stroke-width={1.9} aria-hidden="true" />
+        {copy.collaboration.action}
+      </a>
+    </div>
+  </section>
+</main>

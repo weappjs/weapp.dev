@@ -4,7 +4,6 @@ import type { Locale } from '../types/project'
 import wechatIcon from '../assets/contact/wechat.svg?raw'
 import qqIcon from '../assets/contact/tencentqq.svg?raw'
 import { contactCopy, contactMethods } from '../lib/contact'
-import { getSiteProfile } from '../lib/deployment'
 
 interface Props { locale: Locale; id: string }
 const { locale, id } = Astro.props
@@ -13,7 +12,7 @@ const channels = ['wechat', 'qq'] as const
 const icons = { wechat: wechatIcon, qq: qqIcon }
 ---
 
-{getSiteProfile().features.sponsorship && <contact-methods class="contact-methods" data-contact-methods role="group" aria-label={copy.label}>
+<contact-methods class="contact-methods" data-contact-methods role="group" aria-label={copy.label}>
   {channels.map((channel, index) => {
     const method = contactMethods[channel]
     return <details name={`${id}-channel`} data-contact-channel={channel}>
@@ -36,7 +35,7 @@ const icons = { wechat: wechatIcon, qq: qqIcon }
     </details>
   })}
   <a class="contact-icon" style="--contact-index:2" href={`mailto:${contactMethods.email}`} title={copy.email} aria-label={copy.email} data-analytics-event="click_outbound" data-analytics-target="email"><Mail size={23} stroke-width={1.8} aria-hidden="true" /></a>
-</contact-methods>}
+</contact-methods>
 
 <script>
   import { copyCode } from '../scripts/copy-code'

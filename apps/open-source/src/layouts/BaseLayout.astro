@@ -1,0 +1,144 @@
+---
+import '@fontsource-variable/geist/index.css'
+import '@fontsource-variable/geist-mono/index.css'
+import '@fontsource-variable/sora/index.css'
+import '../styles/global.css'
+import { getSiteProfile } from '../lib/deployment'
+import type { Locale } from '../types/project'
+import { alternatePath } from '../i18n/ui'
+import { localeRedirectScript } from '../lib/locale-redirect'
+import { canonicalUrl, serializeJsonLd, webPageSchema } from '../lib/seo'
+import AnalyticsPreferences from '../components/AnalyticsPreferences.astro'
+
+interface Props {
+  locale: Locale
+  title: string
+  description: string
+  image?: string
+  type?: 'website' | 'article'
+  imageAlt?: string
+  noindex?: boolean
+  author?: string
+  datePublished?: string
+  dateModified?: string
+  schemas?: unknown[]
+}
+
+const profile = getSiteProfile()
+const {
+  locale,
+  title,
+  description,
+  image = '/og.png',
+  type = 'website',
+  imageAlt = `${profile.name} JavaScript mini-program ecosystem`,
+  noindex = false,
+  author = profile.name,
+  datePublished,
+  dateModified,
+  schemas = [],
+} = Astro.props
+const canonical = canonicalUrl(Astro.url.pathname)
+const alternate = new URL(alternatePath(locale, Astro.url.pathname), Astro.site)
+const localeSwitch = noindex ? null : alternatePath(locale, Astro.url.pathname)
+const imageUrl = new URL(image, Astro.site)
+const languageTag = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
+const alternateTag = locale === 'zh-CN' ? 'en-US' : 'zh-CN'
+const skipLabel = locale === 'zh-CN' ? '跳到主要内容' : 'Skip to main content'
+---
+
+<!doctype html>
+<html lang={languageTag} data-locale={locale}>
+  <head>
+    <meta charset="UTF-8" />
+    {localeSwitch && <link data-locale-switch href={localeSwitch} />}
+    <script is:inline set:html={localeRedirectScript()}></script>
+    <meta name="viewport" content="width=device-width" />
+    <meta name="theme-color" content="#f4f7f5" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b110e" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content={description} />
+    <meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow'} />
+    <meta name="author" content={author} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang={languageTag} href={canonical} />
+    <link rel="alternate" hreflang={alternateTag} href={alternate} />
+    <link rel="alternate" hreflang="x-default" href={locale === 'zh-CN' ? canonical : alternate} />
+    <link rel="alternate" type="application/rss+xml" title={`${profile.name} releases`} href="/releases.xml" />
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={profile.name} />
+    <meta property="og:locale" content={locale === 'zh-CN' ? 'zh_CN' : 'en_US'} />
+    <meta property="og:locale:alternate" content={locale === 'zh-CN' ? 'en_US' : 'zh_CN'} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:alt" content={imageAlt} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    {type === 'article' && datePublished && <meta property="article:published_time" content={datePublished} />}
+    {type === 'article' && dateModified && <meta property="article:modified_time" content={dateModified} />}
+    {type === 'article' && <meta property="article:author" content={author} />}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content={canonical} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
+    <meta name="twitter:image:alt" content={imageAlt} />
+    <title>{title}</title>
+    {[webPageSchema(locale, title, description, canonical.toString()), ...schemas].map(schema => <script is:inline type="application/ld+json" set:html={serializeJsonLd(schema)}></script>)}
+    <script is:inline>
+      (() => {
+        const saved = localStorage.getItem('weapp-theme')
+        const defaultTheme = 'dark'
+        document.documentElement.dataset.theme = saved === 'dark' || saved === 'light' ? saved : defaultTheme
+        document.documentElement.dataset.motion = 'ready'
+      })()
+    </script>
+  </head>
+  <body>
+    <a class="fixed top-3 left-3 z-[100] -translate-y-[160%] rounded-md bg-ink px-3.5 py-2.5 text-canvas focus:translate-y-0" href="#main-content">{skipLabel}</a>
+    <slot />
+    <AnalyticsPreferences locale={locale} />
+    <script is:inline>
+      document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
+        const syncPressedState = () => {
+          button.setAttribute('aria-pressed', String(document.documentElement.dataset.theme === 'dark'))
+        }
+
+        syncPressedState()
+        button.addEventListener('click', () => {
+          const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'
+          document.documentElement.dataset.theme = next
+          localStorage.setItem('weapp-theme', next)
+          syncPressedState()
+        })
+      })
+
+      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
+      const revealItems = document.querySelectorAll('[data-reveal]')
+      if (reduceMotion || !('IntersectionObserver' in window)) {
+        revealItems.forEach((item) => item.setAttribute('data-visible', ''))
+      } else {
+        const revealObserver = new IntersectionObserver((entries, observer) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return
+            entry.target.setAttribute('data-visible', '')
+            observer.unobserve(entry.target)
+          })
+        }, { threshold: 0.14, rootMargin: '0px 0px -4% 0px' })
+        revealItems.forEach((item) => revealObserver.observe(item))
+        window.setTimeout(() => {
+          revealItems.forEach((item) => item.setAttribute('data-visible', ''))
+        }, 2500)
+      }
+    </script>
+    <script>
+      import { initAnalytics } from '../scripts/analytics'
+
+      initAnalytics()
+    </script>
+  </body>
+</html>

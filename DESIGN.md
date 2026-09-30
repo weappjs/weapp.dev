@@ -142,7 +142,7 @@ components:
 
 weapp.dev looks through an engineering lens: cool, focused, and allergic to ecosystem-portal theatrics. The interface is neutral, technical, and product-led. Real project marks, interactive demos, metrics, and source links do the persuading; decoration stays secondary.
 
-Surfaces stay calm across light and dark themes. A mint-sage canvas carries WeUI-adjacent forest green as the single ecosystem accent, with Signal Amber reserved for focus and selection. Motion is restrained—reveal fades and 200ms state transitions only, and reduced-motion users get an immediate static state.
+Surfaces stay calm across light and dark themes. A mint-sage canvas carries WeUI-adjacent forest green as the single ecosystem accent, with Signal Amber reserved for focus and selection. The particle wordmark and project constellation remain the signature first viewport. Supporting motion uses reveal fades and brief state transitions; reduced-motion users get an immediate static state.
 
 **Key Characteristics:**
 
@@ -154,13 +154,15 @@ Surfaces stay calm across light and dark themes. A mint-sage canvas carries WeUI
 
 Confirmed visual rejections: TanStack palm/beach composition, platform-logo collages, mascots, decorative gradients/glows, and the discarded three-column project-card layout.
 
-## Site identity and content boundaries
+## Site identity and composition
 
-Both sites share the project marks, typography, colors, layouts, demos, nine-project catalog, and real project status. `getSiteProfile()` selects the site identity at build time. Header and footer wordmarks use `weapp.dev` on the service site and `weapp.js.org` on the open-source site; the latter uses the short `weapp` wordmark in its homepage hero.
+Each app owns its layout, navigation, page copy, and styles. apps/web is weapp.dev, a tools and engineering-services site; apps/open-source is weapp.js.org, the developer portal. Both initially inherit the existing forest-green palette, typography, accessibility, and light/dark behavior.
 
-weapp.dev preserves the ecosystem story and makes services, sponsorship, and the contributors fund easy to find. weapp.js.org navigation leads to projects, ecosystem introduction, releases, and contribution. Its homepage and shared pages exclude commercial sections, funding graphs, sponsorship prompts, and referrals to the commercial site. Contribution links lead to open-source issues, code, tests, and documentation. The organization entry is `https://github.com/weappjs`; the site-source entry is `https://github.com/weappjs/weapp.dev`.
+The commercial homepage preserves the particle wordmark, project constellation, editorial project rows, interactive demos, toolchain map and actual release data. An independent weapp.js.org introduction follows, then current services, delivery process, planned capabilities, contact and voluntary sponsorship. Project pages retain complete factual references and add explicit service boundaries and localized links to the open-source site.
 
-The six retired funding routes on weapp.js.org use a small standalone redirect page with noindex metadata and a visible same-language project-directory link. They do not retain the funding-page shell or copy. Every link remains usable without JavaScript and below the GitHub Pages `/weapp.dev/` prefix.
+The neutral hero, project-row rendering, demo controls and their CSS live in packages/site-ui. Applications provide their own wordmark, labels, links, data and composition; shared UI does not select a site identity. Applications keep their own base theme tokens and may evolve them independently.
+
+The open-source site retains its project constellation, project proof rows, interactive demos, release feed, and contribution navigation. It contains no service, fundraising, or commercial-contact content. Historical funding URLs remain minimal noindex redirects.
 
 ## Colors
 

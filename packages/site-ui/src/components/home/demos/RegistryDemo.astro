@@ -1,0 +1,70 @@
+---
+import { Check, Layers } from '@lucide/astro'
+import type { Locale } from '@weapp/project-catalog/types'
+import CodePanel from './CodePanel.astro'
+import { demoCopy } from './copy'
+import { registryCode, registryComponents } from './registry'
+
+interface Props { locale: Locale, instance: string }
+const { locale, instance } = Astro.props
+const copy = demoCopy[locale]
+---
+<registry-demo class="home-demo" data-demo="registry" data-locale={locale}>
+  <div class="demo-controls-space">
+    <fieldset class="demo-controls" hidden disabled>
+      <legend class="sr-only">{copy.components}</legend>
+      {registryComponents.map(name => <label class="demo-check"><input type="checkbox" value={name} checked />{name}</label>)}
+    </fieldset>
+  </div>
+  <div class="demo-body">
+    <CodePanel parts={registryCode(registryComponents)} locale={locale} filename="Registry CLI" />
+    <div class="demo-preview">
+      <div class="demo-pane-heading">{copy.registryNote}</div>
+      <div class="demo-registry-stage">
+        <div class="demo-composition" data-composition>
+          <div data-registry-card class="demo-composition-heading"><Layers size={22} aria-hidden="true" /><strong>{copy.registryTitle}</strong></div>
+          <label data-registry-input class="demo-composition-input" for={`${instance}-project-name`}><span>{copy.input}</span><input id={`${instance}-project-name`} type="text" value={copy.inputValue} maxlength="64" autocomplete="off" /></label>
+          <button data-registry-button type="button" class="demo-confirm" aria-pressed="false" disabled><span>{copy.registryAction}</span><Check size={17} aria-hidden="true" /></button>
+        </div>
+      </div>
+      <div class="demo-note"><span data-selected-count>3</span> / 3 · {copy.selected}</div>
+    </div>
+  </div>
+</registry-demo>
+<script>
+  import type { Locale } from '@weapp/project-catalog/types'
+  import type { RegistryComponent } from './registry'
+  import { updateCode } from './code'
+  import { demoCopy } from './copy'
+  import { registryCode } from './registry'
+
+  class RegistryDemo extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.ready) return
+      const copy = demoCopy[this.dataset.locale as Locale]
+      const controls = this.querySelector('fieldset')!
+      const choices = [...controls.querySelectorAll<HTMLInputElement>('input')]
+      const button = this.querySelector<HTMLButtonElement>('[data-registry-button]')!
+      controls.addEventListener('change', () => {
+        const selected = choices.filter(input => input.checked).map(input => input.value as RegistryComponent)
+        choices.forEach((input) => { input.disabled = input.checked && selected.length === 1 })
+        updateCode(this, registryCode(selected))
+        for (const name of ['button', 'input', 'card']) {
+          this.querySelector<HTMLElement>(`[data-registry-${name}]`)!.hidden = !selected.includes(name as RegistryComponent)
+        }
+        this.querySelector('[data-selected-count]')!.textContent = String(selected.length)
+        this.querySelector('[data-composition]')!.classList.toggle('demo-composition-bare', !selected.includes('card'))
+      })
+      button.addEventListener('click', () => {
+        const confirmed = button.getAttribute('aria-pressed') !== 'true'
+        button.setAttribute('aria-pressed', String(confirmed))
+        button.querySelector('span')!.textContent = confirmed ? copy.registryDone : copy.registryAction
+      })
+      controls.disabled = false
+      controls.hidden = false
+      button.disabled = false
+      this.dataset.ready = 'true'
+    }
+  }
+  customElements.define('registry-demo', RegistryDemo)
+</script>

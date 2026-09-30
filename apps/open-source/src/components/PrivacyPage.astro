@@ -1,0 +1,71 @@
+---
+import { Activity, ArrowRight, ChartNoAxesCombined, SlidersHorizontal } from '@lucide/astro'
+import type { Locale } from '../types/project'
+import { getSiteCopy } from '../i18n/ui'
+import { buttonSecondary, pageTitle, section, shell } from '../styles/classes'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const copy = getSiteCopy(locale).privacy
+const flowIcons = [Activity, SlidersHorizontal, ChartNoAxesCombined]
+---
+
+<main id="main-content">
+  <section class:list={[section, shell]} aria-labelledby="privacy-title">
+    <header data-reveal class="mb-16 grid grid-cols-[.7fr_1.3fr] gap-16 max-[820px]:grid-cols-1 max-[820px]:gap-8 max-[820px]:mb-12">
+      <div>
+        <p class="mb-3 font-mono text-xs font-[650] text-brand">{copy.eyebrow}</p>
+        <h1 id="privacy-title" class:list={[pageTitle, "mb-5"]}>{copy.title}</h1>
+        <p class="mb-0 font-mono text-xs text-copy-muted">{copy.updated}</p>
+      </div>
+      <div class="self-end">
+        <p class="mb-6 max-w-[680px] text-xl leading-[1.6] text-copy-muted max-[720px]:text-lg">{copy.description}</p>
+        <button class={buttonSecondary} type="button" data-analytics-preferences-open>
+          <SlidersHorizontal size={18} stroke-width={1.8} aria-hidden="true" />
+          {copy.preferences}
+        </button>
+      </div>
+    </header>
+
+    <section data-reveal class="mb-20 border-y border-line py-7" aria-labelledby="data-flow-title">
+      <h2 id="data-flow-title" class="mb-6 text-xl font-[650]">{copy.dataFlow}</h2>
+      <ol class="m-0 grid list-none grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-5 p-0 max-[720px]:grid-cols-1 max-[720px]:items-start">
+        {copy.dataFlowItems.map((item, index) => {
+          const Icon = flowIcons[index]
+          const itemId = `data-flow-item-${index + 1}`
+          return (
+            <>
+              <li class="flex items-center gap-3" aria-labelledby={itemId}>
+                <span class="grid size-10 shrink-0 place-items-center rounded-[6px] bg-panel-soft text-brand"><Icon size={19} stroke-width={1.7} aria-hidden="true" /></span>
+                <span id={itemId} class="text-sm font-[620]">{item}</span>
+              </li>
+              {index < copy.dataFlowItems.length - 1 && <ArrowRight class="text-copy-muted max-[720px]:ml-3 max-[720px]:rotate-90" size={18} stroke-width={1.7} aria-hidden="true" />}
+            </>
+          )
+        })}
+      </ol>
+    </section>
+
+    <div class="grid grid-cols-[280px_1fr] items-start gap-16 max-[820px]:grid-cols-1 max-[820px]:gap-10">
+      <nav data-reveal class="sticky top-24 border-t border-line max-[820px]:static" aria-label={copy.contents}>
+        <h2 class="py-4 font-mono text-xs font-[650] text-copy-muted">{copy.contents}</h2>
+        {copy.sections.map((sectionCopy, index) => (
+          <a class="block border-t border-line py-3 text-sm font-[590] transition-colors hover:text-brand" href={`#privacy-section-${index + 1}`}>{sectionCopy.title}</a>
+        ))}
+      </nav>
+      <div class="border-t border-line">
+        {copy.sections.map((sectionCopy, index) => {
+          const headingId = `privacy-heading-${index + 1}`
+          const bodyId = `privacy-body-${index + 1}`
+          return <section data-reveal id={`privacy-section-${index + 1}`} class="scroll-mt-24 border-b border-line py-9" aria-labelledby={headingId} aria-describedby={bodyId}>
+            <h2 id={headingId} class="mb-4 text-2xl font-[660]">{sectionCopy.title}</h2>
+            <p id={bodyId} class="mb-0 max-w-[820px] leading-[1.8] text-copy-muted">{sectionCopy.body}</p>
+          </section>
+        })}
+      </div>
+    </div>
+  </section>
+</main>

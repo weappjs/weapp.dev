@@ -1,0 +1,132 @@
+---
+import { ChevronDown, Languages, Menu, Moon, Sun, X } from '@lucide/astro'
+import type { Locale } from '../types/project'
+import type { ProjectEntry } from '../lib/projects'
+import { alternatePath, localizePath, projectPath, getSiteCopy } from '../i18n/ui'
+import { localeChoiceScript } from '../lib/locale-redirect'
+import { getSiteProfile } from '../lib/deployment'
+import { iconControl, shell, wordmark, wordmarkMark } from '../styles/classes'
+
+interface Props {
+  locale: Locale
+  projects: ProjectEntry[]
+  currentPath: string
+}
+
+const { locale, projects, currentPath } = Astro.props
+const copy = getSiteCopy(locale)
+const profile = getSiteProfile()
+const navigation = profile.navigation.filter(item => item.id !== 'projects')
+const home = localizePath(locale)
+const languageUrl = alternatePath(locale, currentPath)
+const navLink = 'inline-flex items-center gap-1.5 whitespace-nowrap py-2 text-sm font-[590] text-copy-muted transition-colors duration-200 hover:text-ink'
+const projectsIndexPath = localizePath(locale, '/projects/')
+const isProjectsIndex = currentPath === projectsIndexPath
+const siteGithubUrl = profile.organizationUrl
+---
+
+<header data-site-header class="sticky top-0 z-30 h-16 border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] bg-[var(--header)] backdrop-blur-xl max-[720px]:h-[58px]">
+  <div class:list={[shell, 'flex h-full items-center']}>
+    <a class:list={[wordmark, 'max-[360px]:gap-2 max-[360px]:text-[0.8125rem]']} href={home} aria-label={profile.name} aria-current={currentPath === home ? 'page' : undefined}>
+      <img class:list={[wordmarkMark, 'max-[360px]:size-7']} src="/logo.svg" width="64" height="64" alt="" decoding="async" fetchpriority="high" />
+      <span>{profile.name}</span>
+    </a>
+
+    <nav class="ml-auto flex items-center gap-6 max-[960px]:hidden" aria-label={locale === 'zh-CN' ? '主导航' : 'Primary navigation'}>
+      <details data-project-menu class="group relative">
+        <summary class:list={[navLink, 'cursor-pointer list-none [&::-webkit-details-marker]:hidden']} aria-controls="project-navigation" aria-expanded="false">
+          {copy.nav.projects}
+          <ChevronDown class="transition-transform duration-200 group-open:rotate-180" size={15} stroke-width={1.8} aria-hidden="true" />
+        </summary>
+        <nav id="project-navigation" data-header-flyout class="absolute top-[43px] -left-4 z-40 w-[350px] rounded-panel border border-line bg-panel p-2 text-ink shadow-panel" aria-label={locale === 'zh-CN' ? '项目导航' : 'Project navigation'}>
+          <a class="mb-1 block rounded-[6px] border-b border-line p-3 text-sm font-[650] text-brand hover:bg-panel-soft" href={projectsIndexPath} aria-current={isProjectsIndex ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="projects_index">{locale === 'zh-CN' ? '查看全部项目' : 'View all projects'}</a>
+          {projects.map(project => (
+            <a class="grid grid-cols-[38px_1fr] items-center gap-3 rounded-[6px] p-3 transition-colors hover:bg-panel-soft" href={projectPath(locale, project.id)} aria-current={currentPath === projectPath(locale, project.id) ? 'page' : undefined} data-analytics-event="select_project" data-analytics-project={project.id}>
+              <span class="grid size-[38px] place-items-center rounded-[6px] bg-panel-soft">
+                <img class="size-7 object-contain" src={project.data.logo} width="28" height="28" alt="" loading="lazy" decoding="async" />
+              </span>
+              <span class="min-w-0">
+                <strong class="block font-display text-sm font-[650] text-ink">{project.data.locales[locale].name}</strong>
+                <small class="mt-0.5 block overflow-hidden text-ellipsis whitespace-nowrap text-xs font-[450] text-copy-muted">{project.data.locales[locale].tagline}</small>
+              </span>
+            </a>
+          ))}
+        </nav>
+      </details>
+      {navigation.map(item => <a class={navLink} href={localizePath(locale, item.path)} aria-current={currentPath === localizePath(locale, item.path) ? 'page' : undefined} data-analytics-event={item.path.includes('#') ? 'navigate_section' : 'navigate_page'} data-analytics-section={item.id}>{item.label[locale]}</a>)}
+    </nav>
+
+    <div class="ml-5 flex items-center gap-1 max-[960px]:ml-auto max-[360px]:gap-0">
+      <a class:list={[iconControl, 'w-auto grid-cols-[auto_auto] gap-1.5 px-2.5 font-mono text-xs font-bold max-[720px]:w-10 max-[720px]:px-0']} href={languageUrl} aria-label={copy.alternateLanguage} title={copy.alternateLanguage} data-locale-choice={locale === 'zh-CN' ? 'en' : 'zh-CN'} data-analytics-event="switch_language" data-analytics-from={locale} data-analytics-to={locale === 'zh-CN' ? 'en' : 'zh-CN'}>
+        <Languages size={18} stroke-width={1.8} aria-hidden="true" />
+        <span class="max-[720px]:hidden">{locale === 'zh-CN' ? 'EN' : '中'}</span>
+      </a>
+      <a class={iconControl} href={siteGithubUrl} target="_blank" rel="noopener noreferrer" aria-label={copy.nav.github} title={copy.nav.github} data-analytics-event="click_outbound" data-analytics-target="site_source">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+        </svg>
+      </a>
+      <button class={iconControl} type="button" data-theme-toggle data-analytics-event="change_theme" aria-label={copy.nav.theme} title={copy.nav.theme}>
+        <Sun class="dark:hidden" size={18} stroke-width={1.8} aria-hidden="true" />
+        <Moon class="hidden dark:block" size={18} stroke-width={1.8} aria-hidden="true" />
+      </button>
+      <details data-mobile-menu class="group relative hidden max-[960px]:block">
+      <summary class:list={[iconControl, 'list-none [&::-webkit-details-marker]:hidden']} aria-label={copy.nav.openMenu} data-open-label={copy.nav.openMenu} data-close-label={copy.nav.closeMenu} aria-controls="mobile-navigation" aria-expanded="false">
+          <Menu class="group-open:hidden" size={20} stroke-width={1.8} aria-hidden="true" />
+          <X class="hidden group-open:block" size={20} stroke-width={1.8} aria-hidden="true" />
+        </summary>
+        <nav id="mobile-navigation" data-header-flyout class="absolute top-[47px] right-0 z-40 grid w-[min(330px,calc(100vw-32px))] gap-1 rounded-panel border border-line bg-panel p-2 text-ink shadow-panel" aria-label="Mobile navigation">
+          <a class="rounded-[6px] p-3 text-sm font-semibold text-brand hover:bg-panel-soft" href={projectsIndexPath} aria-current={isProjectsIndex ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="projects_index">{locale === 'zh-CN' ? '查看全部项目' : 'View all projects'}</a>
+          {projects.map(project => (
+            <a class="grid grid-cols-[30px_1fr] items-center gap-3 rounded-[6px] p-3 font-display text-sm font-[650] hover:bg-panel-soft" href={projectPath(locale, project.id)} aria-current={currentPath === projectPath(locale, project.id) ? 'page' : undefined} data-analytics-event="select_project" data-analytics-project={project.id}>
+              <img class="size-7 object-contain" src={project.data.logo} width="28" height="28" alt="" loading="lazy" decoding="async" />
+              {project.data.locales[locale].name}
+            </a>
+          ))}
+          <span class="my-1 h-px bg-line" aria-hidden="true"></span>
+          {navigation.map(item => <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={localizePath(locale, item.path)} aria-current={currentPath === localizePath(locale, item.path) ? 'page' : undefined} data-analytics-event={item.path.includes('#') ? 'navigate_section' : 'navigate_page'} data-analytics-section={item.id}>{item.label[locale]}</a>)}
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+
+<script is:inline>
+  document.querySelectorAll('[data-project-menu]').forEach((menu) => {
+    const summary = menu.querySelector('summary')
+    const syncExpanded = () => summary?.setAttribute('aria-expanded', menu.hasAttribute('open') ? 'true' : 'false')
+    menu.addEventListener('toggle', syncExpanded)
+    syncExpanded()
+    document.addEventListener('click', (event) => {
+      if (menu.hasAttribute('open') && !menu.contains(event.target)) menu.removeAttribute('open')
+    })
+    menu.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && menu.hasAttribute('open')) {
+        menu.removeAttribute('open')
+        summary?.focus()
+      }
+    })
+  })
+  document.querySelectorAll('[data-mobile-menu]').forEach((menu) => {
+    const summary = menu.querySelector('summary')
+    const syncExpanded = () => {
+      const expanded = menu.hasAttribute('open')
+      summary?.setAttribute('aria-expanded', expanded ? 'true' : 'false')
+    }
+    menu.addEventListener('toggle', syncExpanded)
+    syncExpanded()
+    document.addEventListener('click', (event) => {
+      if (menu.hasAttribute('open') && !menu.contains(event.target)) menu.removeAttribute('open')
+    })
+    menu.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && menu.hasAttribute('open')) {
+        menu.removeAttribute('open')
+        summary?.focus()
+      }
+    })
+  })
+  document.querySelectorAll('[data-mobile-menu] nav a').forEach((link) => {
+    link.addEventListener('click', () => link.closest('details')?.removeAttribute('open'))
+  })
+</script>
+<script is:inline set:html={localeChoiceScript()}></script>

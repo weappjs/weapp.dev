@@ -1,0 +1,32 @@
+{
+  "name": "@weapp/site-ui",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./HomeHero.astro": "./src/components/home/HomeHero.astro",
+    "./HomeProjectRow.astro": "./src/components/home/HomeProjectRow.astro",
+    "./home-projects": "./src/lib/home-projects.ts",
+    "./classes": "./src/styles/classes.ts",
+    "./home.css": "./src/styles/home.css",
+    "./hero.css": "./src/styles/hero.css",
+    "./copy-code": "./src/scripts/copy-code.ts",
+    "./demo-copy": "./src/components/home/demos/copy.ts"
+  },
+  "scripts": {
+    "check": "astro check && tsc --noEmit",
+    "lint": "eslint .",
+    "lint:styles": "stylelint 'src/**/*.css'",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@lucide/astro": "1.49.0",
+    "@weapp/project-catalog": "workspace:*",
+    "astro": "7.3.5"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "typescript": "6.0.3",
+    "vitest": "5.0.2"
+  }
+}

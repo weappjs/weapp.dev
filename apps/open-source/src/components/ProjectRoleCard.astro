@@ -1,0 +1,33 @@
+---
+import type { Locale } from '../types/project'
+import type { ProjectEntry } from '../lib/projects'
+import { projectPath } from '../i18n/ui'
+import { buttonPrimary } from '../styles/classes'
+import ProjectStatusBadge from './ProjectStatusBadge.astro'
+
+interface Props { locale: Locale; project: ProjectEntry; role: string; index: number }
+const { locale, project, role, index } = Astro.props
+const content = project.data.locales[locale]
+const descriptionId = `project-card-description-${project.id}`
+const audienceId = `project-card-audience-${project.id}`
+const runtimeId = `project-card-runtime-${project.id}`
+const statusId = `project-card-status-${project.id}`
+const quickStartId = `project-card-quick-start-${project.id}`
+const describedBy = [descriptionId, audienceId, statusId, project.data.runtime?.length ? runtimeId : null, quickStartId].filter(Boolean).join(' ')
+const roleLabels = locale === 'zh-CN' ? { engineering: '工程与构建', styling: '样式系统', components: '组件与交付', data: '本地数据', migration: 'Taro / React 迁移', framework: '小程序框架', ecosystem: 'uni-app 生态' } : { engineering: 'Engineering', styling: 'Styling', components: 'Components', data: 'Local data', migration: 'Taro / React migration', framework: 'Framework', ecosystem: 'uni-app' }
+const copy = locale === 'zh-CN' ? { docs: '阅读文档', details: '项目详情', roadmap: '项路线', quickStart: '第一步' } : { docs: 'Read docs', details: 'Project details', roadmap: 'roadmap items', quickStart: 'First step' }
+---
+<article data-project-card data-project-id={project.id} aria-labelledby={`project-card-${project.id}`} aria-describedby={describedBy} data-role={role} data-maturity={project.data.status} data-platforms={project.data.platforms?.join('|') ?? ''} data-roadmap-count={project.data.roadmap?.length ?? 0} data-reveal style={`--reveal-delay:${index * 50}ms`}>
+  <div class="projects-index-number">{String(index + 1).padStart(2, '0')}</div>
+  <img src={project.data.logo} width="52" height="52" alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" fetchpriority={index === 0 ? 'high' : undefined} />
+  <div class="projects-index-copy">
+    <div class="flex flex-wrap items-center gap-2"><span class="font-mono text-xs font-[650] text-brand">{roleLabels[role as keyof typeof roleLabels] || role}</span><ProjectStatusBadge id={statusId} locale={locale} status={project.data.status} /></div>
+    <h2 id={`project-card-${project.id}`}>{content.name}</h2>
+    <p id={`project-card-description-${project.id}`}>{content.description}</p>
+    <p id={audienceId} class="projects-index-audience"><span>{locale === 'zh-CN' ? '适合' : 'For'}</span>{content.audience}</p>
+    {project.data.runtime?.length ? <p id={runtimeId} class="projects-index-runtime"><span>{locale === 'zh-CN' ? '运行时' : 'Runtime'}</span>{project.data.runtime.join(' · ')}</p> : null}
+    <div class="flex flex-wrap gap-2" role="list" aria-label={locale === 'zh-CN' ? '平台与路线信息' : 'Platform and roadmap metadata'}>{project.data.platforms?.map(platform => <span role="listitem" class="projects-platform">{platform}</span>)}{project.data.status === 'planned' && !project.data.platforms?.length ? <span role="listitem" class="projects-platform">{locale === 'zh-CN' ? '平台待确认' : 'Platforms pending'}</span> : null}{project.data.roadmap?.length ? <span role="listitem" class="projects-platform">{project.data.roadmap.length} {copy.roadmap}</span> : null}</div>
+    <div id={quickStartId} class="projects-index-quickstart" aria-label={project.data.installCommand ? `${copy.quickStart}: ${project.data.installCommand}` : (locale === 'zh-CN' ? '第一步：资料待确认' : 'First step: details pending')}><span>{copy.quickStart}</span>{project.data.installCommand ? <code>{project.data.installCommand}</code> : <em>{locale === 'zh-CN' ? '资料待确认' : 'Details pending'}</em>}</div>
+  </div>
+  <div class="projects-index-actions"><a class={buttonPrimary} href={project.data.docsUrl} target="_blank" rel="noopener noreferrer" aria-label={`${copy.docs}: ${content.name}`} data-analytics-event="click_outbound" data-analytics-target="docs" data-analytics-project={project.id}>{copy.docs}</a><a class="inline-flex min-h-11 items-center justify-center px-2 text-sm font-[650] text-copy-muted hover:text-ink" href={projectPath(locale, project.id)} aria-label={`${copy.details}: ${content.name}`} data-analytics-event="select_project" data-analytics-project={project.id}>{copy.details}</a></div>
+</article>

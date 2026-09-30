@@ -3,7 +3,7 @@ import { isOpenSourceSite } from './site-target'
 import { expect, test } from './test'
 import { applyTheme } from './theme'
 
-const routes = ['', 'pricing/', 'contributors/', 'sponsors/']
+const routes = ['pricing/', 'contributors/', 'sponsors/']
 
 for (const prefix of ['/', '/en/']) {
   test(`donation guidance is readable without JavaScript in ${prefix}`, async ({ browser }) => {
@@ -55,14 +55,11 @@ for (const prefix of ['/', '/en/']) {
 
   test(`release links remain available in ${prefix}`, async ({ page }) => {
     await page.goto(prefix)
-    const links = page.locator('#releases a[href*="npmjs.com/package/"]')
-    expect(await links.count()).toBeGreaterThan(0)
-    for (const link of await links.all()) {
-      await expect(link).toBeVisible()
-      const box = await link.boundingBox()
-      expect(box!.width).toBeGreaterThanOrEqual(44)
-      expect(box!.height).toBeGreaterThanOrEqual(44)
-    }
+    const link = page.locator('footer a[href="/releases.xml"]')
+    await expect(link).toBeVisible()
+    const response = await page.request.get('/releases.xml')
+    expect(response.ok()).toBe(true)
+    expect(await response.text()).toContain('https://weapp.dev/')
   })
 }
 
@@ -96,7 +93,7 @@ for (const width of [320, 390, 768, 1024, 1440]) {
             }
           }
           if ([390, 1440].includes(width)) {
-            const target = route === '' ? page.locator(isOpenSourceSite ? '#about' : '#commercial') : route === 'pricing/' ? page.locator('#sponsor') : page.locator('main')
+            const target = route === '' ? page.locator('#open-source-support') : route === 'pricing/' ? page.locator('#sponsor') : page.locator('main')
             await target.screenshot({ path: testInfo.outputPath(`${route.replace('/', '') || 'home'}.png`), style: '[data-site-header], body > a[href="#main-content"] { visibility: hidden !important; }' })
           }
         }

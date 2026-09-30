@@ -1,14 +1,14 @@
 import { access, readdir, readFile } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
 import process from 'node:process'
+import { projectsDirectory } from '@weapp/project-catalog/paths'
 import { parse } from 'node-html-parser'
-import { getSiteProfile, isRetiredOpenSourcePath } from '../src/lib/deployment'
+import { getSiteProfile } from '../src/lib/deployment'
 
 const root = resolve(import.meta.dirname, '..')
 const site = getSiteProfile()
 const dist = resolve(root, site.outputDir)
-const githubPages = site.target === 'github-pages'
-const projectIds = (await readdir(resolve(root, 'src/content/projects'))).filter(file => file.endsWith('.json')).map(file => file.slice(0, -5))
+const projectIds = (await readdir(projectsDirectory)).filter(file => file.endsWith('.json')).map(file => file.slice(0, -5))
 const expectedFiles = [
   ...['', 'en/'].flatMap(prefix => [
     `${prefix}index.html`,
@@ -23,11 +23,9 @@ const expectedFiles = [
   'llms-full.txt',
   'og.png',
   'og.svg',
-  ...(githubPages ? ['CNAME', '.nojekyll', '404/index.html'] : []),
 ]
 const retiredDocsHosts = ['tw.icebreaker.top', 'vite.icebreaker.top']
 const errors: string[] = []
-const openSourceForbiddenCopy = /\bsponsors?(?:ship)?\b|\b(?:donations?|donate|funds?)\b|paid services?|engineering services?|migration and training|cloud[ -]build|business partnerships?|赞助|基金|分账|捐赠|打赏|付费服务|迁移与培训|服务报价|云构建|企业合作|[¥￥$€]\s*\d/i
 
 async function collectHtml(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true })
@@ -43,7 +41,7 @@ function outputPathForUrl(pathname: string): string {
     return resolve(dist, 'index.html')
   }
   if (pathname === '/404' || pathname === '/404/') {
-    return resolve(dist, githubPages ? '404/index.html' : '404.html')
+    return resolve(dist, '404.html')
   }
   return pathname.endsWith('/') ? resolve(dist, pathname.slice(1), 'index.html') : resolve(dist, pathname.slice(1))
 }
@@ -57,18 +55,6 @@ function isOwnUrl(value: string): boolean {
   }
 }
 
-function hasForbiddenSchema(value: unknown): boolean {
-  if (Array.isArray(value)) {
-    return value.some(hasForbiddenSchema)
-  }
-  if (!value || typeof value !== 'object') {
-    return false
-  }
-  const node = value as Record<string, unknown>
-  const types = Array.isArray(node['@type']) ? node['@type'] : [node['@type']]
-  return types.some(type => type === 'Service' || type === 'DonateAction') || Object.values(node).some(hasForbiddenSchema)
-}
-
 for (const file of expectedFiles) {
   try {
     await access(resolve(dist, file))
@@ -78,26 +64,13 @@ for (const file of expectedFiles) {
   }
 }
 
-if (githubPages) {
+for (const name of ['CNAME', '.nojekyll']) {
   try {
-    const cname = (await readFile(resolve(dist, 'CNAME'), 'utf8')).trim()
-    if (cname !== new URL(site.origin).hostname) {
-      errors.push(`CNAME: expected ${new URL(site.origin).hostname}, received ${cname || '(empty)'}`)
-    }
+    await access(resolve(dist, name))
+    errors.push(`${name}: Pages deployment file must not appear in the Cloudflare output`)
   }
   catch {
-    errors.push('CNAME: unable to read Pages hostname')
-  }
-}
-else {
-  for (const name of ['CNAME', '.nojekyll']) {
-    try {
-      await access(resolve(dist, name))
-      errors.push(`${name}: Pages deployment file must not appear in the Cloudflare output`)
-    }
-    catch {
-      // The complete site does not publish GitHub Pages control files.
-    }
+    // The complete site does not publish GitHub Pages control files.
   }
 }
 
@@ -111,10 +84,8 @@ for (const file of htmlFiles) {
   const document = parse(html)
   const pagePath = `/${label.replace(/index\.html$/, '')}`
   const canonicalPath = label === '404.html' ? '/404/' : pagePath
-  const retiredRedirect = githubPages && isRetiredOpenSourcePath(pagePath)
-  const destination = pagePath.startsWith('/en/') ? '/en/projects/' : '/projects/'
   const canonical = document.querySelector('link[rel="canonical"]')?.getAttribute('href')
-  const expectedCanonical = new URL(retiredRedirect ? destination : canonicalPath, site.origin).href
+  const expectedCanonical = new URL(canonicalPath, site.origin).href
   const alternates = document.querySelectorAll('link[rel="alternate"][hreflang]')
   const title = document.querySelectorAll('title')
   const descriptions = document.querySelectorAll('meta[name="description"]')
@@ -138,42 +109,25 @@ for (const file of htmlFiles) {
   if (!robots) {
     errors.push(`${label}: missing robots directive`)
   }
-  if ((retiredRedirect || label === '404.html' || label === '404/index.html' || label === 'en/404/index.html') && !robots?.includes('noindex')) {
-    errors.push(`${label}: compatibility redirects and 404 pages must be noindex`)
+  if ((label === '404.html' || label === '404/index.html' || label === 'en/404/index.html') && !robots?.includes('noindex')) {
+    errors.push(`${label}: 404 pages must be noindex`)
   }
 
-  if (retiredRedirect) {
-    const refresh = document.querySelector('meta[http-equiv="refresh"]')?.getAttribute('content')
-    const refreshHref = refresh?.match(/^0\s*;\s*url=(.+)$/i)?.[1]
-    if (!refreshHref || /^(?:https?:)?\//.test(refreshHref) || new URL(refreshHref, `${site.origin}${pagePath}`).pathname !== destination) {
-      errors.push(`${label}: expected immediate relative redirect to ${destination}`)
-    }
-    const link = document.querySelector('a[href]')
-    const href = link?.getAttribute('href')
-    if (!href || !link?.text.trim() || /^(?:https?:)?\//.test(href) || new URL(href, `${site.origin}${pagePath}`).pathname !== destination) {
-      errors.push(`${label}: missing visible relative project-index fallback`)
+  if (alternates.length < 3 || alternates.some(link => !isOwnUrl(link.getAttribute('href') ?? ''))) {
+    errors.push(`${label}: missing language alternates on this site's origin`)
+  }
+  for (const property of ['og:url', 'og:image']) {
+    const value = document.querySelector(`meta[property="${property}"]`)?.getAttribute('content')
+    if (!value || !isOwnUrl(value)) {
+      errors.push(`${label}: ${property} must use this site's origin`)
     }
   }
-  else {
-    if (alternates.length < 3 || alternates.some(link => !isOwnUrl(link.getAttribute('href') ?? ''))) {
-      errors.push(`${label}: missing language alternates on this site's origin`)
-    }
-    for (const property of ['og:url', 'og:image']) {
-      const value = document.querySelector(`meta[property="${property}"]`)?.getAttribute('content')
-      if (!value || !isOwnUrl(value)) {
-        errors.push(`${label}: ${property} must use this site's origin`)
-      }
-    }
-    if (schemas.length === 0) {
-      errors.push(`${label}: missing JSON-LD schema`)
-    }
+  if (schemas.length === 0) {
+    errors.push(`${label}: missing JSON-LD schema`)
   }
   for (const schema of schemas) {
     try {
-      const data: unknown = JSON.parse(schema.text)
-      if (githubPages && hasForbiddenSchema(data)) {
-        errors.push(`${label}: open-source output must not contain Service or DonateAction schema`)
-      }
+      JSON.parse(schema.text)
     }
     catch {
       errors.push(`${label}: invalid JSON-LD schema`)
@@ -183,21 +137,13 @@ for (const file of htmlFiles) {
   if (document.text.includes('—') || document.text.includes('–')) {
     errors.push(`${label}: contains a forbidden dash character`)
   }
-  if ((githubPages || label === 'index.html' || label === 'en/index.html') && /SponsorGraphs|echarts/.test(html)) {
+  if ((label === 'index.html' || label === 'en/index.html') && /SponsorGraphs|echarts/.test(html)) {
     errors.push(`${label}: must not load sponsor graph runtime`)
   }
-  if (!githubPages && /^(?:en\/)?sponsors\/index\.html$/.test(label)) {
+  if (/^(?:en\/)?sponsors\/index\.html$/.test(label)) {
     const runtimeScripts = html.match(/<script[^>]+src="[^"]*SponsorGraphs[^" ]*"/g) ?? []
     if (runtimeScripts.length !== 1) {
       errors.push(`${label}: expected exactly one sponsor graph runtime script`)
-    }
-  }
-  if (githubPages) {
-    const published = parse(html)
-    published.querySelectorAll('style, script:not([type="application/ld+json"])').forEach(node => node.remove())
-    const publishedContent = `${published.text} ${schemas.map(schema => schema.text).join(' ')}`
-    if (openSourceForbiddenCopy.test(publishedContent)) {
-      errors.push(`${label}: open-source output contains financial or paid-service content`)
     }
   }
 
@@ -207,9 +153,7 @@ for (const file of htmlFiles) {
       continue
     }
     const targetUrl = new URL(href, `${site.origin}${pagePath}`)
-    if (githubPages && ['https://weapp.dev', 'https://weapp.js.org'].includes(targetUrl.origin) && isRetiredOpenSourcePath(targetUrl.pathname)) {
-      errors.push(`${label}: normal navigation links to retired financial page ${href}`)
-    }
+
     if (targetUrl.origin !== site.origin) {
       continue
     }
@@ -246,7 +190,7 @@ for (const file of [...sitemapFiles, 'robots.txt', 'llms.txt', 'llms-full.txt', 
       }
       for (const value of urls) {
         const url = new URL(value)
-        if (url.origin !== site.origin || /\/404(?:\.html|\/|$)/.test(url.pathname) || (githubPages && isRetiredOpenSourcePath(url.pathname))) {
+        if (url.origin !== site.origin || /\/404(?:\.html|\/|$)/.test(url.pathname)) {
           errors.push(`${file}: unexpected sitemap URL ${value}`)
         }
         try {
@@ -264,12 +208,10 @@ for (const file of [...sitemapFiles, 'robots.txt', 'llms.txt', 'llms-full.txt', 
       errors.push(`${file}: release channel must use this site's origin`)
     }
     if (file.startsWith('llms')) {
-      const otherOrigin = githubPages ? 'https://weapp.dev/' : 'https://weapp.js.org/'
-      if (contents.includes(otherOrigin)) {
-        errors.push(`${file}: reference pages must use this site's origin`)
-      }
-      if (githubPages && (openSourceForbiddenCopy.test(contents) || /\/(?:en\/)?(?:pricing|sponsors|contributors)\//.test(contents))) {
-        errors.push(`${file}: open-source reference contains financial or paid-service content`)
+      const canonicalSection = contents.split('## Canonical pages\n')[1]?.split('\n## ')[0] ?? ''
+      const canonicalLinks = [...canonicalSection.matchAll(/\]\((https?:\/\/[^)]+)\)/g)]
+      if (!canonicalLinks.length || canonicalLinks.some(match => !isOwnUrl(match[1]))) {
+        errors.push(`${file}: canonical page references must use this site’s origin`)
       }
     }
   }
@@ -278,26 +220,24 @@ for (const file of [...sitemapFiles, 'robots.txt', 'llms.txt', 'llms-full.txt', 
   }
 }
 
-if (!githubPages) {
-  for (const prefix of ['', 'en/']) {
-    const home = parse(await readFile(resolve(dist, `${prefix}index.html`), 'utf8'))
-    const pricing = parse(await readFile(resolve(dist, `${prefix}pricing/index.html`), 'utf8'))
-    const sponsorTiers = pricing.querySelectorAll('.pricing-sponsor-tier h3').map(node => node.text)
-    const expectedTiers = prefix ? ['Supporter', 'Bronze sponsor', 'Silver sponsor'] : ['普通支持', '铜牌赞助', '银牌赞助']
-    if (JSON.stringify(sponsorTiers.slice(0, 3)) !== JSON.stringify(expectedTiers) || sponsorTiers.length !== 4) {
-      errors.push(`${prefix}pricing/: incorrect sponsorship tiers for this target`)
+for (const prefix of ['', 'en/']) {
+  const home = parse(await readFile(resolve(dist, `${prefix}index.html`), 'utf8'))
+  const pricing = parse(await readFile(resolve(dist, `${prefix}pricing/index.html`), 'utf8'))
+  const sponsorTiers = pricing.querySelectorAll('.pricing-sponsor-tier h3').map(node => node.text)
+  const expectedTiers = prefix ? ['Supporter', 'Bronze sponsor', 'Silver sponsor'] : ['普通支持', '铜牌赞助', '银牌赞助']
+  if (JSON.stringify(sponsorTiers.slice(0, 3)) !== JSON.stringify(expectedTiers) || sponsorTiers.length !== 4) {
+    errors.push(`${prefix}pricing/: incorrect sponsorship tiers for this target`)
+  }
+  if (pricing.querySelector('#plans')) {
+    errors.push(`${prefix}pricing/: product shelf must not be published`)
+  }
+  for (const id of ['roadmap', 'cloud-build', 'services', 'support', 'boundary', 'faq']) {
+    if (!pricing.querySelector(`#${id}`)) {
+      errors.push(`${prefix}pricing/: missing #${id}`)
     }
-    if (pricing.querySelector('#plans')) {
-      errors.push(`${prefix}pricing/: product shelf must not be published`)
-    }
-    for (const id of ['roadmap', 'cloud-build', 'services', 'support', 'boundary', 'faq']) {
-      if (!pricing.querySelector(`#${id}`)) {
-        errors.push(`${prefix}pricing/: missing #${id}`)
-      }
-    }
-    if (!home.querySelector('a[href$="#services"]')) {
-      errors.push(`${prefix}index.html: missing services entry`)
-    }
+  }
+  if (!home.querySelector('a[href$="#services"]')) {
+    errors.push(`${prefix}index.html: missing services entry`)
   }
 }
 

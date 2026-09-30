@@ -1,0 +1,16 @@
+---
+import type { Locale } from '@weapp/project-catalog/types'
+import type { HomeDemoKind } from '../../../lib/home-projects'
+import StyleDemo from './StyleDemo.astro'
+import BuildDemo from './BuildDemo.astro'
+import RegistryDemo from './RegistryDemo.astro'
+import SQLiteDemo from './SQLiteDemo.astro'
+import MigrationDemo from './MigrationDemo.astro'
+import './demo.css'
+
+interface Props { kind: HomeDemoKind, locale: Locale, instance: string }
+const { kind, locale, instance } = Astro.props
+const components = { style: StyleDemo, build: BuildDemo, registry: RegistryDemo, sqlite: SQLiteDemo, migration: MigrationDemo }
+const Demo = components[kind]
+---
+<Demo locale={locale} instance={instance} />

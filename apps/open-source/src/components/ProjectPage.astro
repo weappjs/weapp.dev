@@ -1,0 +1,225 @@
+---
+import { ArrowLeft, ArrowUpRight, BookOpen, ChevronDown, GitFork, Package, Star } from '@lucide/astro'
+import type { Locale, ProjectMetrics } from '../types/project'
+import type { ProjectEntry } from '../lib/projects'
+import { formatCompactNumber, formatReleaseDate, showsPublicMetrics } from '../lib/metrics'
+import { localizePath, projectPath, getSiteCopy } from '../i18n/ui'
+import { buttonPrimary, buttonSecondary, featuredTitle, iconControl, platformPill, section, sectionTitle, shell } from '../styles/classes'
+import ProjectProofPanel from './ProjectProofPanel.astro'
+import RoadmapStrip from './RoadmapStrip.astro'
+import PlatformMatrix from './PlatformMatrix.astro'
+import ProjectStatusBadge from './ProjectStatusBadge.astro'
+import QuickStartPanel from './QuickStartPanel.astro'
+
+interface Props {
+  locale: Locale
+  project: ProjectEntry
+  projects: ProjectEntry[]
+  metrics: ProjectMetrics
+}
+
+const { locale, project, projects, metrics } = Astro.props
+const copy = getSiteCopy(locale)
+const content = project.data.locales[locale]
+const roleLabel = locale === 'zh-CN' ? ({ Engineering: '工程与构建', Styling: '样式系统', Components: '组件与交付', 'Local data': '本地数据', Migration: 'Taro / React 迁移', Framework: '小程序框架', Ecosystem: '生态伙伴' } as Record<string, string>) : ({ Engineering: 'Engineering', Styling: 'Styling', Components: 'Components', 'Local data': 'Local data', Migration: 'Taro / React migration', Framework: 'Framework', Ecosystem: 'Ecosystem' } as Record<string, string>)
+const numberLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
+const hasVisuals = Boolean(project.data.visuals)
+const primaryVisual = project.data.visuals?.primary
+const primaryVisualCopy = primaryVisual?.locales[locale]
+const secondaryVisual = project.data.visuals?.secondary ?? primaryVisual
+const secondaryVisualCopy = secondaryVisual?.locales[locale]
+const publicMetrics = showsPublicMetrics(project.data.status)
+const quickStartNote = typeof project.data.quickStart?.note === 'string' ? project.data.quickStart.note : project.data.quickStart?.note?.[locale]
+const installCommand = project.data.installCommand ?? project.data.quickStart?.command
+---
+
+<main id="main-content" style={`--project-accent: ${project.data.accent}`}>
+  <section aria-labelledby="project-title" class:list={[shell, 'project-detail-hero grid items-center gap-12 py-10 max-[820px]:gap-8 max-[720px]:py-8', hasVisuals ? 'min-h-[min(690px,calc(100dvh-100px))] grid-cols-[.92fr_1.08fr] max-[820px]:min-h-0 max-[820px]:grid-cols-1' : 'grid-cols-1']}>
+    <div data-reveal>
+      <a class="mb-10 inline-flex items-center gap-2 text-sm font-[620] text-copy-muted transition-colors hover:text-ink max-[720px]:mb-8" href={localizePath(locale, '/projects/')} data-analytics-event="navigate_section" data-analytics-section="projects">
+        <ArrowLeft size={17} stroke-width={1.9} aria-hidden="true" />
+        {copy.project.back}
+      </a>
+      <div class="mb-5 flex items-center gap-3">
+        <img class="size-12 object-contain" src={project.data.logo} width="48" height="48" alt="" decoding="async" />
+        <ProjectStatusBadge locale={locale} status={project.data.status} />
+      </div>
+      <div class="mb-5 flex flex-wrap gap-2">
+        {project.data.role ? <span class="inline-flex items-center border border-line bg-panel-soft px-2.5 py-1.5 font-mono text-xs font-[650] text-brand">{roleLabel[project.data.role] || project.data.role}</span> : null}
+        <PlatformMatrix locale={locale} platforms={project.data.platforms} runtime={project.data.runtime} />
+        {project.data.dataCompleteness === 'planned' ? <span class="inline-flex items-center border border-line px-2.5 py-1.5 font-mono text-xs text-copy-muted">{locale === 'zh-CN' ? '资料整理中' : 'Data in progress'}</span> : null}
+      </div>
+      <h1 id="project-title" class="mb-5 font-display text-[clamp(2.125rem,5.4vw,4.5rem)] font-[700] [overflow-wrap:anywhere]">{content.name}</h1>
+      <p class="mb-3 text-2xl font-[620] leading-[1.35] max-[720px]:text-xl">{content.tagline}</p>
+      <p class="mb-6 max-w-[630px] text-lg leading-[1.7] text-copy-muted">{content.description}</p>
+      <p class="mb-6 text-sm text-copy-muted">{locale === 'zh-CN' ? '维护者：' : 'Maintained by: '}{project.data.maintainer}</p>
+      {project.id === 'vite-plugin-taro' ? (
+        <p class="mb-6 max-w-[630px] rounded-[6px] border border-line bg-panel-soft px-4 py-3 font-mono text-xs leading-[1.6] text-copy-muted" data-project-adjacent>
+          {copy.project.adjacentNote}
+        </p>
+      ) : null}
+      <div class="flex flex-wrap items-center gap-3">
+        <a class={buttonPrimary} href={project.data.docsUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="docs" data-analytics-project={project.id}>
+          <BookOpen size={18} stroke-width={1.9} aria-hidden="true" />
+          {copy.project.docs}
+        </a>
+        <a class={buttonSecondary} href={`https://github.com/${project.data.github}`} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="source" data-analytics-project={project.id}>
+          <GitFork size={18} stroke-width={1.9} aria-hidden="true" />
+          {copy.project.source}
+        </a>
+        {project.data.status !== 'planned' ? <a class="inline-flex min-h-11 items-center gap-2 px-2 text-sm font-[650] text-copy-muted transition-colors hover:text-ink" href={project.data.npmUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="package" data-analytics-project={project.id}>
+          <Package size={17} stroke-width={1.8} aria-hidden="true" />
+          {copy.project.npm}
+        </a> : null}
+      </div>
+    </div>
+
+    {primaryVisual && primaryVisualCopy ? <figure data-reveal style="--reveal-delay: 100ms" class="m-0 overflow-hidden rounded-panel border border-line bg-panel-soft">
+      <div class="aspect-[16/11] overflow-hidden">
+        <picture>
+          <source srcset={primaryVisual.avif} type="image/avif" />
+          <img class="size-full object-cover object-top" src={primaryVisual.src} width={primaryVisual.width} height={primaryVisual.height} alt={primaryVisualCopy.alt} fetchpriority="high" decoding="async" />
+        </picture>
+      </div>
+      <figcaption class="border-t border-line px-4 py-3 text-sm text-copy-muted">{primaryVisualCopy.caption}</figcaption>
+    </figure> : null}
+  </section>
+
+  <QuickStartPanel locale={locale} status={project.data.status} audience={content.audience} note={quickStartNote} command={installCommand} projectId={project.id} />
+
+  {primaryVisual && primaryVisualCopy && secondaryVisual && secondaryVisualCopy ? <section class:list={[section, shell]} aria-labelledby="project-visuals-title">
+    <header data-reveal class="mb-10 max-w-[700px]">
+      <h2 id="project-visuals-title" class={sectionTitle}>{copy.project.visualProof}</h2>
+      <p class="mb-0 text-copy-muted">{copy.project.visualProofDescription}</p>
+    </header>
+    <div class="grid grid-cols-[1.12fr_.88fr] items-start gap-5 max-[720px]:grid-cols-1">
+      <figure data-reveal class="m-0 overflow-hidden rounded-panel border border-line bg-panel">
+        <div class="aspect-[16/11] overflow-hidden">
+          <picture>
+            <source srcset={primaryVisual.avif} type="image/avif" />
+            <img class="size-full object-cover object-top" src={primaryVisual.src} width={primaryVisual.width} height={primaryVisual.height} alt={primaryVisualCopy.alt} loading="lazy" decoding="async" />
+          </picture>
+        </div>
+        <figcaption class="border-t border-line px-4 py-3 text-sm text-copy-muted">{primaryVisualCopy.caption}</figcaption>
+      </figure>
+      <figure data-reveal style="--reveal-delay: 80ms" class="m-0 overflow-hidden rounded-panel border border-line bg-panel">
+        <div class="aspect-[4/5] overflow-hidden">
+          <picture>
+            <source srcset={secondaryVisual.avif} type="image/avif" />
+            <img class="size-full object-cover object-top" src={secondaryVisual.src} width={secondaryVisual.width} height={secondaryVisual.height} alt={secondaryVisualCopy.alt} loading="lazy" decoding="async" />
+          </picture>
+        </div>
+        <figcaption class="border-t border-line px-4 py-3 text-sm text-copy-muted">{secondaryVisualCopy.caption}</figcaption>
+      </figure>
+    </div>
+  </section> : null}
+
+  <ProjectProofPanel locale={locale} project={project} />
+  <RoadmapStrip locale={locale} project={project} />
+
+  <section class="border-y border-line bg-panel-soft" aria-label={locale === 'zh-CN' ? '项目能力与使用场景' : 'Project capabilities and use cases'}>
+    <div class:list={[section, shell, 'grid grid-cols-[1.15fr_.85fr] gap-20 max-[820px]:grid-cols-1 max-[820px]:gap-12']}>
+      <div data-reveal aria-labelledby="project-capabilities-title">
+        <h2 id="project-capabilities-title" class:list={[featuredTitle, 'mb-7']}>{copy.project.capabilities}</h2>
+        <ul class="m-0 grid list-none grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line p-0 max-[560px]:grid-cols-1">
+          {content.capabilities.map(capability => <li class="min-h-[112px] bg-panel p-5 font-display text-lg font-[620]">{capability}</li>)}
+        </ul>
+      </div>
+      <div data-reveal aria-labelledby="project-use-cases-title">
+        <h2 id="project-use-cases-title" class:list={[featuredTitle, 'mb-7']}>{copy.project.useCases}</h2>
+        <ol class="m-0 grid list-none gap-5 p-0">
+          {content.useCases.map((useCase, index) => (
+            <li class="grid grid-cols-[32px_1fr] gap-3">
+              <span class="font-mono text-sm text-brand">{String(index + 1).padStart(2, '0')}</span>
+              <span class="text-copy-muted">{useCase}</span>
+            </li>
+          ))}
+        </ol>
+        <h3 class="mt-10 mb-4 text-lg font-[650]">{copy.project.platforms}</h3>
+        <div class="flex flex-wrap gap-2">
+          {project.data.platforms?.map(platform => <span class:list={[platformPill, 'px-3 py-2 text-xs']}>{platform}</span>)}
+          {!project.data.platforms?.length ? <span class:list={[platformPill, 'px-3 py-2 text-xs']}>{locale === 'zh-CN' ? '平台待确认' : 'Platforms pending'}</span> : null}
+        </div>
+        {project.data.relatedProjects?.length ? <>
+          <h3 id="project-related-title" class="mt-8 mb-4 text-lg font-[650]">{locale === 'zh-CN' ? '相关项目' : 'Related projects'}</h3>
+          <div class="flex flex-wrap gap-2" aria-labelledby="project-related-title">{project.data.relatedProjects.map(relatedId => { const related = projects.find(item => item.id === relatedId); return related ? <a class="inline-flex items-center border border-line px-3 py-2 text-xs font-[650] hover:bg-panel-soft" href={projectPath(locale, related.id)} aria-label={`${locale === 'zh-CN' ? '相关项目' : 'Related project'}: ${related.data.locales[locale].name}`} data-analytics-event="select_related_project" data-analytics-project={related.id} data-analytics-from={project.id}>{related.data.locales[locale].name}</a> : null })}</div>
+        </> : null}
+      </div>
+    </div>
+  </section>
+
+  <section class="border-b border-line bg-panel" aria-label={locale === 'zh-CN' ? '项目数据' : 'Project data'}>
+    <dl class:list={[shell, publicMetrics ? 'grid grid-cols-3 max-[640px]:grid-cols-1' : 'grid grid-cols-1']}>
+      {publicMetrics ? <div data-reveal class="grid min-h-[164px] border-x border-line p-7 max-[640px]:min-h-[126px] max-[640px]:border-b"><dt class="text-xs text-copy-muted">{copy.project.version}</dt><dd class="m-0 self-center font-mono text-2xl font-[700]">v{metrics.version}</dd><dd class="m-0 text-xs text-copy-muted">{formatReleaseDate(metrics.releasedAt, numberLocale)}</dd></div> : null}
+      {publicMetrics ? (
+        <>
+          <div data-reveal class="relative grid min-h-[164px] border-r border-line p-7 max-[640px]:min-h-[126px] max-[640px]:border-l max-[640px]:border-b"><dt class="text-xs text-copy-muted">{copy.project.downloads}</dt><dd class="m-0 self-center font-mono text-2xl font-[700]">{formatCompactNumber(metrics.weeklyDownloads, numberLocale)}</dd><Package class="absolute right-6 bottom-6 text-brand" size={20} stroke-width={1.7} aria-hidden="true" /></div>
+          <div data-reveal class="relative grid min-h-[164px] border-r border-line p-7 max-[640px]:min-h-[126px] max-[640px]:border-l"><dt class="text-xs text-copy-muted">{copy.project.stars}</dt><dd class="m-0 self-center font-mono text-2xl font-[700]">{formatCompactNumber(metrics.stars, numberLocale)}</dd><Star class="absolute right-6 bottom-6 text-brand" size={20} stroke-width={1.7} aria-hidden="true" /></div>
+        </>
+      ) : (
+        <div data-reveal class="grid min-h-[164px] border-x border-line p-7 max-[640px]:min-h-[126px]" data-project-readiness>
+          <dt class="text-xs text-copy-muted">{copy.project.readiness}</dt>
+          <dd class="m-0 self-center max-w-[36rem] text-sm leading-[1.7] text-copy-muted">{copy.project.readinessNote}</dd>
+        </div>
+      )}
+    </dl>
+  </section>
+
+  <section class:list={[section, shell]} aria-labelledby="project-faq-title">
+    <header data-reveal class="mb-10">
+      <h2 id="project-faq-title" class:list={[sectionTitle, 'mb-0']}>{copy.project.faq}</h2>
+    </header>
+    <div data-reveal class="border-t border-line">
+      {content.faqs.map((faq, index) => {
+        const answerId = `project-faq-answer-${project.id}-${index + 1}`
+        return <details class="group border-b border-line" aria-describedby={answerId}>
+          <summary class="flex cursor-pointer list-none items-center justify-between gap-6 py-6 text-lg font-[650] [&::-webkit-details-marker]:hidden">
+            {faq.question}
+            <ChevronDown class="shrink-0 transition-transform duration-200 group-open:rotate-180" size={20} stroke-width={1.8} aria-hidden="true" />
+          </summary>
+          <p id={answerId} class="mb-0 max-w-[830px] pb-7 leading-[1.75] text-copy-muted">{faq.answer}</p>
+        </details>
+      })}
+    </div>
+  </section>
+
+  <section class:list={[shell, 'mb-24 grid grid-cols-[1fr_auto] items-center gap-10 rounded-panel border border-line bg-panel p-9 max-[620px]:grid-cols-1 max-[620px]:p-6']} aria-labelledby="project-future-docs-title">
+    <div data-reveal>
+      <p class="mb-3 font-mono text-xs font-[650] text-brand">{copy.project.futureDocs}</p>
+      <h2 id="project-future-docs-title" class="mb-3 text-2xl font-[660]"><code class="text-xl [overflow-wrap:anywhere] max-[620px]:text-base">{project.data.futureDocsPath}</code></h2>
+      <p class="mb-0 max-w-[640px] text-sm text-copy-muted">{copy.project.futureDocsNote}</p>
+    </div>
+    <a class:list={[iconControl, 'size-12 border border-line bg-panel-soft']} href={project.data.docsUrl} aria-label={`${copy.project.docs}: ${content.name}`} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="docs" data-analytics-project={project.id}>
+      <ArrowUpRight size={23} stroke-width={1.7} aria-hidden="true" />
+    </a>
+  </section>
+</main>
+
+<script>
+  import { copyCode } from '../scripts/copy-code'
+
+  document.querySelectorAll<HTMLButtonElement>('[data-copy-command]').forEach((button) => {
+    const code = button.parentElement?.querySelector('code')
+    if (!code) return
+    button.addEventListener('click', async () => {
+      if (!await copyCode(code)) {
+        const text = button.querySelector('[data-copy-text]')
+        if (text) text.textContent = button.getAttribute('data-copy-failed-label') || ''
+        button.setAttribute('aria-label', button.getAttribute('data-copy-failed-label') || '')
+        return
+      }
+      const text = button.querySelector('[data-copy-text]')
+      text && (text.textContent = button.getAttribute('data-copied-label'))
+      button.querySelector('[data-copy-icon]')?.classList.add('hidden')
+      button.querySelector('[data-copied-icon]')?.classList.remove('hidden')
+      button.setAttribute('aria-label', button.getAttribute('data-copied-label') || '')
+      window.setTimeout(() => {
+        text && (text.textContent = button.getAttribute('data-copy-label'))
+        button.querySelector('[data-copy-icon]')?.classList.remove('hidden')
+        button.querySelector('[data-copied-icon]')?.classList.add('hidden')
+        button.setAttribute('aria-label', button.getAttribute('data-copy-label') || '')
+      }, 1800)
+    })
+    button.disabled = false
+  })
+</script>

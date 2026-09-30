@@ -10,6 +10,7 @@ import RoadmapStrip from './RoadmapStrip.astro'
 import PlatformMatrix from './PlatformMatrix.astro'
 import ProjectStatusBadge from './ProjectStatusBadge.astro'
 import QuickStartPanel from './QuickStartPanel.astro'
+import { projectService } from '../lib/services'
 
 interface Props {
   locale: Locale
@@ -31,6 +32,8 @@ const secondaryVisualCopy = secondaryVisual?.locales[locale]
 const publicMetrics = showsPublicMetrics(project.data.status)
 const quickStartNote = typeof project.data.quickStart?.note === 'string' ? project.data.quickStart.note : project.data.quickStart?.note?.[locale]
 const installCommand = project.data.installCommand ?? project.data.quickStart?.command
+const service = projectService(project, locale)
+
 ---
 
 <main id="main-content" style={`--project-accent: ${project.data.accent}`}>
@@ -193,6 +196,15 @@ const installCommand = project.data.installCommand ?? project.data.quickStart?.c
       <ArrowUpRight size={23} stroke-width={1.7} aria-hidden="true" />
     </a>
   </section>
+  <section class="border-y border-line bg-panel-soft" aria-labelledby="service-scope-title"><div class:list={[section, shell]}>
+    <h2 id="service-scope-title" class="text-3xl font-semibold">{locale === 'zh-CN' ? '实施范围' : 'Implementation scope'}</h2>
+    <p class="mt-5 font-semibold text-brand" data-service-status>{service.label}</p>
+    <p class="mt-4 max-w-[720px] text-copy-muted" data-service-scope>{service.scope}</p>
+    <div class="mt-8 flex flex-wrap gap-3">
+      {service.available && <a class={buttonPrimary} href={localizePath(locale, '/pricing/') + '#contact'}>{locale === 'zh-CN' ? '沟通迁移与培训' : 'Discuss migration and training'}</a>}
+      <a class={buttonSecondary} href={service.openSourceUrl}>{locale === 'zh-CN' ? '在开源站查看项目与参与方式' : 'Explore the project and contribute on the open-source site'}</a>
+    </div>
+  </div></section>
 </main>
 
 <script>

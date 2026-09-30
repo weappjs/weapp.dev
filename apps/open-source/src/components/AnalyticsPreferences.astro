@@ -1,0 +1,38 @@
+---
+import { ShieldCheck, X } from '@lucide/astro'
+import type { Locale } from '../types/project'
+import { getSiteCopy } from '../i18n/ui'
+import { buttonPrimary, iconControl } from '../styles/classes'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const copy = getSiteCopy(locale).analytics
+---
+
+<dialog data-analytics-dialog class="m-auto w-[min(590px,calc(100vw-32px))] rounded-panel border border-line bg-panel p-0 text-ink shadow-panel" aria-labelledby="analytics-dialog-title" aria-describedby="analytics-dialog-description">
+  <form data-analytics-preferences-form class="p-7 max-[720px]:p-5" method="dialog">
+    <header class="mb-7 grid grid-cols-[44px_1fr_40px] items-start gap-4 max-[520px]:grid-cols-[1fr_40px]">
+      <span class="grid size-11 place-items-center rounded-[6px] bg-panel-soft text-brand max-[520px]:hidden" aria-hidden="true">
+        <ShieldCheck size={22} stroke-width={1.7} />
+      </span>
+      <div>
+        <h2 id="analytics-dialog-title" class="mb-2 font-display text-2xl font-[680]">{copy.dialogTitle}</h2>
+        <p id="analytics-dialog-description" class="mb-0 text-sm leading-[1.65] text-copy-muted">{copy.dialogBody}</p>
+      </div>
+      <button class={iconControl} type="button" data-analytics-preferences-close aria-label={copy.close} title={copy.close}>
+        <X size={20} stroke-width={1.8} aria-hidden="true" />
+      </button>
+    </header>
+    <label class="flex min-h-[78px] cursor-pointer items-center justify-between gap-5 rounded-panel border border-line bg-panel-soft px-5 py-4 font-[620]">
+      <span class="max-w-[360px]">{copy.enabled}</span>
+      <input class="size-5 shrink-0 accent-brand" type="checkbox" data-analytics-enabled />
+    </label>
+    <p data-analytics-privacy-signal hidden class="mt-4 mb-0 rounded-[6px] bg-panel-soft p-3 text-sm text-copy-muted">{copy.privacySignal}</p>
+    <div class="mt-6 flex justify-end">
+      <button class={buttonPrimary} type="submit">{copy.save}</button>
+    </div>
+  </form>
+</dialog>

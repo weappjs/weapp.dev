@@ -26,9 +26,9 @@ describe('analytics client policy', () => {
     expect(readAnalyticsConsent(storage)).toBeNull()
   })
 
-  it('loads production analytics only on weapp.dev and weapp.js.org', () => {
+  it('loads production analytics only on this application host', () => {
     expect(isProductionAnalyticsHost('weapp.dev')).toBe(true)
-    expect(isProductionAnalyticsHost('weapp.js.org')).toBe(true)
+    expect(isProductionAnalyticsHost('weapp.js.org')).toBe(false)
     expect(isProductionAnalyticsHost('www.weapp.dev')).toBe(false)
     expect(isProductionAnalyticsHost('localhost')).toBe(false)
   })

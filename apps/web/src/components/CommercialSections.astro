@@ -1,0 +1,64 @@
+---
+import type { Locale } from '../types/project'
+import { ArrowRight } from '@lucide/astro'
+import { getSiteCopy, localizePath } from '../i18n/ui'
+import { section, shell, sectionTitle } from '../styles/classes'
+import ContactMethods from './ContactMethods.astro'
+interface Props { locale: Locale }
+const { locale } = Astro.props
+const zh = locale === 'zh-CN'
+const pricing = getSiteCopy(locale).pricing
+const pricingPath = localizePath(locale, '/pricing/')
+const steps = zh ? [
+  ['了解现状', '确认技术栈、目标平台、仓库结构与当前问题。'],
+  ['约定范围', '书面确认实施内容、报价、验收标准和协作方式。'],
+  ['试点验证', '从约定的页面或模块验证构建、样式和运行结果。'],
+  ['交付与交接', '按约定验收改动，并完成文档说明与团队交接。'],
+] : [
+  ['Understand the project', 'Review the stack, target platforms, repository structure, and current challenges.'],
+  ['Agree the scope', 'Confirm the work, pricing, acceptance criteria, and collaboration in writing.'],
+  ['Validate a pilot', 'Verify builds, styling, and runtime behavior in the agreed page or module.'],
+  ['Deliver and hand over', 'Accept the agreed changes and complete documentation and team handover.'],
+]
+---
+  <section class="border-y border-line bg-panel" id="services">
+    <div class:list={[section, shell]}>
+      <h2 class={sectionTitle}>{zh ? '当前可以一起完成的事' : 'Work we can deliver today'}</h2>
+      <div class="service-list mt-10">{pricing.services.map(service => <article><h3>{service.name}</h3><p>{service.body}</p><strong>{service.price}</strong></article>)}</div>
+      <a class="mt-7 inline-flex min-h-11 items-center gap-2 font-semibold text-brand" href={pricingPath + '#services'}>{zh ? '查看服务与报价' : 'Explore services and pricing'}<ArrowRight size={17} aria-hidden="true" /></a>
+    </div>
+  </section>
+  <section class="border-y border-line bg-panel-soft" id="process">
+    <div class:list={[section, shell]}><h2 class={sectionTitle}>{zh ? '每一步，都有明确的交付边界' : 'A clear scope at every step'}</h2>
+    <ol class="service-process mt-10">{steps.map(([title, body]) => <li><h3>{title}</h3><p>{body}</p></li>)}</ol></div>
+  </section>
+  <section class:list={[section, shell]} id="roadmap">
+    <h2 class={sectionTitle}>{zh ? '正在建设，尚未开放' : 'In development, not yet available'}</h2>
+    <p class="mt-6 max-w-[680px] text-lg text-copy-muted">{zh ? '云构建、官方模板与私有组件仓库仍在规划或建设中。当前不提供订阅、购买入口或上线时间承诺。' : 'Cloud builds, official templates, and private component registries remain planned or in development. Subscriptions, purchases, and launch dates are not offered yet.'}</p>
+  </section>
+  <section class="border-y border-line bg-panel" id="contact">
+    <div class:list={[section, shell, 'service-contact']}><div><h2 class={sectionTitle}>{zh ? '聊聊你的项目' : 'Tell us about your project'}</h2>
+    <p class="mt-5 max-w-[550px] text-copy-muted">{zh ? '告诉我们现有工程、希望解决的问题和目标平台，作为范围评估的起点。' : 'Share your current setup, the problem you want to solve, and your target platforms so we can assess the scope.'}</p></div><ContactMethods locale={locale} id="home-contact" /></div>
+  </section>
+  <section class:list={[section, shell]} id="open-source-support">
+    <h2 class="text-2xl font-semibold">{zh ? '支持开源维护' : 'Support open-source maintenance'}</h2>
+    <p class="mt-4 max-w-[680px] text-copy-muted">{zh ? '自愿赞助用于维护、文档与贡献者基金。赞助不购买实施服务，服务费用也不自动计入赞助分配。' : 'Voluntary sponsorship funds maintenance, documentation, and contributors. It does not purchase implementation services, and service fees do not automatically enter the sponsorship allocation.'}</p>
+    <div class="mt-5 flex flex-wrap gap-6">
+      <a class="inline-flex min-h-11 items-center text-brand underline underline-offset-4" href={pricingPath + '#sponsor'}>{zh ? '了解赞助与贡献者基金' : 'Sponsorship and contributors fund'}</a>
+      <a class="inline-flex min-h-11 items-center text-brand underline underline-offset-4" href={'https://weapp.js.org' + localizePath(locale)}>{zh ? '浏览开源生态' : 'Explore the open-source ecosystem'}</a>
+    </div>
+  </section>
+
+<style>
+.service-process p { color: var(--muted); margin-bottom: 0; }
+.service-list article { display: grid; grid-template-columns: 1fr 1.6fr auto; gap: 2rem; padding-block: 1.8rem; border-top: 1px solid var(--border); align-items: baseline; }
+.service-list h3, .service-process h3 { font-size: 1.2rem; font-weight: 650; margin-bottom: .5rem; }
+.service-list p { margin-bottom: 0; color: var(--muted); }
+.service-list strong { font-variant-numeric: tabular-nums; }
+.service-process { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; padding-left: 1.5rem; }
+.service-process li { padding-left: .4rem; }
+.service-process li::marker { color: var(--accent); font-weight: 650; }
+.service-contact { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; }
+@media (max-width: 900px) { .service-process { grid-template-columns: 1fr 1fr; } .service-contact { grid-template-columns: 1fr; gap: 2rem; } }
+@media (max-width: 600px) { .service-list article { grid-template-columns: 1fr; gap: .4rem; } .service-process { grid-template-columns: 1fr; } }
+</style>

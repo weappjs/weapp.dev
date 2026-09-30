@@ -1,8 +1,7 @@
 import type { Locator } from '@playwright/test'
-import process from 'node:process'
 import { expect } from '@playwright/test'
 
-export const isOpenSourceSite = process.env.WEAPP_DEPLOY_TARGET === 'github-pages'
+export const isOpenSourceSite = false
 export const siteOrigin = isOpenSourceSite ? 'https://weapp.js.org' : 'https://weapp.dev'
 export const siteName = isOpenSourceSite ? 'weapp.js.org' : 'weapp.dev'
 export const heroWordmark = isOpenSourceSite ? 'weapp.js.org' : 'weapp.dev'

@@ -1,0 +1,31 @@
+---
+import { getSiteProfile } from '../../lib/deployment'
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import Header from '../../components/Header.astro'
+import HomePage from '../../components/HomePage.astro'
+import Footer from '../../components/Footer.astro'
+import { getProjects } from '../../lib/projects'
+import { loadProjectMetrics } from '../../lib/metrics'
+import { getHomeProjects } from '../../lib/home'
+import { organizationSchema, projectListSchema, websiteSchema } from '../../lib/seo'
+
+const profile = getSiteProfile()
+const locale = 'en' as const
+const projects = await getProjects()
+const metrics = await loadProjectMetrics()
+const homeProjects = await getHomeProjects(projects)
+const title = `${profile.name} | ${'Open-source JavaScript mini-program ecosystem'}`
+const description = 'Open-source JavaScript tools for mini-program development. Explore build tooling, styling, Vue and React runtimes, and component libraries, with source code and documentation for each project.'
+---
+
+<BaseLayout
+  locale={locale}
+  title={title}
+  description={description}
+  imageAlt={`${profile.name} toolchain map for mini-app engineering`}
+  schemas={[organizationSchema(), websiteSchema(locale), projectListSchema(locale, projects)]}
+>
+  <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
+  <HomePage locale={locale} projects={projects} homeProjects={homeProjects} metrics={metrics} />
+  <Footer locale={locale} projects={projects} currentPath={Astro.url.pathname} />
+</BaseLayout>

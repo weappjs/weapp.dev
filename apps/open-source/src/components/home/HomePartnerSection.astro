@@ -1,0 +1,54 @@
+---
+import { ArrowRight, ArrowUpRight } from '@lucide/astro'
+import type { Locale } from '../../types/project'
+import type { ProjectEntry } from '../../lib/projects'
+import { projectPath, getSiteCopy } from '../../i18n/ui'
+import { buttonPrimary, buttonSecondary, homeSection, homeSectionPack, sectionTitle, shell } from '../../styles/classes'
+
+interface Props {
+  locale: Locale
+  projects: ProjectEntry[]
+  id: string
+  eyebrow: string
+  title: string
+  description: string
+  pack?: keyof typeof homeSectionPack
+}
+
+const { locale, projects, id, eyebrow, title, description, pack } = Astro.props
+const copy = getSiteCopy(locale)
+const sectionClass = pack ? homeSectionPack[pack] : homeSection
+---
+
+{projects.length ? <section class:list={[sectionClass, shell, 'scroll-mt-20']} id={id} aria-labelledby={`${id}-title`}>
+  <header data-reveal class="mb-8 max-w-[720px]">
+    <p class="mb-3 font-mono text-xs font-[650] text-brand">{eyebrow}</p>
+    <h2 id={`${id}-title`} class={sectionTitle}>{title}</h2>
+    <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{description}</p>
+  </header>
+  <div class:list={['grid gap-px overflow-hidden rounded-panel border border-line bg-line', projects.length > 1 ? 'grid-cols-2 max-[720px]:grid-cols-1' : 'grid-cols-1']}>
+    {projects.map((project, index) => {
+      const content = project.data.locales[locale]
+      return (
+        <article data-reveal data-project-id={project.id} style={`--reveal-delay: ${index * 70}ms; --project-accent: ${project.data.accent}`} class="grid gap-5 bg-panel p-8">
+          <img class="size-12 object-contain" src={project.data.logo} width="48" height="48" alt="" loading="lazy" decoding="async" />
+          <div>
+            <h3 class="mb-2 text-2xl font-[660]">{content.name}</h3>
+            <p class="mb-0 text-copy-muted">{content.tagline}</p>
+          </div>
+          <p class="mb-0 max-w-[36rem] text-sm leading-[1.7] text-copy-muted">{content.description}</p>
+          <div class="flex flex-wrap items-center gap-3">
+            <a class={buttonPrimary} href={project.data.docsUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="docs" data-analytics-project={project.id}>
+              {copy.projects.documentation}
+              <ArrowUpRight size={16} stroke-width={1.8} aria-hidden="true" />
+            </a>
+            <a class={buttonSecondary} href={projectPath(locale, project.id)} data-analytics-event="select_project" data-analytics-project={project.id}>
+              {copy.projects.details}
+              <ArrowRight size={16} stroke-width={1.9} aria-hidden="true" />
+            </a>
+          </div>
+        </article>
+      )
+    })}
+  </div>
+</section> : null}

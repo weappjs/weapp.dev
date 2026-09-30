@@ -22,7 +22,7 @@ const languageUrl = alternatePath(locale, currentPath)
 const navLink = 'inline-flex items-center gap-1.5 whitespace-nowrap py-2 text-sm font-[590] text-copy-muted transition-colors duration-200 hover:text-ink'
 const projectsIndexPath = localizePath(locale, '/projects/')
 const isProjectsIndex = currentPath === projectsIndexPath
-const siteGithubUrl = profile.features.services ? profile.repositoryUrl : profile.organizationUrl
+const siteGithubUrl = profile.repositoryUrl
 ---
 
 <header data-site-header class="sticky top-0 z-30 h-16 border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] bg-[var(--header)] backdrop-blur-xl max-[720px]:h-[58px]">
@@ -53,6 +53,7 @@ const siteGithubUrl = profile.features.services ? profile.repositoryUrl : profil
           ))}
         </nav>
       </details>
+      <a class={navLink} href={'https://weapp.js.org' + localizePath(locale)}>{locale === 'zh-CN' ? '开源站' : 'Open source'}</a>
       {navigation.map(item => <a class={navLink} href={localizePath(locale, item.path)} aria-current={currentPath === localizePath(locale, item.path) ? 'page' : undefined} data-analytics-event={item.path.includes('#') ? 'navigate_section' : 'navigate_page'} data-analytics-section={item.id}>{item.label[locale]}</a>)}
     </nav>
 
@@ -84,7 +85,8 @@ const siteGithubUrl = profile.features.services ? profile.repositoryUrl : profil
             </a>
           ))}
           <span class="my-1 h-px bg-line" aria-hidden="true"></span>
-          {navigation.map(item => <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={localizePath(locale, item.path)} aria-current={currentPath === localizePath(locale, item.path) ? 'page' : undefined} data-analytics-event={item.path.includes('#') ? 'navigate_section' : 'navigate_page'} data-analytics-section={item.id}>{item.label[locale]}</a>)}
+          <a class={navLink} href={'https://weapp.js.org' + localizePath(locale)}>{locale === 'zh-CN' ? '开源站' : 'Open source'}</a>
+      {navigation.map(item => <a class="rounded-[6px] p-3 text-sm font-semibold hover:bg-panel-soft" href={localizePath(locale, item.path)} aria-current={currentPath === localizePath(locale, item.path) ? 'page' : undefined} data-analytics-event={item.path.includes('#') ? 'navigate_section' : 'navigate_page'} data-analytics-section={item.id}>{item.label[locale]}</a>)}
         </nav>
       </details>
     </div>

@@ -6,6 +6,7 @@ import ProjectPage from '../../../components/ProjectPage.astro'
 import Footer from '../../../components/Footer.astro'
 import { getProjects, type ProjectEntry } from '../../../lib/projects'
 import { loadProjectMetrics } from '../../../lib/metrics'
+import { projectService } from '../../../lib/services'
 import { breadcrumbSchema, projectSchema } from '../../../lib/seo'
 
 export async function getStaticPaths() {
@@ -32,8 +33,8 @@ const projectMetrics = metrics[project.id] ?? { version: 'planned', releasedAt: 
 <BaseLayout
   locale={locale}
   title={title}
-  description={content.description}
-  type="article"
+  description={`${content.description} ${projectService(project, locale).scope}`}
+  type="website"
   imageAlt={`${content.name} logo and project overview`}
   author={project.data.maintainer}
   dateModified={project.data.status === 'planned' ? undefined : projectMetrics.releasedAt}

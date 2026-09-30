@@ -2,14 +2,13 @@
 import ContactMethods from './ContactMethods.astro'
 import type { Locale } from '../types/project'
 import { donationCopy } from '../i18n/donation'
-import { getSiteProfile } from '../lib/deployment'
 
 interface Props { locale: Locale; steps?: boolean; headingLevel?: 'h2' | 'h3' }
 const { locale, steps = false, headingLevel: Heading = 'h2' } = Astro.props
 const copy = donationCopy[locale]
 ---
 
-{getSiteProfile().features.sponsorship && <section class="donation-guidance" aria-labelledby="donation-guidance-title" data-donation-guidance>
+<section class="donation-guidance" aria-labelledby="donation-guidance-title" data-donation-guidance>
   <div class="donation-guidance-intro">
     <Heading id="donation-guidance-title">{copy.title}</Heading>
     <div>
@@ -20,7 +19,7 @@ const copy = donationCopy[locale]
     </div>
   </div>
   {steps && <ol class="donation-steps">{copy.steps.map(step => <li><h4>{step.title}</h4><p>{step.body}</p></li>)}</ol>}
-</section>}
+</section>
 
 <style>
   .donation-guidance { margin-block: 2rem; padding-block: 1.75rem; border-block: 1px solid var(--border); }

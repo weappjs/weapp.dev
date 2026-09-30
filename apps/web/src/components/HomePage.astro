@@ -1,20 +1,19 @@
 ---
-import '../styles/home.css'
-import { ArrowRight, ArrowUpRight, GitFork, Layers2, Package, ScanLine, ShieldCheck, BadgeCheck } from '@lucide/astro'
+import '@weapp/site-ui/home.css'
+import { ArrowRight, ArrowUpRight, GitFork, Layers2, Package, ScanLine } from '@lucide/astro'
 import type { Locale, ProjectMetricsMap } from '../types/project'
 import type { ProjectEntry } from '../lib/projects'
 import { formatReleaseDate } from '../lib/metrics'
 import { localizePath, getSiteCopy } from '../i18n/ui'
 import { getSiteProfile } from '../lib/deployment'
 import { buttonPrimary, buttonSecondary, iconControl, homeSection as section, shell } from '../styles/classes'
-import BuildRail from './BuildRail.astro'
-import HomeHero from './home/HomeHero.astro'
-import HomeCommercial from './home/HomeCommercial.astro'
+import HomeHero from '@weapp/site-ui/HomeHero.astro'
 import type { HomeProject } from '../lib/home-projects'
 import { getCatalogEcosystemGroups, getConstellationProjects } from '../lib/toolchain'
 import HomePartnerSection from './home/HomePartnerSection.astro'
 import HomeProjects from './home/HomeProjects.astro'
 import ToolchainMap from './ToolchainMap.astro'
+import CommercialSections from './CommercialSections.astro'
 
 interface Props {
   locale: Locale
@@ -49,21 +48,17 @@ const railGroups = ecosystemGroups.map(group => ({
 }))
 const releaseProjects = projects.filter(project => project.data.status !== 'planned' && metrics[project.id])
 const stepIcons = [Layers2, ScanLine, Package]
-const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
 ---
 
 <main id="main-content">
-  <HomeHero locale={locale} railGroups={railGroups} constellation={constellation} />
+  <HomeHero wordmark={profile.heroWordmark} overviewLabel={locale === 'zh-CN' ? `${profile.name} 首页概览` : `${profile.name} overview`} railLabel={copy.rail.label} locale={locale} railGroups={railGroups} constellation={constellation} />
 
   <section class="border-y border-line bg-panel" id="about">
     <div class:list={[section, shell]}>
       <header data-reveal class="mb-8 max-w-[720px]">
         <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{copy.about.title}</h2>
         <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{copy.about.description}</p>
-        {profile.features.services ? <p class="mt-5 mb-0 text-sm leading-[1.7] text-copy-muted">
-          {locale === 'zh-CN' ? 'weapp.dev 展示工具链的工程能力，并提供迁移与培训服务。纯开源项目展示和参与入口在 ' : 'weapp.dev presents the toolchain and offers migration and training. Explore the dedicated open-source project showcase at '}
-          <a class="font-semibold text-brand underline underline-offset-4" href={`https://weapp.js.org${localizePath(locale)}`}>weapp.js.org</a>{locale === 'zh-CN' ? '。' : '.'}
-        </p> : <div class="mt-7 flex flex-wrap gap-3">
+        {<div class="mt-7 flex flex-wrap gap-3">
           <a class={buttonPrimary} href={localizePath(locale, '/projects/')}>{copy.hero.primary}<ArrowRight size={17} aria-hidden="true" /></a>
           <a class={buttonSecondary} href={profile.organizationUrl} target="_blank" rel="noopener noreferrer">{copy.hero.secondary}<GitFork size={17} aria-hidden="true" /></a>
         </div>}
@@ -108,32 +103,9 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
     <ToolchainMap locale={locale} projects={projects} />
   </section>
 
-  {profile.features.services && <>
-    <BuildRail locale={locale} />
-    <HomeCommercial locale={locale} />
-  </>}
 
-  {profile.features.services && <section class="border-y border-line bg-panel-soft" id="vision">
-    <span id="principles" class="sr-only" aria-hidden="true"></span>
-    <div class:list={[section, shell, 'grid grid-cols-[.72fr_1.28fr] gap-16 max-[900px]:grid-cols-1 max-[900px]:gap-10']}>
-      <header data-reveal class="max-w-[470px]">
-        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{copy.vision.title}</h2>
-        <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{copy.vision.description}</p>
-      </header>
-      <div class="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line max-[620px]:grid-cols-1">
-        {copy.vision.items.map((item, index) => {
-          const Icon = principleIcons[index]
-          return (
-            <article data-reveal data-principle-card style={`--reveal-delay: ${index * 70}ms`} class:list={['bg-panel p-7', index === 0 ? 'row-span-2 min-h-[330px] max-[620px]:row-auto max-[620px]:min-h-0' : 'min-h-[164px]']}>
-              <Icon class="mb-8 text-brand" size={25} stroke-width={1.6} aria-hidden="true" />
-              <h3 class="mb-2 text-xl font-[650]">{item.title}</h3>
-              <p class="mb-0 text-sm leading-[1.7] text-copy-muted">{item.body}</p>
-            </article>
-          )
-        })}
-      </div>
-    </div>
-  </section>}
+
+
 
   <section class:list={[section, shell]} id="releases">
     <div class="grid grid-cols-[.75fr_1.25fr] gap-16 max-[900px]:grid-cols-1 max-[900px]:gap-10">
@@ -162,17 +134,15 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
     </div>
   </section>
 
-  <section class="border-y border-line bg-panel" id="collaboration">
-    <div data-reveal class:list={[shell, 'grid min-h-[260px] grid-cols-[72px_1fr_auto] items-center gap-8 py-12 max-[820px]:grid-cols-[58px_1fr] max-[620px]:grid-cols-1']}>
-      <img class="size-[72px] rounded-panel border border-line bg-panel-soft p-2.5 max-[820px]:size-[58px]" src="/logo.svg" width="72" height="72" alt="" />
-      <div>
-        <h2 class="mb-3 text-[34px] font-[670] max-[620px]:text-[30px]">{copy.collaboration.title}</h2>
-        <p class="mb-0 max-w-[650px] text-copy-muted">{copy.collaboration.description}</p>
+  <section class="border-y border-line bg-panel" id="open-source" aria-labelledby="open-source-title">
+    <div class:list={[section, shell]}>
+      <h2 id="open-source-title" class="mb-5 text-[44px] font-[680] max-[720px]:text-[34px]">{locale === 'zh-CN' ? '在 weapp.js.org，一起参与开源' : 'Explore and contribute at weapp.js.org'}</h2>
+      <p class="mb-6 max-w-[720px] text-lg text-copy-muted">{locale === 'zh-CN' ? '独立的开源生态门户，汇集项目发现、文档、源码、真实发布与贡献入口。你可以通过 issues、代码、测试和文档参与项目。weapp.dev 在这里介绍工具与工程服务，开源项目资料和社区协作也有自己的空间。' : 'An independent open-source portal for project discovery, documentation, source code, releases, and contributions. Join through issues, code, tests, or documentation. weapp.dev presents the tools and engineering services; the open-source ecosystem has its own home for reference and collaboration.'}</p>
+      <div class="flex flex-wrap gap-3">
+        <a class={buttonPrimary} href={'https://weapp.js.org' + localizePath(locale)}>{locale === 'zh-CN' ? '访问开源站' : 'Visit the open-source site'}<ArrowUpRight size={18} aria-hidden="true" /></a>
+        <a class={buttonSecondary} href={'https://weapp.js.org' + localizePath(locale, '/projects/')}>{locale === 'zh-CN' ? '浏览开源项目' : 'Browse open-source projects'}</a>
       </div>
-      <a class:list={[buttonSecondary, 'max-[820px]:col-start-2 max-[820px]:w-fit max-[620px]:col-auto']} href={profile.organizationUrl} target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="collaboration">
-        <GitFork size={18} stroke-width={1.9} aria-hidden="true" />
-        {copy.collaboration.action}
-      </a>
     </div>
   </section>
+  <CommercialSections locale={locale} />
 </main>

@@ -1,6 +1,7 @@
 import type { Locale, ProjectDefinition, ProjectMetrics } from '../types/project'
 import { donationCopy } from '../i18n/donation'
 import { getSiteProfile } from './deployment'
+import { projectService } from './services'
 
 const profile = getSiteProfile()
 export const siteUrl = profile.origin
@@ -24,7 +25,7 @@ export function organizationSchema() {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     '@id': organizationId,
-    'name': 'weapp',
+    'name': 'weapp.dev',
     'url': siteUrl,
     'logo': absoluteUrl('/logo.svg'),
     'sameAs': [profile.organizationUrl, profile.repositoryUrl],
@@ -78,7 +79,7 @@ export function projectsIndexSchema(locale: Locale, projects: Array<{ id: string
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
     '@id': absoluteUrl(path),
-    'name': locale === 'zh-CN' ? '工具链项目' : 'Toolchain projects',
+    'name': locale === 'zh-CN' ? '项目与实施场景' : 'Projects and implementation scenarios',
     'url': absoluteUrl(path),
     'inLanguage': locale === 'zh-CN' ? 'zh-CN' : 'en-US',
     'isPartOf': { '@id': `${siteUrl}/#website` },
@@ -159,36 +160,23 @@ export function pricingSchema(locale: Locale) {
   }
 }
 
-export function projectSchema(
-  locale: Locale,
-  project: { id: string, data: ProjectDefinition },
-  metrics: ProjectMetrics,
-) {
+export function projectSchema(locale: Locale, project: { id: string, data: ProjectDefinition }, _metrics: ProjectMetrics) {
+  const service = projectService(project, locale)
   const content = project.data.locales[locale]
   const path = locale === 'zh-CN' ? `/projects/${project.id}/` : `/en/projects/${project.id}/`
-  const isPlanned = project.data.status === 'planned'
-
   return {
-    '@context': 'https://schema.org',
-    '@type': 'SoftwareSourceCode',
-    '@id': absoluteUrl(path),
-    'name': content.name,
-    'description': content.description,
-    'url': absoluteUrl(path),
-    'image': absoluteUrl(project.data.visuals?.primary.src ?? '/logo.svg'),
-    'codeRepository': `https://github.com/${project.data.github}`,
-    ...(isPlanned ? {} : { downloadUrl: project.data.npmUrl }),
-    'programmingLanguage': ['TypeScript', 'JavaScript'],
-    'keywords': project.data.keywords.join(', '),
-    ...(project.data.platforms?.length ? { runtimePlatform: project.data.platforms } : {}),
-    'license': project.data.license,
-    ...(isPlanned ? {} : { version: metrics.version, dateModified: metrics.releasedAt }),
-    'maintainer': {
-      '@type': 'Organization',
-      'name': project.data.maintainer,
-    },
-    'mainEntityOfPage': absoluteUrl(path),
-    'sameAs': [project.data.docsUrl, ...(isPlanned ? [] : [project.data.npmUrl]), `https://github.com/${project.data.github}`],
+    ...webPageSchema(locale, content.name, service.scope, absoluteUrl(path)),
+    relatedLink: service.openSourceUrl,
+    ...(service.available
+      ? {
+          mainEntity: {
+            '@type': 'Service',
+            'name': locale === 'zh-CN' ? `${content.name} 迁移与培训` : `${content.name} migration and training`,
+            'description': service.scope,
+            'provider': { '@id': organizationId },
+          },
+        }
+      : {}),
   }
 }
 
