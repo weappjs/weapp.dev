@@ -205,7 +205,7 @@ export const siteCopy = {
       eyebrow: '交付与赞助',
       title: '围绕真实项目的迁移与培训',
       description: '核心编译器和插件永远 MIT 开源。当前页面只列出人工服务与开源赞助，其他商业化能力仍在建设中。',
-      early: '当前没有账户或支付后台。赞助与服务咨询请先通过 GitHub 联系，产品能力开放后再更新这里。',
+      early: '赞助与服务咨询可通过页面中的微信、QQ 或邮箱图标联系。当前没有账户或在线支付后台。',
       sponsorTitle: '支持 weapp.dev 开源',
       sponsorDescription: '中国开源项目需要持续的时间、基础设施和维护投入。赞助不是购买服务，而是帮助这套工具继续发布、修复和陪伴社区。',
       sponsorTiers: [
@@ -246,7 +246,7 @@ export const siteCopy = {
       slaTitle: '当前支持边界',
       slaRows: [
         { name: '开源社区', channel: 'GitHub Issues', response: '公开讨论，不承诺时间' },
-        { name: '人工服务', channel: 'GitHub 联系', response: '按项目范围确认' },
+        { name: '人工服务', channel: '微信 / QQ / 邮箱', response: '按项目范围确认' },
         { name: '赞助者', channel: '无专属支持', response: '赞助不购买服务权益' },
       ],
       boundaryTitle: '开源边界写在这里',
@@ -263,8 +263,8 @@ export const siteCopy = {
         { question: '现在可以购买 Pro、Team 或 Enterprise 吗？', answer: '不能。这些能力仍在建设中，页面只用于公开方向，不代表已经开放或可以收款。' },
       ],
       ctaTitle: '让开源项目有继续维护的预算',
-      ctaBody: '当前赞助与人工服务都通过 GitHub 联系。收款方式上线后，我们会在这里更新正式入口和公开记录。',
-      ctaAction: '在 GitHub 了解方式',
+      ctaBody: '赞助、指定项目捐赠或迁移与培训咨询，都可以通过微信、QQ 或邮箱联系我。点击图标查看账号和加好友二维码；GitHub 仍可用于公开讨论。',
+      ctaAction: '前往 GitHub 公开讨论',
     },
     project: {
       back: '返回工具栈',
@@ -488,7 +488,7 @@ export const siteCopy = {
       eyebrow: 'Delivery and support',
       title: 'Migration and training for your project',
       description: 'Core compilers and plugins stay MIT open source. This page lists human-delivered services and sponsorship; other commercial capabilities are still in development.',
-      early: 'There is no account or payment backend yet. Contact us through GitHub for sponsorship or service discussions; this page will change when products open.',
+      early: 'Use the WeChat, QQ, or email icons on this page for sponsorship or service enquiries. There is no account or online payment backend yet.',
       sponsorTitle: 'Sponsor weapp.dev open source',
       sponsorDescription: 'Chinese open source needs sustained time, infrastructure, and maintenance. Sponsorship is not a service purchase; it helps this toolchain keep shipping and supporting its community.',
       sponsorTiers: [
@@ -529,7 +529,7 @@ export const siteCopy = {
       slaTitle: 'Current support boundaries',
       slaRows: [
         { name: 'Open source', channel: 'GitHub Issues', response: 'Public discussion, no time promise' },
-        { name: 'Human services', channel: 'GitHub contact', response: 'Confirmed per project scope' },
+        { name: 'Human services', channel: 'WeChat / QQ / email', response: 'Confirmed per project scope' },
         { name: 'Sponsors', channel: 'No dedicated support', response: 'Sponsorship does not buy service benefits' },
       ],
       boundaryTitle: 'The open-source boundary is explicit',
@@ -546,8 +546,8 @@ export const siteCopy = {
         { question: 'Can I buy Pro, Team, or Enterprise today?', answer: 'No. These capabilities are still in development. The page describes direction, not an open checkout or payment commitment.' },
       ],
       ctaTitle: 'Give open source a budget to keep going',
-      ctaBody: 'Until a payment flow exists, use GitHub to request sponsorship details or discuss a human-delivered migration scope.',
-      ctaAction: 'Learn how on GitHub',
+      ctaBody: 'Contact me via WeChat, QQ, or email about sponsorship, a donation to a specific project, or migration and training. Open an icon for account details and a QR code. GitHub remains available for public discussions.',
+      ctaAction: 'Discuss publicly on GitHub',
     },
     project: {
       back: 'Back to the stack',

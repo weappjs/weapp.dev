@@ -1,4 +1,5 @@
 ---
+import ContactMethods from './ContactMethods.astro'
 import type { Locale } from '../types/project'
 import { donationCopy } from '../i18n/donation'
 import { getSiteProfile } from '../lib/deployment'
@@ -14,6 +15,7 @@ const copy = donationCopy[locale]
     <div>
       <p>{copy.instruction}</p>
       <p class="donation-policy">{copy.policy}</p>
+      <ContactMethods locale={locale} id="donation-contact" />
       <slot />
     </div>
   </div>

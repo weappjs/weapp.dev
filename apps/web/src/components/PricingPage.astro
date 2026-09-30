@@ -1,4 +1,5 @@
 ---
+import ContactMethods from './ContactMethods.astro'
 import DonationGuidance from './DonationGuidance.astro'
 import { donationCopy } from '../i18n/donation'
 import '../styles/support.css'
@@ -186,10 +187,13 @@ const hero = { eyebrow: pricing.eyebrow, title: pricing.title, description: pric
     </div>
   </section>
 
-  <section class="pricing-cta border-t border-line bg-panel-soft">
-    <div data-reveal class:list={[shell, 'grid min-h-[300px] grid-cols-[1fr_auto] items-center gap-10 py-16 max-[720px]:grid-cols-1 max-[720px]:py-14']}>
+  <section id="contact" class="pricing-cta border-t border-line bg-panel-soft">
+    <div data-reveal class:list={[shell, 'grid min-h-[300px] grid-cols-[minmax(0,1fr)_minmax(0,.8fr)] items-start gap-10 py-16 max-[900px]:grid-cols-1 max-[720px]:py-14']}>
       <div><h2 class="mb-3 max-w-[700px] text-[38px] font-[680] max-[720px]:text-[30px]">{hero.ctaTitle}</h2><p class="mb-0 max-w-[650px] text-copy-muted">{hero.ctaBody}</p></div>
-      <a class={buttonPrimary} href={githubUrl} target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="pricing_cta"><GitFork size={18} stroke-width={1.9} aria-hidden="true" />{hero.ctaAction}</a>
+      <div class="min-w-0">
+        <ContactMethods locale={locale} id="pricing-contact" />
+        <a class="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-[650] text-brand" href={githubUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="pricing_cta"><GitFork size={18} stroke-width={1.9} aria-hidden="true" />{hero.ctaAction}</a>
+      </div>
     </div>
   </section>
 </main>}

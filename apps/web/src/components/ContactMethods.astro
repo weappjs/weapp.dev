@@ -1,0 +1,96 @@
+---
+import { Copy, Download, ExternalLink, Mail } from '@lucide/astro'
+import type { Locale } from '../types/project'
+import wechatIcon from '../assets/contact/wechat.svg?raw'
+import qqIcon from '../assets/contact/tencentqq.svg?raw'
+import { contactCopy, contactMethods } from '../lib/contact'
+import { getSiteProfile } from '../lib/deployment'
+
+interface Props { locale: Locale; id: string }
+const { locale, id } = Astro.props
+const copy = contactCopy[locale]
+const channels = ['wechat', 'qq'] as const
+const icons = { wechat: wechatIcon, qq: qqIcon }
+---
+
+{getSiteProfile().features.sponsorship && <contact-methods class="contact-methods" data-contact-methods role="group" aria-label={copy.label}>
+  {channels.map((channel, index) => {
+    const method = contactMethods[channel]
+    return <details name={`${id}-channel`} data-contact-channel={channel}>
+      <summary id={`${id}-${channel}`} class="contact-icon" style={`--contact-index:${index}`} title={`${copy[channel]} · ${copy.open}`} aria-label={`${copy[channel]} · ${copy.open}`}>
+        <Fragment set:html={icons[channel]} />
+      </summary>
+      <div class="contact-panel" role="group" aria-labelledby={`${id}-${channel}`}>
+        <div class="contact-account-row">
+          <div><span class="contact-channel-name">{copy[channel]}</span><span class="contact-account" data-contact-account>{method.account}</span></div>
+          <button type="button" data-contact-copy data-success={copy.copied} data-failure={copy.failed} hidden><Copy size={16} aria-hidden="true" />{copy.copy}</button>
+        </div>
+        <p class="contact-feedback" data-contact-feedback role="status" aria-live="polite" aria-atomic="true"></p>
+        <img class="contact-qr" src={method.qr} alt={`${copy[channel]} ${copy.qr}`} width={method.size} height={method.size} loading="lazy" decoding="async" />
+        <p class="contact-help">{copy.scan}</p>
+        <div class="contact-image-actions">
+          <a href={method.original} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target={channel}><ExternalLink size={16} aria-hidden="true" />{copy.view}</a>
+          <a href={method.original} download={`${channel}-contact.jpg`} data-analytics-event="click_outbound" data-analytics-target={channel}><Download size={16} aria-hidden="true" />{copy.save}</a>
+        </div>
+      </div>
+    </details>
+  })}
+  <a class="contact-icon" style="--contact-index:2" href={`mailto:${contactMethods.email}`} title={copy.email} aria-label={copy.email} data-analytics-event="click_outbound" data-analytics-target="email"><Mail size={23} stroke-width={1.8} aria-hidden="true" /></a>
+</contact-methods>}
+
+<script>
+  import { copyCode } from '../scripts/copy-code'
+
+  class ContactMethods extends HTMLElement {
+    private connection?: AbortController
+
+    connectedCallback() {
+      this.connection?.abort()
+      this.connection = new AbortController()
+      const { signal } = this.connection
+      this.querySelectorAll<HTMLButtonElement>('[data-contact-copy]').forEach((button) => {
+        button.hidden = false
+        button.addEventListener('click', async () => {
+          const panel = button.closest<HTMLElement>('.contact-panel')!
+          const account = panel.querySelector<HTMLElement>('[data-contact-account]')!
+          const feedback = panel.querySelector<HTMLElement>('[data-contact-feedback]')!
+          feedback.textContent = ''
+          const success = await copyCode(account)
+          if (signal.aborted) return
+          feedback.textContent = success ? button.dataset.success! : button.dataset.failure!
+        }, { signal })
+      })
+    }
+
+    disconnectedCallback() {
+      this.connection?.abort()
+    }
+  }
+
+  if (!customElements.get('contact-methods')) customElements.define('contact-methods', ContactMethods)
+</script>
+
+<style>
+  .contact-methods { display: block; position: relative; width: 100%; max-width: 32rem; padding-top: 44px; margin-top: 1.25rem; }
+  .contact-icon { position: absolute; top: 0; left: calc(var(--contact-index) * 56px); display: grid; place-items: center; width: 44px; height: 44px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); background: var(--surface); cursor: pointer; list-style: none; }
+  .contact-icon::-webkit-details-marker { display: none; }
+  .contact-icon:hover, details[open] > .contact-icon { color: var(--accent); border-color: var(--accent); background: var(--surface-soft); }
+  .contact-icon :global(svg) { width: 23px; height: 23px; }
+  .contact-panel { margin-top: .75rem; padding: 1.25rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .contact-account-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
+  .contact-account-row > div { min-width: 0; }
+  .contact-channel-name { display: block; margin-bottom: .25rem; color: var(--muted); font-size: .875rem; }
+  .contact-account { display: block; font-weight: 650; overflow-wrap: anywhere; user-select: text; }
+  .contact-panel button, .contact-image-actions a { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 44px; font-size: .875rem; font-weight: 600; cursor: pointer; }
+  .contact-panel button { padding: .5rem .75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-soft); color: var(--text); }
+  .contact-panel [hidden] { display: none; }
+  .contact-panel svg { flex-shrink: 0; }
+  .contact-panel .contact-feedback { margin: .5rem 0 0; color: var(--accent); font-size: .875rem; }
+  .contact-feedback:empty { display: none; }
+  .contact-qr { display: block; width: min(100%, 280px); height: auto; margin: 1rem auto; background: white; }
+  .contact-panel .contact-help { margin: 0; color: var(--muted); font-size: .875rem; line-height: 1.7; }
+  .contact-image-actions { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin-top: .75rem; color: var(--accent); }
+  @media (max-width: 400px) {
+    .contact-panel { padding: 1rem; }
+  }
+</style>

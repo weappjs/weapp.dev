@@ -19,6 +19,8 @@ for (const [name, content] of Object.entries(createSiteResources(site, projects)
 }
 
 if (site.target === 'github-pages') {
+  // Personal service and donation contact assets belong only to weapp.dev.
+  await rm(join(root, 'contact'), { recursive: true, force: true })
   await writeFile(join(root, 'CNAME'), `${new URL(site.origin).hostname}\n`, 'utf8')
   await writeFile(join(root, '.nojekyll'), '', 'utf8')
 }

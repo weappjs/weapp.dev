@@ -8,7 +8,7 @@ export const donationCopy = {
     allocation: '已确认到账且未指定项目的赞助，扣除支付手续费后，净额的 60% 用于核心维护、25% 进入贡献者基金、15% 支持上游和周边开源项目。指定项目捐赠经确认后单独处理，不纳入这三项默认分配。',
     action: '了解赞助与指定项目捐赠',
     steps: [
-      { title: '了解赞助方式', body: '通过现有 GitHub 入口了解方式，确认后再捐赠。本站目前没有在线支付后台。' },
+      { title: '了解赞助方式', body: '通过页面中的联系图标，通过微信、QQ 或邮箱了解方式，确认后再捐赠。本站目前没有在线支付后台。' },
       { title: '备注想支持的项目', body: '填写「捐给 XXX 项目」。名称容易混淆时，可附上项目仓库链接。' },
       { title: '事后也可以补充', body: '忘记备注也可以后续私信我，补充项目名称和捐赠信息，便于核对并确认用途。' },
     ],
@@ -26,7 +26,7 @@ export const donationCopy = {
     allocation: 'For confirmed donations without a designated project, the net amount after payment fees is allocated 60% to core maintenance, 25% to the contributors fund, and 15% to upstream and adjacent open source. Confirmed project-specific donations are handled separately and excluded from this default split.',
     action: 'Explore donations and project choices',
     steps: [
-      { title: 'Check how to donate', body: 'Use the existing GitHub contact link to confirm the details before donating. This site has no online payment backend.' },
+      { title: 'Check how to donate', body: 'Use the contact icons to ask via WeChat, QQ, or email before donating. This site has no online payment backend.' },
       { title: 'Name your project', body: 'Write “Donate to XXX project” in the note. Include a repository link if the name could be ambiguous.' },
       { title: 'Follow up afterwards', body: 'Forgot the note? Message me privately with the project name and donation details so I can match the donation and confirm its purpose.' },
     ],
