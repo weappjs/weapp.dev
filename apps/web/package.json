@@ -38,8 +38,8 @@
     "@fontsource-variable/geist": "5.3.0",
     "@fontsource-variable/geist-mono": "5.3.0",
     "@fontsource-variable/sora": "5.3.0",
-    "@lucide/astro": "1.46.0",
-    "astro": "7.3.2",
+    "@lucide/astro": "1.49.0",
+    "astro": "7.3.5",
     "echarts": "^6.1.0"
   },
   "devDependencies": {
@@ -47,12 +47,12 @@
     "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.63.0",
     "node-html-parser": "9.0.4",
-    "sharp": "0.35.4",
+    "sharp": "0.35.5",
     "tailwindcss": "4.3.3",
-    "tsx": "4.23.13",
+    "tsx": "4.23.15",
     "typescript": "6.0.3",
-    "vitest": "5.0.1",
-    "weapp-tailwindcss": "5.5.5",
-    "wrangler": "4.131.2"
+    "vitest": "5.0.2",
+    "weapp-tailwindcss": "5.5.11",
+    "wrangler": "4.144.0"
   }
 }

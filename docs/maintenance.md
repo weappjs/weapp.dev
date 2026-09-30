@@ -8,14 +8,18 @@
 
 环境要求：
 
-- Node.js 22.12.0 或更高版本，本仓库和 GitHub Actions 使用 22.23.2。
-- pnpm 12.3.4（与根目录 `package.json` 的 `packageManager` 一致）。
+- Node.js 22.22.1+（22.x）或 24.11.0+，本仓库和 GitHub Actions 使用 22.23.2。
+- pnpm 12.8.1（与根目录 `package.json` 的 `packageManager` 一致）。
 
 ```bash
 corepack enable
 pnpm install --frozen-lockfile
 pnpm dev
 ```
+
+依赖升级约定：TypeScript 暂留 6.0.3，待 Astro Check 和 repoctl 的 peer 范围支持 TypeScript 7 后再升级。Vitest 与 `@vitest/coverage-v8` 保持同版本。`pnpm-workspace.yaml` 中的 `minimumReleaseAgeExclude` 仅记录本次明确升级的精确版本，不对整个包放宽发布时间限制。
+
+目前 repoctl 的上游依赖混用了两代 pnpm 内部库，`pnpm peers check` 仍会报告 `@pnpm/logger` 和 `@pnpm/worker` 的版本范围警告；升级前已存在。保留该诊断，后续跟随上游修复，不通过忽略规则隐藏。
 
 常用命令：
 
@@ -66,7 +70,7 @@ GitHub Actions 工作流 `CI`（`.github/workflows/ci.yml`）生成并验证两�
 | 生产命令    | `pnpm exec wrangler deploy --message "$GITHUB_SHA"`（工作目录 `apps/web`）      |
 | Pages 发布  | `actions/upload-pages-artifact` + `actions/deploy-pages`（`deploy-pages` 作业） |
 | 预览命令    | `pnpm exec wrangler versions upload --preview-alias pr-<n>`                     |
-| Node / pnpm | `.node-version`（22.23.2）和根目录 `packageManager`（pnpm@12.3.4）              |
+| Node / pnpm | `.node-version`（22.23.2）和根目录 `packageManager`（pnpm@12.8.1）              |
 | Secrets     | `CLOUDFLARE_ACCOUNT_ID`、`CLOUDFLARE_API_TOKEN`                                 |
 
 `verify` 上传 `web-dist` 与 `web-pages-dist`；`e2e` 矩阵分别下载对应产物并以相同 target 运行 Playwright。生产、Pages 和 PR 预览部署都依赖 `verify` 与整个 `e2e` 矩阵。`push` 到 `main` 或在 `main` 上 `workflow_dispatch` 才能激活生产；同仓库 PR 上传 Worker Version，别名为 `pr-<number>`，不切换生产流量。Fork PR 没有仓库 secrets，跳过预览。
