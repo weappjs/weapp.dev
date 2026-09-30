@@ -33,7 +33,7 @@ const privacyPath = localizePath(locale, '/privacy/')
     <nav aria-labelledby="footer-projects-title">
       <h2 id="footer-projects-title" class="mb-4 font-mono text-xs font-[650] text-copy-muted">{copy.footer.projects}</h2>
       {projects.map(project => (
-        <a class="mb-3 flex w-fit items-center gap-1.5 font-display text-sm font-[590] hover:text-brand" href={projectPath(locale, project.id)} aria-current={currentPath === projectPath(locale, project.id) ? 'page' : undefined} data-analytics-event="select_project" data-analytics-project={project.id}>
+        <a class="flex min-h-11 max-w-full w-fit items-center gap-1.5 break-words font-display text-sm font-[590] hover:text-brand" href={projectPath(locale, project.id)} aria-current={currentPath === projectPath(locale, project.id) ? 'page' : undefined} data-analytics-event="select_project" data-analytics-project={project.id}>
           {project.data.locales[locale].name}
           <ArrowUpRight size={14} stroke-width={1.8} aria-hidden="true" />
         </a>
@@ -41,23 +41,23 @@ const privacyPath = localizePath(locale, '/privacy/')
     </nav>
     <nav aria-labelledby="footer-resources-title">
       <h2 id="footer-resources-title" class="mb-4 font-mono text-xs font-[650] text-copy-muted">{copy.footer.resources}</h2>
-      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={`${localizePath(locale)}#projects`} data-analytics-event="navigate_section" data-analytics-section="projects">
+      <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={`${localizePath(locale)}#projects`} data-analytics-event="navigate_section" data-analytics-section="projects">
         {copy.footer.docs}
       </a>
-      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={projectsPath} aria-current={currentPath === projectsPath ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="projects_index">{locale === 'zh-CN' ? '全部项目' : 'All projects'}</a>
-      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={profile.repositoryUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="site_source">
+      <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={projectsPath} aria-current={currentPath === projectsPath ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="projects_index">{locale === 'zh-CN' ? '全部项目' : 'All projects'}</a>
+      <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={profile.repositoryUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="site_source">
         <GitFork size={15} stroke-width={1.8} aria-hidden="true" />
         {copy.footer.source}
       </a>
-      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={privacyPath} aria-current={currentPath === privacyPath ? 'page' : undefined}>{copy.footer.privacy}</a>
-      {profile.features.services && <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={`${pricingPath}#services`} data-analytics-event="navigate_section" data-analytics-section="services">{locale === 'zh-CN' ? '迁移与培训' : 'Migration and training'}</a>}
+      <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={privacyPath} aria-current={currentPath === privacyPath ? 'page' : undefined}>{copy.footer.privacy}</a>
+      {profile.features.services && <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={`${pricingPath}#services`} data-analytics-event="navigate_section" data-analytics-section="services">{locale === 'zh-CN' ? '迁移与培训' : 'Migration and training'}</a>}
       {profile.features.sponsorship && <>
-        <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={`${pricingPath}#sponsor`} data-analytics-event="navigate_section" data-analytics-section="sponsor">{locale === 'zh-CN' ? '开源赞助' : 'Open-source sponsorship'}</a>
-        <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={contributorsPath} aria-current={currentPath === contributorsPath ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="contributors">{copy.footer.contributors}</a>
-        <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={localizePath(locale, '/sponsors/')} aria-current={currentPath === localizePath(locale, '/sponsors/') ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="sponsors">{locale === 'zh-CN' ? '赞助图谱' : 'Sponsor graph'}</a>
+        <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={`${pricingPath}#sponsor`} data-analytics-event="navigate_section" data-analytics-section="sponsor">{locale === 'zh-CN' ? '开源赞助' : 'Open-source sponsorship'}</a>
+        <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={contributorsPath} aria-current={currentPath === contributorsPath ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="contributors">{copy.footer.contributors}</a>
+        <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={localizePath(locale, '/sponsors/')} aria-current={currentPath === localizePath(locale, '/sponsors/') ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="sponsors">{locale === 'zh-CN' ? '赞助图谱' : 'Sponsor graph'}</a>
       </>}
-      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href={profile.organizationUrl} target="_blank" rel="noopener noreferrer">{locale === 'zh-CN' ? '参与开源 · weappjs' : 'Contribute · weappjs'}</a>
-      <a class="mb-3 flex w-fit items-center gap-2 text-sm hover:text-brand" href="/releases.xml" data-analytics-event="navigate_section" data-analytics-section="release_feed">
+      <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={profile.organizationUrl} target="_blank" rel="noopener noreferrer">{locale === 'zh-CN' ? '参与开源 · weappjs' : 'Contribute · weappjs'}</a>
+      <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href="/releases.xml" data-analytics-event="navigate_section" data-analytics-section="release_feed">
         <Rss size={15} stroke-width={1.8} aria-hidden="true" />
         {copy.footer.releases}
       </a>
@@ -66,11 +66,17 @@ const privacyPath = localizePath(locale, '/privacy/')
   <div class:list={[shell, 'mt-14 flex items-center justify-between gap-5 border-t border-line pt-5 text-xs text-copy-muted max-[720px]:flex-col max-[720px]:items-start']}>
     <span>© {new Date().getFullYear()} {copy.footer.copyright}</span>
     <div class="flex flex-wrap items-center gap-5">
-      <button class="inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 hover:text-brand" type="button" data-analytics-preferences-open>
+      <button class="inline-flex min-h-11 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 hover:text-brand" type="button" data-analytics-preferences-open>
         <SlidersHorizontal size={14} stroke-width={1.8} aria-hidden="true" />
         {copy.footer.analyticsPreferences}
       </button>
-      <a class="hover:text-brand" href={`${profile.repositoryUrl}/blob/main/LICENSE`}>MIT License</a>
+      <a class="inline-flex min-h-11 items-center hover:text-brand" href={`${profile.repositoryUrl}/blob/main/LICENSE`}>MIT License</a>
     </div>
   </div>
 </footer>
+
+<style>
+  footer nav { min-width: 0; }
+  footer nav a { overflow-wrap: anywhere; }
+  footer svg { flex-shrink: 0; }
+</style>

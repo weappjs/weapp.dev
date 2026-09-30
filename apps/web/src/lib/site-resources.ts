@@ -1,5 +1,6 @@
 import type { ProjectDefinition } from '../types/project'
 import type { SiteProfile } from './deployment'
+import { donationCopy } from '../i18n/donation'
 
 export interface ResourceProject {
   id: string
@@ -32,7 +33,7 @@ export function createSiteResources(site: SiteProfile, projects: ResourceProject
     ? '\n## Engineering services\n\nMigration, training, and implementation are scoped per project. See the services page for currently available work and planned capabilities. Open-source tools remain independently available from their repositories.\n'
     : ''
   const sponsorshipNotes = site.features.sponsorship
-    ? '\n## Open-source sponsorship\n\nOne-time recognition tiers are ¥20 supporter, ¥200 Bronze, and ¥1,000 Silver. Public recognition requires identity confirmation, maintainer review, and authorization. Confirmed sponsorship is allocated 60% to core maintenance, 25% to the contributors fund, and 15% to nearby open source, net of payment fees. Sponsorship does not purchase technical support or software access. Business partnerships and service work are described separately on the website.\n'
+    ? `\n## Open-source sponsorship\n\nOne-time recognition tiers are ¥20 supporter, ¥200 Bronze, and ¥1,000 Silver. Public recognition requires identity confirmation, maintainer review, and authorization. ${donationCopy.en.allocation} ${donationCopy.en.instruction} Sponsorship does not purchase technical support or software access. Business partnerships and service work are described separately on the website.\n`
     : ''
   const canonicalPages = `## Canonical pages\n\n${pages.map(([label, path]) => `- [${label}](${url(path)})`).join('\n')}\n`
   const sources = `## Official sources\n\n- [GitHub organization](${site.organizationUrl})\n- [Website source](${site.repositoryUrl})\n${sourceLinks.join('\n')}\n`

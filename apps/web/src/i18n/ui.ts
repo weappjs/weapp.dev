@@ -1,14 +1,15 @@
 import type { SiteProfile } from '../lib/deployment'
 import type { Locale } from '../types/project'
 import { getSiteProfile } from '../lib/deployment'
+import { donationCopy } from './donation'
 
 const contributorCopy = {
   eyebrow: '开放协作',
   title: '贡献者基金与积分规则',
-  updated: 'Updated August 26, 2026',
-  description: '公开记录贡献如何被识别、汇总并回流到小程序生态。',
+  updated: 'Updated September 30, 2026',
+  description: '公开记录贡献如何被识别、汇总并回流到小程序生态。未指定项目的赞助净额中，25% 进入贡献者基金；指定项目捐赠经确认后单独处理。',
   pricingAction: '查看赞助方式',
-  allocationTitle: '赞助收入分配',
+  allocationTitle: donationCopy['zh-CN'].allocationTitle,
   buckets: [
     { share: '60%', name: '核心维护', body: '维护者时间、测试、CI、域名和文档站。' },
     { share: '25%', name: '贡献者基金', body: '按季分配给有效贡献，支持公开任务和定向赏金。' },
@@ -38,10 +39,10 @@ const contributorCopy = {
 const contributorCopyEn = {
   eyebrow: 'Open collaboration',
   title: 'Contributors fund and point rules',
-  updated: 'Updated August 26, 2026',
-  description: 'A public record of how contributions are recognized, reviewed, and returned to the mini-program ecosystem.',
+  updated: 'Updated September 30, 2026',
+  description: 'A public record of how contributions are recognized, reviewed, and returned to the mini-program ecosystem. The fund receives 25% of net donations without a designated project; confirmed project-specific donations are handled separately.',
   pricingAction: 'Explore sponsorship',
-  allocationTitle: 'Sponsorship allocation',
+  allocationTitle: donationCopy.en.allocationTitle,
   buckets: [
     { share: '60%', name: 'Core maintenance', body: 'Maintainer time, testing, CI, domains, and documentation sites.' },
     { share: '25%', name: 'Contributors fund', body: 'Quarterly allocation for verified contributions, public tasks, and targeted bounties.' },
@@ -190,7 +191,7 @@ export const siteCopy = {
       title: '把工具链接入你的真实项目',
       description: '围绕现有代码库提供迁移、接入与培训，先确认范围，再交付可以验证的工程结果。开源赞助另设入口，不包含服务权益。',
       pagesTitle: '支持开源项目继续维护',
-      pagesDescription: '赞助会按公开规则用于核心维护、贡献者基金和周边开源项目。',
+      pagesDescription: donationCopy['zh-CN'].policy,
       cards: [
         { kind: 'service', title: '迁移与培训', body: '当前可交付的人工服务，围绕 weapp-vite + weapp-tailwindcss 接入真实仓库。' },
         { kind: 'roadmap', title: '建设中的能力', body: '云构建、官方模板和私有组件仓库会在具备稳定交付链路后再开放。' },
@@ -208,13 +209,13 @@ export const siteCopy = {
       sponsorTitle: '支持 weapp.dev 开源',
       sponsorDescription: '中国开源项目需要持续的时间、基础设施和维护投入。赞助不是购买服务，而是帮助这套工具继续发布、修复和陪伴社区。',
       sponsorTiers: [
-        { id: 'supporter', name: '普通支持', price: '¥20', cadence: '一次性 / 永久', body: '永久保留公开致谢。' },
+        { id: 'supporter', name: '普通支持', price: '¥20', cadence: '一次性 / 永久', body: '经确认并授权后，永久保留公开致谢。' },
         { id: 'bronze', name: '铜牌赞助', price: '¥200', cadence: '一次性 / 永久', body: '经确认并授权后，展示 GitHub 头像、用户名和主页链接。' },
         { id: 'silver', name: '银牌赞助', price: '¥1,000', cadence: '一次性 / 永久', body: '进入突出展示名单，并包含铜牌赞助权益。' },
         { id: 'gold', name: 'Gold 企业合作', price: '¥2,000 起', cadence: '按合作周期', body: '单站月度 ¥2,000 / 30 天；双站月度 ¥3,000 / 30 天；双站季度 ¥8,000 / 90 天；定制合作单独沟通。' },
       ],
       sponsorAction: '申请赞助方式',
-      sponsorAllocation: '赞助收入的 60% 用于核心维护，25% 进入贡献者基金，15% 支持上游和周边开源项目。支持去向按公开记录更新。',
+      sponsorAllocation: donationCopy['zh-CN'].allocation,
       sponsorAllocationBuckets: contributorCopy.buckets,
       sponsorNote: '赞助不是购买服务，也不包含技术支持、模板源码、云构建额度或订阅权益。公开展示需完成 GitHub 身份确认、维护者审核和明确授权；获准记录可同步展示在 weapp.dev、tw.weapp.dev、vite.weapp.dev。',
       sponsorSites: '公开名单（仅展示已确认并授权的 GitHub 或企业信息）',
@@ -257,7 +258,8 @@ export const siteCopy = {
       faqTitle: '常见问题',
       faq: [
         { question: '赞助 weapp.dev 会获得什么产品权益吗？', answer: '不会。赞助是对开源维护的支持，不包含技术支持、模板源码、云构建额度或其他商业权益。' },
-        { question: '赞助收入会如何使用？', answer: '60% 用于核心维护，25% 进入贡献者基金，15% 支持上游和周边开源项目。' },
+        { question: '赞助收入会如何使用？', answer: donationCopy['zh-CN'].allocation },
+        ...donationCopy['zh-CN'].faq,
         { question: '现在可以购买 Pro、Team 或 Enterprise 吗？', answer: '不能。这些能力仍在建设中，页面只用于公开方向，不代表已经开放或可以收款。' },
       ],
       ctaTitle: '让开源项目有继续维护的预算',
@@ -472,7 +474,7 @@ export const siteCopy = {
       title: 'Bring the toolchain into your project',
       description: 'Migration, integration, and training for your existing codebase, with a clear scope and verifiable engineering results. Open-source sponsorship is separate and does not include services.',
       pagesTitle: 'Keep open source maintained',
-      pagesDescription: 'Sponsorship follows a public split for core maintenance, the contributors fund, and adjacent open-source projects.',
+      pagesDescription: donationCopy.en.policy,
       cards: [
         { kind: 'service', title: 'Migration and training', body: 'Human-delivered services for connecting real repositories to weapp-vite + weapp-tailwindcss.' },
         { kind: 'roadmap', title: 'In development', body: 'Cloud builds, official templates, and private component registries will open after delivery is stable.' },
@@ -490,13 +492,13 @@ export const siteCopy = {
       sponsorTitle: 'Sponsor weapp.dev open source',
       sponsorDescription: 'Chinese open source needs sustained time, infrastructure, and maintenance. Sponsorship is not a service purchase; it helps this toolchain keep shipping and supporting its community.',
       sponsorTiers: [
-        { id: 'supporter', name: 'Supporter', price: '¥20', cadence: 'one-time / permanent', body: 'Permanent public thank-you.' },
+        { id: 'supporter', name: 'Supporter', price: '¥20', cadence: 'one-time / permanent', body: 'A permanent public thank-you after confirmation and authorization.' },
         { id: 'bronze', name: 'Bronze sponsor', price: '¥200', cadence: 'one-time / permanent', body: 'After identity confirmation and authorization, show a GitHub avatar, username, and profile link.' },
         { id: 'silver', name: 'Silver sponsor', price: '¥1,000', cadence: 'one-time / permanent', body: 'Featured individual recognition, including Bronze benefits.' },
         { id: 'gold', name: 'Gold business partner', price: '¥2,000+', cadence: 'by partnership term', body: 'Single-site monthly ¥2,000 / 30 days; dual-site monthly ¥3,000 / 30 days; dual-site quarterly ¥8,000 / 90 days; custom terms by discussion.' },
       ],
       sponsorAction: 'Request sponsorship details',
-      sponsorAllocation: '60% of sponsorship income funds core maintenance, 25% goes to the contributors fund, and 15% supports upstream and adjacent open-source projects. Destinations follow the public records.',
+      sponsorAllocation: donationCopy.en.allocation,
       sponsorAllocationBuckets: contributorCopyEn.buckets,
       sponsorNote: 'Sponsorship is not a service purchase and does not include technical support, template source, cloud-build minutes, or subscription access. Public display requires GitHub identity confirmation, maintainer review, and explicit authorization; approved records may appear on weapp.dev, tw.weapp.dev, and vite.weapp.dev.',
       sponsorSites: 'Public recognition (confirmed and authorized GitHub or business details only)',
@@ -539,7 +541,8 @@ export const siteCopy = {
       faqTitle: 'Frequently asked questions',
       faq: [
         { question: 'What do sponsors receive?', answer: 'Sponsorship supports open-source maintenance and does not include technical support, template source, cloud-build minutes, or other commercial benefits.' },
-        { question: 'How is sponsorship income used?', answer: '60% funds core maintenance, 25% goes to the contributors fund, and 15% supports upstream and adjacent open-source projects.' },
+        { question: 'How is sponsorship income used?', answer: donationCopy.en.allocation },
+        ...donationCopy.en.faq,
         { question: 'Can I buy Pro, Team, or Enterprise today?', answer: 'No. These capabilities are still in development. The page describes direction, not an open checkout or payment commitment.' },
       ],
       ctaTitle: 'Give open source a budget to keep going',

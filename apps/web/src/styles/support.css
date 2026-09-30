@@ -1,0 +1,36 @@
+.support-page h1,
+.support-page h2,
+.support-page h3 {
+  overflow-wrap: anywhere;
+}
+
+.support-page h2 {
+  line-height: 1.2;
+}
+
+.support-page :where(.grid) > * {
+  min-width: 0;
+}
+
+.support-page :where(summary) {
+  align-content: center;
+  min-height: 44px;
+}
+
+.support-page :where(a, button) > svg {
+  flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .support-page .py-20 {
+    padding-block: 2.5rem;
+  }
+
+  .support-page .mb-12 {
+    margin-bottom: 1.75rem;
+  }
+
+  .support-page .gap-16 {
+    gap: 1.75rem;
+  }
+}

@@ -82,6 +82,14 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
           )
         })}
       </ol>
+      <aside class="mt-8 grid grid-cols-[.65fr_1.35fr] gap-5 border-b border-line pb-8 max-[820px]:grid-cols-1" aria-labelledby="home-start-title">
+        <h3 id="home-start-title" class="mb-0 text-xl font-[650]">{locale === 'zh-CN' ? '从你现在的项目开始' : 'Start with your current project'}</h3>
+        <div class="min-w-0">
+          <p class="mb-3 max-w-[70ch] text-copy-muted">{locale === 'zh-CN' ? '原生小程序需要改进工程构建，可以先看 weapp-vite；需要 Tailwind 样式，先看 weapp-tailwindcss；需要可编辑的组件源码，先看 Varo。已有 Taro 项目可以了解 VPT，uni-app 项目可以从 Uni Helper 与 Wot UI 开始。' : 'For native mini-program builds, start with weapp-vite; for Tailwind styling, see weapp-tailwindcss; for editable component source, explore Varo. Existing Taro projects can explore VPT, while uni-app teams can start with Uni Helper and Wot UI.'}</p>
+          <p class="mb-3 max-w-[70ch] text-sm text-copy-muted">{locale === 'zh-CN' ? '先查看项目状态与适配边界，再按官方文档在一个页面或组件中试用，验证后逐步扩展。每个项目的详情页都保留文档和源码入口。' : 'Check project status and compatibility, then follow the official docs to try one page or component before expanding. Each project page links to its documentation and source.'}</p>
+          <a class="inline-flex min-h-11 items-center gap-2 text-sm font-[650] text-brand" href={localizePath(locale, '/projects/')}>{locale === 'zh-CN' ? '按需求浏览项目' : 'Browse projects by need'}<ArrowRight size={17} aria-hidden="true" /></a>
+        </div>
+      </aside>
     </div>
   </section>
 
@@ -136,14 +144,14 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
         {releaseProjects.map(project => {
           const projectMetrics = metrics[project.id]
           return (
-            <article class="grid min-h-[112px] grid-cols-[48px_1fr_auto_42px] items-center gap-4 border-b border-line max-[520px]:grid-cols-[42px_1fr_auto]">
+            <article class="grid min-h-[112px] grid-cols-[48px_1fr_auto_42px] items-center gap-4 border-b border-line max-[620px]:grid-cols-[36px_minmax(0,1fr)_44px] max-[620px]:gap-x-3 max-[620px]:gap-y-1 max-[620px]:py-4">
               <img class="size-11 object-contain max-[520px]:size-9" src={project.data.logo} width="44" height="44" alt="" />
               <div>
-                <h3 class="mb-1 text-base font-[650]">{project.data.locales[locale].name}</h3>
+                <h3 class="mb-1 break-words text-base font-[650]">{project.data.locales[locale].name}</h3>
                 <p class="mb-0 text-xs text-copy-muted">{copy.releases.released} {formatReleaseDate(projectMetrics.releasedAt, numberLocale)}</p>
               </div>
-              <strong class="font-mono text-sm">v{projectMetrics.version}</strong>
-              <a class:list={[iconControl, 'max-[520px]:hidden']} href={`https://www.npmjs.com/package/${project.data.packageName}`} aria-label={`${copy.releases.viewPackage}: ${project.data.packageName}`} target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="package" data-analytics-project={project.id}>
+              <strong class="font-mono text-sm max-[620px]:col-start-2 max-[620px]:row-start-2 max-[620px]:break-all">v{projectMetrics.version}</strong>
+              <a class:list={[iconControl, 'max-[620px]:col-start-3 max-[620px]:row-start-1 max-[620px]:row-span-2']} href={`https://www.npmjs.com/package/${project.data.packageName}`} aria-label={`${copy.releases.viewPackage}: ${project.data.packageName}`} target="_blank" rel="noreferrer" data-analytics-event="click_outbound" data-analytics-target="package" data-analytics-project={project.id}>
                 <ArrowUpRight size={19} stroke-width={1.8} aria-hidden="true" />
               </a>
             </article>

@@ -1,0 +1,38 @@
+---
+import type { Locale } from '../types/project'
+import { donationCopy } from '../i18n/donation'
+import { getSiteProfile } from '../lib/deployment'
+
+interface Props { locale: Locale; steps?: boolean; headingLevel?: 'h2' | 'h3' }
+const { locale, steps = false, headingLevel: Heading = 'h2' } = Astro.props
+const copy = donationCopy[locale]
+---
+
+{getSiteProfile().features.sponsorship && <section class="donation-guidance" aria-labelledby="donation-guidance-title" data-donation-guidance>
+  <div class="donation-guidance-intro">
+    <Heading id="donation-guidance-title">{copy.title}</Heading>
+    <div>
+      <p>{copy.instruction}</p>
+      <p class="donation-policy">{copy.policy}</p>
+      <slot />
+    </div>
+  </div>
+  {steps && <ol class="donation-steps">{copy.steps.map(step => <li><h4>{step.title}</h4><p>{step.body}</p></li>)}</ol>}
+</section>}
+
+<style>
+  .donation-guidance { margin-block: 2rem; padding-block: 1.75rem; border-block: 1px solid var(--border); }
+  .donation-guidance-intro { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); gap: 2rem 3rem; }
+  .donation-guidance h2, .donation-guidance h3 { max-width: 24ch; margin: 0; font-size: clamp(1.25rem, 2vw, 1.5rem); line-height: 1.35; font-weight: 650; }
+  .donation-guidance p { max-width: 70ch; margin: 0; line-height: 1.8; overflow-wrap: anywhere; }
+  .donation-guidance .donation-policy { margin-top: .75rem; color: var(--muted); font-size: .875rem; }
+  .donation-steps { list-style: decimal; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; margin: 1.75rem 0 0; padding: 1.5rem 0 0 1.5rem; border-top: 1px solid var(--border); }
+  .donation-steps li { padding-left: .25rem; }
+  .donation-steps li::marker { color: var(--accent); font-weight: 650; }
+  .donation-steps h4 { margin: 0 0 .5rem; font-size: 1rem; font-weight: 650; }
+  .donation-steps p { color: var(--muted); font-size: .875rem; }
+  @media (max-width: 820px) {
+    .donation-guidance-intro, .donation-steps { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; }
+    .donation-guidance { margin-block: 1.5rem; padding-block: 1.5rem; }
+  }
+</style>

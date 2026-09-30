@@ -1,4 +1,5 @@
 import type { Locale, ProjectDefinition, ProjectMetrics } from '../types/project'
+import { donationCopy } from '../i18n/donation'
 import { getSiteProfile } from './deployment'
 
 const profile = getSiteProfile()
@@ -92,6 +93,7 @@ export function sponsorsSchema(locale: Locale) {
     '@type': 'CollectionPage',
     '@id': absoluteUrl(path),
     'name': locale === 'zh-CN' ? '赞助图谱' : 'Sponsor graph',
+    'description': donationCopy[locale].allocation,
     'url': absoluteUrl(path),
     'inLanguage': locale === 'zh-CN' ? 'zh-CN' : 'en-US',
     'isPartOf': { '@id': `${siteUrl}/#website` },
@@ -146,6 +148,7 @@ export function pricingSchema(locale: Locale) {
         '@type': 'DonateAction',
         'name': locale === 'zh-CN' ? '支持 weapp.dev 开源' : 'Support weapp.dev open source',
         'target': 'https://github.com/sonofmagic/sponsors',
+        'description': `${donationCopy[locale].instruction} ${donationCopy[locale].policy}`,
       },
       {
         '@type': 'WebPage',

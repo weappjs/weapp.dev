@@ -1,4 +1,5 @@
 ---
+import { donationCopy } from '../i18n/donation'
 import type { Locale } from '../types/project'
 import type { SponsorGraphData } from '../lib/sponsors'
 interface Props { locale: Locale; graph: SponsorGraphData }
@@ -7,8 +8,8 @@ const graphNameOverrides: Record<string, string> = locale === 'zh-CN' ? {
   'fund:core': '核心维护',
   'fund:contributors': '贡献者基金',
   'fund:ecosystem': '周边开源',
-  'ledger:net': '已确认净收入',
-} : {}
+  'ledger:net': '未指定项目的净额',
+} : { 'ledger:net': 'General donations (net)' }
 const nodeKindLabels = locale === 'zh-CN' ? { sponsor: '赞助者', project: '项目', fund: '资金桶', site: '站点' } : { sponsor: 'Sponsor', project: 'Project', fund: 'Fund', site: 'Site' }
 const localizedGraph = {
   ...graph,
@@ -21,7 +22,7 @@ const labels = locale === 'zh-CN'
 ---
 <sponsor-graphs role="region" aria-label={labels.graphRegion} class="sponsor-graphs" data-sponsor-graphs data-locale={locale} data-graph={JSON.stringify(localizedGraph)} aria-busy="false">
   <section class="sponsor-graph-card" data-graph-card="flow" aria-labelledby="sponsor-flow-title" aria-describedby="sponsor-flow-help sponsor-flow-summary">
-    <header><div><p class="sponsor-graph-kicker">01</p><h2 id="sponsor-flow-title">{labels.flow}</h2><p id="sponsor-flow-help">{labels.flowHelp}</p></div></header>
+    <header><div><h2 id="sponsor-flow-title">{labels.flow}</h2><p id="sponsor-flow-help">{labels.flowHelp} {donationCopy[locale].allocation}</p></div></header>
     <p class="sponsor-graph-loading" data-graph-loading role="status" aria-live="polite" hidden>{locale === 'zh-CN' ? '正在加载图表…' : 'Loading chart…'}</p>
     <p class="sponsor-graph-note" data-no-js-note>{locale === 'zh-CN' ? '当前显示资金桶分配表；启用 JavaScript 后可加载交互式资金流图。' : 'The allocation table is shown here. Enable JavaScript to load the interactive funding flow.'}</p>
     <div class="sponsor-chart" data-chart="flow" hidden role="img" aria-label={labels.flow} aria-describedby="sponsor-flow-help sponsor-flow-summary"></div>
@@ -30,7 +31,7 @@ const labels = locale === 'zh-CN'
     <details open><summary>{labels.table}</summary><table><caption class="sr-only">{locale === 'zh-CN' ? '资金桶分配比例' : 'Funding bucket allocation shares'}</caption><thead><tr><th scope="col">{locale === 'zh-CN' ? '资金桶' : 'Bucket'}</th><th scope="col">{locale === 'zh-CN' ? '比例' : 'Share'}</th></tr></thead><tbody>{localizedGraph.buckets.map(bucket => <tr><th scope="row">{bucket.name}</th><td>{bucket.share}%</td></tr>)}</tbody></table></details>
   </section>
   <section class="sponsor-graph-card" data-graph-card="relation" aria-labelledby="sponsor-relation-title" aria-describedby="sponsor-relation-help sponsor-relation-summary">
-    <header><div><p class="sponsor-graph-kicker">02</p><h2 id="sponsor-relation-title">{labels.relation}</h2><p id="sponsor-relation-help">{labels.relationHelp}</p></div><button type="button" data-reset disabled aria-controls="sponsor-relation-chart">{labels.reset}</button></header>
+    <header><div><h2 id="sponsor-relation-title">{labels.relation}</h2><p id="sponsor-relation-help">{labels.relationHelp}</p></div><button type="button" data-reset disabled aria-controls="sponsor-relation-chart">{labels.reset}</button></header>
     <div class="sponsor-graph-tools" role="toolbar" aria-label={labels.relation} aria-describedby="sponsor-relation-summary"><input type="search" disabled aria-label={locale === 'zh-CN' ? '搜索节点' : 'Search nodes'} aria-controls="sponsor-relation-chart" data-search placeholder={locale === 'zh-CN' ? '搜索节点' : 'Search nodes'} /><select data-kind disabled aria-label={locale === 'zh-CN' ? '按节点类型筛选' : 'Filter by node type'} aria-controls="sponsor-relation-chart"><option value="">{labels.all}</option><option value="sponsor">{locale === 'zh-CN' ? '赞助者' : 'Sponsors'}</option><option value="project">{locale === 'zh-CN' ? '项目' : 'Projects'}</option><option value="fund">{locale === 'zh-CN' ? '资金桶' : 'Funds'}</option><option value="site">{locale === 'zh-CN' ? '站点' : 'Sites'}</option></select></div>
     <p class="sponsor-graph-note" data-no-js-note>{locale === 'zh-CN' ? '当前显示完整节点和连接列表；启用 JavaScript 后可搜索、筛选并聚焦节点。' : 'Complete node and connection lists are shown here. Enable JavaScript to search, filter and focus nodes.'}</p>
     <div id="sponsor-relation-chart" class="sponsor-chart" data-chart="relation" hidden role="img" aria-label={labels.relation} aria-describedby="sponsor-relation-help sponsor-relation-summary"></div>
@@ -88,11 +89,11 @@ const labels = locale === 'zh-CN'
           })
         }
         if (signal.aborted) return
-        const [{ init, use }, { GraphChart, SankeyChart }, { DataZoomComponent, LegendComponent, TooltipComponent }, { CanvasRenderer }] = await Promise.all([
-          import('echarts/core'), import('echarts/charts'), import('echarts/components'), import('echarts/renderers'),
+        const [{ init, use }, { GraphChart, SankeyChart }, { DataZoomComponent, LegendComponent, TooltipComponent }, { CanvasRenderer }, { LabelLayout }] = await Promise.all([
+          import('echarts/core'), import('echarts/charts'), import('echarts/components'), import('echarts/renderers'), import('echarts/features'),
         ])
         if (signal.aborted) return
-        use([GraphChart, SankeyChart, DataZoomComponent, LegendComponent, TooltipComponent, CanvasRenderer])
+        use([GraphChart, SankeyChart, DataZoomComponent, LegendComponent, TooltipComponent, CanvasRenderer, LabelLayout])
         const graph: SponsorGraphData = JSON.parse(this.dataset.graph || '{}')
         const reduce = matchMedia('(prefers-reduced-motion: reduce)')
         const zh = this.dataset.locale === 'zh-CN'
@@ -113,12 +114,20 @@ const labels = locale === 'zh-CN'
         }
         const labelStyle = () => ({ color: chartStyle().textStyle.color, textBorderWidth: 0 })
         const names = new Map(graph.nodes.map(node => [node.id, node.name]))
-        flow.setOption({ ...chartStyle(), animation: !reduce.matches, tooltip: { renderMode: 'richText', valueFormatter: (value: unknown) => `${value}%` }, series: [{
-          type: 'sankey', label: labelStyle(),
-          data: graph.nodes.filter(node => node.id.startsWith('fund:') || node.id === 'ledger:net').map(node => ({ name: node.name })),
-          links: graph.edges.filter(edge => edge.source === 'ledger:net').map(edge => ({ source: names.get(edge.source), target: names.get(edge.target), value: edge.value })),
-          emphasis: { focus: 'adjacency' }, lineStyle: { color: 'gradient', curveness: 0.5 },
-        }] })
+        const renderFlow = () => {
+          const narrow = flow.getWidth() < 480
+          flow.setOption({ ...chartStyle(), animation: !reduce.matches, tooltip: { renderMode: 'richText', valueFormatter: (value: unknown) => `${value}%` }, series: [{
+            type: 'sankey', top: narrow ? 52 : 32, bottom: 18, left: 8, right: narrow ? 112 : 180, nodeWidth: 16,
+            label: { ...labelStyle(), width: narrow ? 102 : 170, overflow: 'break' },
+            data: graph.nodes.filter(node => node.id.startsWith('fund:') || node.id === 'ledger:net').map(node => ({
+              name: node.name,
+              ...(node.id === 'ledger:net' ? { label: { position: 'top', align: 'left', width: flow.getWidth() - 16, overflow: 'break' } } : {}),
+            })),
+            links: graph.edges.filter(edge => edge.source === 'ledger:net').map(edge => ({ source: names.get(edge.source), target: names.get(edge.target), value: edge.value })),
+            emphasis: { focus: 'adjacency' }, lineStyle: { color: 'gradient', curveness: 0.5 },
+          }] })
+        }
+        renderFlow()
 
         let compact = relation.getWidth() < 480
         const compactNodeLimit = 48
@@ -133,7 +142,7 @@ const labels = locale === 'zh-CN'
             data: visibleNodes.map((node, index) => ({ id: node.id, name: node.name, value: node.value, ...(compact ? { x: index % 2, y: Math.floor(index / 2) } : {}), symbolSize: node.kind === 'sponsor' ? 24 : 32 })),
             links: [...graph.edges, ...graph.relationEdges].filter(edge => ids.has(edge.source) && ids.has(edge.target)).map(edge => ({ source: edge.source, target: edge.target, value: edge.value })),
             force: { repulsion: 120, edgeLength: 90, layoutAnimation: !reduce.matches },
-            label: { ...labelStyle(), show: true, position: compact ? 'bottom' : 'right', ...(compact ? { width: 120, overflow: 'truncate' } : {}) }, labelLayout: { hideOverlap: true }, emphasis: { focus: 'adjacency' },
+            label: { ...labelStyle(), show: true, position: compact ? 'bottom' : 'right', width: compact ? 110 : 150, overflow: 'truncate' }, labelLayout: { hideOverlap: true }, emphasis: { focus: 'adjacency' },
           }] }, { notMerge: true })
           const limited = visibleNodes.length < nodes.length
           this.querySelector<HTMLElement>('[data-status]')!.textContent = zh
@@ -187,6 +196,7 @@ const labels = locale === 'zh-CN'
         const resize = () => {
           if (document.hidden) return
           charts.forEach(chart => chart.resize())
+          renderFlow()
           const nextCompact = relation.getWidth() < 480
           if (compact !== nextCompact) {
             compact = nextCompact
@@ -259,13 +269,18 @@ const labels = locale === 'zh-CN'
   .sponsor-graph-loading { margin:1rem 0 0; color:var(--muted); font:650 .78rem/1.4 var(--font-mono); }
   .sponsor-graph-note { margin:1rem 0 0; padding:.65rem .75rem; border-left:1px solid var(--accent); color:var(--muted); font-size:.85rem; }
   .sponsor-graph-tools { display:flex; gap:.75rem; margin-top:1rem; }
-  .sponsor-graph-tools input,.sponsor-graph-tools select,.sponsor-graph-card button { min-height:2.5rem; border:1px solid var(--border); padding:.5rem .7rem; background:var(--surface); color:var(--text); }
+  .sponsor-graph-tools input,.sponsor-graph-tools select,.sponsor-graph-card button { min-height:2.75rem; border:1px solid var(--border); padding:.5rem .7rem; background:var(--surface); color:var(--text); }
+  .sponsor-graph-card summary { min-height:44px; align-content:center; cursor:pointer; }
+  .sponsor-graph-card header > div { min-width:0; }
+  .sponsor-graph-card select { max-width:100%; }
   .sponsor-graph-tools input { flex:1; min-width:0; }
   .sponsor-graph-card { min-width:0; }
   .sponsor-graph-card button[data-node-id] { text-align:left; overflow-wrap:anywhere; max-width:100%; }
   .sponsor-graph-card details { margin-top:1rem; border-top:1px solid var(--border); padding-top:.75rem; }
   .sponsor-graph-card details h3 { margin:1rem 0 .5rem; font-size:.9rem; }
   .sponsor-graph-card table { width:100%; margin-top:.75rem; border-collapse:collapse; text-align:left; font-size:.9rem; }
+  .sponsor-graph-card table:has(th:nth-child(2):last-child) th:first-child { width:65%; }
+  .sponsor-graph-card table:has(th:nth-child(2):last-child) td:last-child { white-space:nowrap; }
   .sponsor-graph-card th,.sponsor-graph-card td { overflow-wrap:anywhere; padding:.6rem .4rem; border-bottom:1px solid var(--border); }
   .sponsor-graph-status { color:var(--muted); font-size:.8rem; }
   .sponsor-graph-summary { margin:.35rem 0 0; color:var(--muted); font-size:.82rem; }
@@ -275,5 +290,5 @@ const labels = locale === 'zh-CN'
   .sponsor-graph-error { margin:1rem 0 0; color:var(--muted); font-size:.85rem; }
   .sponsor-graph-error button { margin-left:.5rem; border:1px solid currentColor; padding:.35rem .6rem; color:inherit; font:650 .78rem/1 var(--font-mono); }
   .sponsor-graph-error button:hover,.sponsor-graph-error button:focus-visible { background:var(--panel-soft); }
-  @media (max-width:720px) { .sponsor-graph-card { padding:1rem; } .sponsor-chart { height:300px; min-height:300px; } .sponsor-graph-tools { flex-direction:column; } }
+  @media (max-width:720px) { .sponsor-graph-card header { flex-wrap:wrap; } .sponsor-graph-card { padding:1rem; } .sponsor-chart { height:300px; min-height:300px; } .sponsor-graph-tools { flex-direction:column; } }
 </style>

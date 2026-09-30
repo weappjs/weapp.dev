@@ -100,7 +100,7 @@ export default {
     description: 'Day-to-day maintenance is funded by people willing to sponsor, with a public split. If your team wants fewer migration landmines, we can also do scoped delivery and training.',
     cards: [
       { title: 'Migration and training', body: 'We work in your existing repo: wire weapp-vite + weapp-tailwindcss, and try to get CI green first.' },
-      { title: 'Sponsorship and splits', body: 'Thanks for helping keep maintenance going. One-time ¥20 / ¥200 / ¥1,000; net receipts split 60% core, 25% contributors fund, 15% nearby open source.' },
+      { title: 'Sponsorship and splits', body: 'Thanks for helping keep maintenance going. One-time ¥20 / ¥200 / ¥1,000; net donations without a designated project split 60% core, 25% contributors fund, 15% nearby open source. Confirmed project-specific donations are handled separately.' },
       { title: 'Public thanks', body: 'From ¥200 up, after identity checks and authorization, we can show a GitHub link on weapp.dev, tw.weapp.dev, and vite.weapp.dev.' },
     ],
     pricing: 'How sponsorship is split',

@@ -1,4 +1,7 @@
 ---
+import DonationGuidance from './DonationGuidance.astro'
+import { donationCopy } from '../i18n/donation'
+import '../styles/support.css'
 import { ArrowRight, Heart } from '@lucide/astro'
 import type { Locale } from '../types/project'
 import { getSiteProfile } from '../lib/deployment'
@@ -12,9 +15,15 @@ interface Props {
 const { locale } = Astro.props
 const copy = getSiteCopy(locale).contributors
 const profile = getSiteProfile()
+const contents = [
+  ...copy.sections.map((item, index) => ({ title: item.title, href: `#contributors-section-${index + 1}` })),
+  { title: copy.weightsTitle, href: '#contributors-weights-title' },
+  { title: copy.reposTitle, href: '#contributors-repos-title' },
+  { title: copy.payoutTitle, href: '#contributors-payout-title' },
+]
 ---
 
-{profile.features.sponsorship && <main id="main-content">
+{profile.features.sponsorship && <main id="main-content" class="support-page">
   <section class:list={[section, shell]} aria-labelledby="contributors-title">
     <header data-reveal class="mb-16 grid grid-cols-[.7fr_1.3fr] gap-16 max-[820px]:mb-12 max-[820px]:grid-cols-1 max-[820px]:gap-8">
       <div>
@@ -31,8 +40,10 @@ const profile = getSiteProfile()
       </div>
     </header>
 
-    <section data-reveal class="mb-20" aria-labelledby="allocation-title">
+    <DonationGuidance locale={locale} />
+    <section data-reveal class="mb-12" aria-labelledby="allocation-title">
       <h2 id="allocation-title" class="mb-6 text-xl font-[650]">{copy.allocationTitle}</h2>
+      <p class="mb-6 max-w-[70ch] text-copy-muted">{donationCopy[locale].allocation}</p>
       <div class="contributors-bucket-grid">
         {copy.buckets.map((bucket, index) => (
           <article aria-labelledby={`contributors-bucket-title-${index + 1}`} aria-describedby={`contributors-bucket-body-${index + 1}`}>
@@ -46,15 +57,16 @@ const profile = getSiteProfile()
     </section>
 
     <div class="grid grid-cols-[280px_1fr] items-start gap-16 max-[820px]:grid-cols-1 max-[820px]:gap-10">
-      <nav data-reveal class="sticky top-24 border-t border-line max-[820px]:static" aria-label={copy.contents}>
-        <h2 class="py-4 font-mono text-xs font-[650] text-copy-muted">{copy.contents}</h2>
-        {copy.sections.map((sectionCopy, index) => (
-          <a class="block border-t border-line py-3 text-sm font-[590] transition-colors hover:text-brand" href={`#contributors-section-${index + 1}`}>{sectionCopy.title}</a>
-        ))}
-        <a class="block border-t border-line py-3 text-sm font-[590] transition-colors hover:text-brand" href="#contributors-weights-title">{copy.weightsTitle}</a>
-        <a class="block border-t border-line py-3 text-sm font-[590] transition-colors hover:text-brand" href="#contributors-repos-title">{copy.reposTitle}</a>
-        <a class="block border-t border-line py-3 text-sm font-[590] transition-colors hover:text-brand" href="#contributors-payout-title">{copy.payoutTitle}</a>
-      </nav>
+      <aside class="contributors-navigation">
+        <nav class="contributors-desktop-contents" aria-label={copy.contents}>
+          <h2 class="py-4 text-sm font-[650] text-copy-muted">{copy.contents}</h2>
+          {contents.map(item => <a href={item.href}>{item.title}</a>)}
+        </nav>
+        <details class="contributors-mobile-contents">
+          <summary>{copy.contents}</summary>
+          <nav aria-label={copy.contents}>{contents.map(item => <a href={item.href}>{item.title}</a>)}</nav>
+        </details>
+      </aside>
       <div class="border-t border-line">
         {copy.sections.map((sectionCopy, index) => (
           <section data-reveal id={`contributors-section-${index + 1}`} class="scroll-mt-24 border-b border-line py-9" aria-labelledby={`contributors-heading-${index + 1}`}>
@@ -65,15 +77,15 @@ const profile = getSiteProfile()
 
         <section data-reveal class="scroll-mt-24 border-b border-line py-9" aria-labelledby="contributors-weights-title">
           <h2 id="contributors-weights-title" class="mb-4 text-2xl font-[660]">{copy.weightsTitle}</h2>
-          <table class="contributors-table w-full border-collapse text-left text-sm">
+          <table role="table" class="contributors-table w-full border-collapse text-left text-sm">
             <caption class="sr-only">{locale === 'zh-CN' ? '贡献者积分规则' : 'Contributor point rules'}</caption>
-            <thead><tr><th scope="col">{locale === 'zh-CN' ? '积分' : 'Points'}</th><th scope="col">{locale === 'zh-CN' ? '贡献类型' : 'Contribution'}</th><th scope="col">{locale === 'zh-CN' ? '规则' : 'Rule'}</th></tr></thead>
-            <tbody>
+            <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">{locale === 'zh-CN' ? '积分' : 'Points'}</th><th role="columnheader" scope="col">{locale === 'zh-CN' ? '贡献类型' : 'Contribution'}</th><th role="columnheader" scope="col">{locale === 'zh-CN' ? '规则' : 'Rule'}</th></tr></thead>
+            <tbody role="rowgroup">
               {copy.weights.map(weight => (
-                <tr>
-                  <th scope="row" class="w-16 font-mono text-brand">{weight.points}</th>
-                  <td class="font-[650]">{weight.name}</td>
-                  <td class="text-copy-muted">{weight.rule}</td>
+                <tr role="row">
+                  <th role="rowheader" scope="row" class="w-16 font-mono text-brand"><span class="contributors-cell-label" aria-hidden="true">{locale === 'zh-CN' ? '积分' : 'Points'} </span>{weight.points}</th>
+                  <td role="cell" class="font-[650]"><span class="contributors-cell-label" aria-hidden="true">{locale === 'zh-CN' ? '贡献类型' : 'Contribution'} </span>{weight.name}</td>
+                  <td role="cell" class="text-copy-muted"><span class="contributors-cell-label" aria-hidden="true">{locale === 'zh-CN' ? '规则' : 'Rule'} </span>{weight.rule}</td>
                 </tr>
               ))}
             </tbody>
@@ -85,7 +97,7 @@ const profile = getSiteProfile()
           <ul class="m-0 mb-4 grid list-none gap-2 p-0">
             {copy.repos.map(repo => (
               <li>
-                <a class="inline-flex items-center gap-2 text-sm font-[620] hover:text-brand" href={repo.url} target="_blank" rel="noopener noreferrer">{repo.name}</a>
+                <a class="inline-flex min-h-11 items-center gap-2 text-sm font-[620] hover:text-brand" href={repo.url} target="_blank" rel="noopener noreferrer">{repo.name}</a>
               </li>
             ))}
           </ul>
@@ -107,11 +119,23 @@ const profile = getSiteProfile()
   .contributors-bucket-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--border); background: var(--border); }
   .contributors-bucket-grid article { min-height: 210px; padding: 1.75rem; background: var(--surface); }
   .contributors-table th, .contributors-table td { padding: .9rem .75rem .9rem 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .contributors-navigation { position: sticky; top: 6rem; border-top: 1px solid var(--border); }
+  .contributors-navigation a { display: flex; align-items: center; min-height: 44px; padding-block: .75rem; border-top: 1px solid var(--border); font-size: .875rem; }
+  .contributors-navigation a:hover { color: var(--accent); }
+  .contributors-mobile-contents, .contributors-cell-label { display: none; }
+  @media (max-width: 820px) {
+    .contributors-navigation { position: static; }
+    .contributors-desktop-contents { display: none; }
+    .contributors-mobile-contents { display: block; }
+    .contributors-mobile-contents summary { padding-block: .75rem; font-weight: 650; cursor: pointer; }
+  }
   @media (max-width: 760px) {
+    .contributors-cell-label { display: block; margin-bottom: .25rem; font-family: var(--font-sans); color: var(--muted); font-size: .75rem; font-weight: 400; }
+    .contributors-table thead { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .contributors-bucket-grid { grid-template-columns: 1fr; }
     .contributors-bucket-grid article { min-height: 0; }
     .contributors-table, .contributors-table tbody, .contributors-table tr, .contributors-table th, .contributors-table td { display: block; width: 100%; }
-    .contributors-table th { padding-bottom: .2rem; }
+    .contributors-table tbody th { padding-bottom: .2rem; border-bottom: 0; }
     .contributors-table td { border-bottom: 0; }
     .contributors-table tr { border-bottom: 1px solid var(--border); padding: .75rem 0; }
   }

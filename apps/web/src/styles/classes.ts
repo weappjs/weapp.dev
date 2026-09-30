@@ -6,13 +6,13 @@ export const wordmarkMark = 'size-8 shrink-0'
 
 export const eyebrow = 'mb-3 font-mono text-xs font-[650] text-brand'
 
-export const buttonBase = 'inline-flex min-h-11 items-center justify-center gap-2.5 whitespace-nowrap rounded-[6px] border border-transparent px-4 py-2.5 text-sm font-[680] leading-[1.2] transition-[background-color,border-color,color,transform] duration-200 active:translate-y-px'
+export const buttonBase = 'inline-flex min-h-11 items-center justify-center gap-2.5 whitespace-normal text-center [&>svg]:shrink-0 rounded-[6px] border border-transparent px-4 py-2.5 text-sm font-[680] leading-[1.2] transition-[background-color,border-color,color,transform] duration-200 active:translate-y-px'
 
 export const buttonPrimary = `${buttonBase} bg-brand text-brand-contrast hover:bg-brand-hover`
 
 export const buttonSecondary = `${buttonBase} border-line bg-panel text-ink hover:border-copy-muted hover:bg-panel-soft`
 
-export const iconControl = 'inline-grid size-10 shrink-0 cursor-pointer place-items-center rounded-[6px] border border-transparent bg-transparent text-copy-muted transition-[background-color,color,transform] duration-200 hover:bg-panel-soft hover:text-ink active:translate-y-px'
+export const iconControl = 'inline-grid size-11 shrink-0 cursor-pointer place-items-center rounded-[6px] border border-transparent bg-transparent text-copy-muted transition-[background-color,color,transform] duration-200 hover:bg-panel-soft hover:text-ink active:translate-y-px'
 
 export const section = 'py-20 max-[720px]:py-14'
 
