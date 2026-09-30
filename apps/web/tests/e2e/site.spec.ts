@@ -42,7 +42,7 @@ async function expectHomeVisuals(page: import('@playwright/test').Page) {
   await expect(page.locator('#projects [data-project-visual]')).toHaveCount(0)
   await expect(page.locator('#projects [data-project-row]')).toHaveCount(4)
   await expect(page.locator('#ecosystem-taro [data-project-row]')).toHaveCount(1)
-  await expect(page.locator('[data-scroll-proof]')).toHaveCount(4)
+  await expect(page.locator('.home-project-proof')).toHaveCount(4)
   await expect(page.locator('.home-project-rail-group')).toHaveCount(5)
 }
 
@@ -228,11 +228,11 @@ test('home hero keeps a cosmic first screen while the rest of the page follows t
   }
 })
 
-test('hero planets stay clear of the wordmark, each other and the first-screen edges', async ({ page }) => {
-  await page.goto('/')
-  const planets = page.locator('.home-hero-planet')
-  await expect(planets).toHaveCount(8)
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 820, height: 1180 }, { width: 390, height: 844 }, { width: 320, height: 568 }]) {
+for (const viewport of [{ width: 1440, height: 900 }, { width: 820, height: 1180 }, { width: 390, height: 844 }, { width: 320, height: 568 }, { width: 844, height: 390 }, { width: 1024, height: 768 }]) {
+  test(`hero orbit stays clear at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    await page.goto('/')
+    const planets = page.locator('.home-hero-planet')
+    await expect(planets).toHaveCount(8)
     await page.setViewportSize(viewport)
     for (let step = 0; step < 36; step++) {
       await planets.evaluateAll((elements, turn) => {
@@ -256,13 +256,13 @@ test('hero planets stay clear of the wordmark, each other and the first-screen e
       })
       expect(collisions, `${viewport.width}px at ${step * 10} degrees`).toEqual([])
     }
-  }
-})
+  })
+}
 
 test('reduced motion keeps content visible and product interactions stationary', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
-  const movingOrHidden = () => page.locator('[data-reveal], [data-hero-enter], [data-project-visual] img, [data-scroll-proof]').evaluateAll(elements => elements.filter((element) => {
+  const movingOrHidden = () => page.locator('[data-reveal], [data-hero-enter], [data-project-visual] img, .home-project-proof').evaluateAll(elements => elements.filter((element) => {
     const style = getComputedStyle(element)
     return style.opacity !== '1' || style.transform !== 'none' || style.animationName !== 'none' || style.transitionDuration !== '0s'
   }).map(element => element.tagName))
@@ -280,43 +280,23 @@ test('reduced motion keeps content visible and product interactions stationary',
   expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
 })
 
-test('disables proof motion when reduced motion changes at runtime', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'no-preference' })
+test('project code stays readable while scrolling and changing motion preferences', async ({ page }) => {
   await page.goto('/')
-  await expect(page.locator('html')).toHaveAttribute('data-project-proof-motion', '')
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await expect.poll(() => page.locator('html').getAttribute('data-project-proof-motion')).toBeNull()
-  await expect.poll(() => page.locator('[data-scroll-proof]').first().evaluate(element => ({
-    opacity: getComputedStyle(element).opacity,
-    transform: getComputedStyle(element).transform,
-  }))).toEqual({ opacity: '1', transform: 'none' })
-})
-
-test('scrolls project proof cards into place', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/')
-  const proof = page.locator('[data-scroll-proof]').first()
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
-  await page.waitForTimeout(50)
-  const initial = await proof.evaluate(element => ({
-    opacity: getComputedStyle(element).opacity,
-    transform: getComputedStyle(element).transform,
-  }))
-  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }))
-  await page.waitForTimeout(100)
-  const settled = await proof.evaluate(element => ({
-    opacity: getComputedStyle(element).opacity,
-    transform: getComputedStyle(element).transform,
-  }))
-  expect(Number(settled.opacity)).toBeGreaterThan(Number(initial.opacity))
-  expect(settled.transform).not.toBe(initial.transform)
+  const proof = page.locator('.home-project-proof').first()
+  for (const motion of ['no-preference', 'reduce'] as const) {
+    await page.emulateMedia({ reducedMotion: motion })
+    await proof.scrollIntoViewIfNeeded()
+    await expect(proof).toHaveCSS('opacity', '1')
+    await expect(proof).toHaveCSS('transform', 'none')
+    await expect(proof.locator('pre')).toBeVisible()
+  }
 })
 
 test('keeps project proof cards within responsive viewports', async ({ page }) => {
   for (const viewport of [1440, 700, 390]) {
     await page.setViewportSize({ width: viewport, height: 900 })
     await page.goto('/')
-    const layout = await page.locator('[data-scroll-proof]').evaluateAll(elements => ({
+    const layout = await page.locator('.home-project-proof').evaluateAll(elements => ({
       cards: elements.length,
       boxes: elements.map((element) => {
         const box = element.getBoundingClientRect()
@@ -477,8 +457,8 @@ test('opens analytics preferences directly from the privacy page', async ({ page
   await expect(page.getByRole('dialog', { name: '统计偏好' })).toBeVisible()
 })
 
-test('loads all local product visuals on key pages', async ({ page }) => {
-  for (const path of ['/', '/en/', '/projects/weapp-tailwindcss/', '/projects/weapp-vite/', '/projects/varo/', '/en/projects/weapp-tailwindcss/', '/en/projects/weapp-vite/', '/en/projects/varo/', ...(isOpenSourceSite ? [] : ['/pricing/', '/en/pricing/']), '/privacy/', '/en/privacy/', '/404/']) {
+for (const path of ['/', '/en/', '/projects/weapp-tailwindcss/', '/projects/weapp-vite/', '/projects/varo/', '/en/projects/weapp-tailwindcss/', '/en/projects/weapp-vite/', '/en/projects/varo/', ...(isOpenSourceSite ? [] : ['/pricing/', '/en/pricing/']), '/privacy/', '/en/privacy/', '/404/']) {
+  test(`loads all local product visuals on ${path}`, async ({ page }) => {
     await page.goto(path)
     await expect(page.locator(retiredVisuals)).toHaveCount(0)
     await page.locator('img').evaluateAll(images => images.forEach((image) => {
@@ -490,8 +470,8 @@ test('loads all local product visuals on key pages', async ({ page }) => {
       .filter(image => image.naturalWidth === 0 || image.naturalHeight === 0)
       .map(image => image.getAttribute('src')))
     expect(unloaded, `${path} unloaded images`).toEqual([])
-  }
-})
+  })
+}
 
 test('publishes only the official project destinations', async ({ page }) => {
   await page.goto('/')

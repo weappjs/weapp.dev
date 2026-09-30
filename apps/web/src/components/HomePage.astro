@@ -1,11 +1,12 @@
 ---
+import '../styles/home.css'
 import { ArrowRight, ArrowUpRight, GitFork, Layers2, Package, ScanLine, ShieldCheck, BadgeCheck } from '@lucide/astro'
 import type { Locale, ProjectMetricsMap } from '../types/project'
 import type { ProjectEntry } from '../lib/projects'
 import { formatReleaseDate } from '../lib/metrics'
 import { localizePath, getSiteCopy } from '../i18n/ui'
 import { getSiteProfile } from '../lib/deployment'
-import { buttonPrimary, buttonSecondary, iconControl, section, shell } from '../styles/classes'
+import { buttonPrimary, buttonSecondary, iconControl, homeSection as section, shell } from '../styles/classes'
 import BuildRail from './BuildRail.astro'
 import HomeHero from './home/HomeHero.astro'
 import HomeCommercial from './home/HomeCommercial.astro'
@@ -56,7 +57,7 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
 
   <section class="border-y border-line bg-panel" id="about">
     <div class:list={[section, shell]}>
-      <header data-reveal class="mb-12 max-w-[720px]">
+      <header data-reveal class="mb-8 max-w-[720px]">
         <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{copy.about.title}</h2>
         <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{copy.about.description}</p>
         {profile.features.services ? <p class="mt-5 mb-0 text-sm leading-[1.7] text-copy-muted">
@@ -72,8 +73,8 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
         {copy.about.items.map((item, index) => {
           const Icon = stepIcons[index]
           return (
-            <li data-reveal style={`--reveal-delay: ${index * 70}ms`} class="relative min-h-[230px] border-r border-line px-7 py-8 last:border-r-0 max-[720px]:min-h-0 max-[720px]:border-r-0 max-[720px]:border-b max-[720px]:px-0">
-              <div class="mb-10 flex items-center justify-between">
+            <li data-reveal style={`--reveal-delay: ${index * 70}ms`} class="relative min-h-[200px] border-r border-line px-7 py-8 last:border-r-0 max-[720px]:min-h-0 max-[720px]:border-r-0 max-[720px]:border-b max-[720px]:px-0">
+              <div class="mb-6 flex items-center justify-between">
                 <Icon class="text-brand" size={25} stroke-width={1.65} aria-hidden="true" />
               </div>
               <h3 class="mb-3 text-2xl font-[660]">{item.title}</h3>
@@ -175,55 +176,3 @@ const principleIcons = [Layers2, ShieldCheck, BadgeCheck]
     </div>
   </section>
 </main>
-<script is:inline>
-  (() => {
-    const proofs = [...document.querySelectorAll('[data-scroll-proof]')]
-    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
-    if (!proofs.length) return
-
-    const resetProofs = () => {
-      proofs.forEach((proof) => {
-        proof.style.removeProperty('--proof-opacity')
-        proof.style.removeProperty('--proof-rotate')
-        proof.style.removeProperty('--proof-lift')
-        proof.style.removeProperty('--proof-scale')
-      })
-    }
-
-    const syncProofs = () => {
-      const start = innerHeight * 0.92
-      const end = innerHeight * 0.18
-      const distance = Math.max(1, start - end)
-
-      proofs.forEach((proof) => {
-        const progress = Math.min(1, Math.max(0, (start - proof.getBoundingClientRect().top) / distance))
-        proof.style.setProperty('--proof-opacity', String(0.62 + progress * 0.38))
-        proof.style.setProperty('--proof-rotate', `${18 - progress * 18}deg`)
-        proof.style.setProperty('--proof-lift', `${(1 - progress) * 3.5}rem`)
-        proof.style.setProperty('--proof-scale', String(0.84 + progress * 0.16))
-      })
-    }
-
-    const syncMotion = () => {
-      const enabled = !motionQuery.matches
-      document.documentElement.toggleAttribute('data-project-proof-motion', enabled)
-      if (enabled) syncProofs()
-      else resetProofs()
-    }
-
-    let scheduled = false
-    const requestSync = () => {
-      if (scheduled) return
-      scheduled = true
-      window.setTimeout(() => {
-        scheduled = false
-        if (!motionQuery.matches) syncProofs()
-      }, 16)
-    }
-
-    addEventListener('scroll', requestSync, { passive: true })
-    addEventListener('resize', requestSync)
-    motionQuery.addEventListener('change', syncMotion)
-    syncMotion()
-  })()
-</script>

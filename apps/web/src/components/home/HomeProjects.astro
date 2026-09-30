@@ -33,7 +33,7 @@ const sectionClass = pack ? homeSectionPack[pack] : homeSection
     <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{description}</p>
   </header>
 
-  <div class="grid">
+  <div class="home-project-list">
     {projects.map((project, index) => (
       <HomeProjectRow locale={locale} project={project} index={index} metrics={metrics[project.id]} labProjects={project.id === 'weapp-vite' ? labProjects : undefined} />
     ))}

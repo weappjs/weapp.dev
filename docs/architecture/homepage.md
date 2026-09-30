@@ -4,7 +4,7 @@
 
 ## 职责与数据流
 
-- `HomePage.astro` 只组合章节和读取首页数据；`home.css` 负责章节布局和响应式断点。
+- `HomePage.astro` 组合章节、读取首页数据并加载 `home.css`；`home.css` 统一项目行、介绍与指标分栏、项目间距和响应式断点。全局 CSS 保留基础样式与首屏星球规则，静态证明面板的外观由 `HomeProjectProof` 管理，避免多处重复定义。
 - 两站共用 Hero → About → weapp 项目（含 weapp-vite 交互演示）→ Taro → Vue Mini / Rezor / uni-app → Toolchain map → Releases → Collaboration。weapp.dev 在 Toolchain map 与 Releases 之间保留 BuildRail、Commercial 与 Vision，以工程交付、迁移、培训和开源资金用途为入口；weapp.js.org 不渲染这三个章节。
 - 第一屏只保留 profile 词标（weapp.dev 为 `weapp.dev`，weapp.js.org 为 `weapp`） 与同等权重的项目徽标星座；项目入口和交互演示放在第一屏之后，不进入首屏文案。星座不按轨道远近分等级，weapp-sqlite 与 Rezor 不进星座。
 - 首页项目按 `ecosystem` 分区：weapp 原生四件套、Taro（VPT）、Vue Mini、Rezor、uni-app（Uni Helper / Wot UI）。不用精选三图或编号排名。
@@ -14,7 +14,8 @@
 - `components/home/demos/` 的 Style、Build、Registry 分别拥有视图、局部状态及预设；`HomeDemo` 只按受限类型选择组件。
 - `HomeDemos` 只拥有标签选择和键盘导航；**交互演示出现在 weapp-vite 项目行**。其余项目行使用 `HomeProjectProof` 展示更尖的静态产物（默认写法 / 构建命令 / 接入命令），避免重复演同一套 labs。
 - 项目行 CTA 只保留主入口「阅读文档」与次入口「项目详情」；标题不再外链，避免同一意图多扇门。
-- `CodePanel` 共享代码显示、复制与错误反馈；代码通过结构化文本片段生成，客户端使用 DOM textContent，避免 HTML 注入。
+- `CodePanel` 共享代码显示、复制与错误反馈；代码通过结构化文本片段生成，客户端使用 DOM textContent，避免 HTML 注入。短示例完整显示，长行只在代码区横向滚动；复制反馈放在正常文档流中，不覆盖代码。
+- 桌面介绍与指标分栏，交互演示独占整行；手机保持介绍、操作、代码与预览的 DOM 阅读顺序。演示面板随内容自然增高，不要求不同标签严格等高；控制区按内容换行，点击区域至少 44px。静态代码面板不再随滚动倾斜或缩放。
 - `demo.css` 只负责演示内部布局、容器断点与操作后的颜色过渡；`copy.ts` 维护演示双语文案。不要把演示状态或样式放进全局脚本。
 - 项目 JSON 继续拥有状态、链接、metrics 输入和详情页 `primary/secondary` 图片。历史 showcase collection、图片和采集命令保留，首页不再读取它们。
 
@@ -43,7 +44,7 @@ weapp.js.org 的 Header 导航为项目、生态介绍、最近发布和参与�
 - Varo 命令摘自 [README](https://github.com/daguanren21/Varo/blob/d00ea30fdd2caf84ce383c05291517f2e6af1861/README.md)，采用当前 `@varo-ui/cli add --target weapp`。详情页历史元数据在本次首页变更范围之外。原生 HTML 组合是带标注的交互示意，不加载 Vue/Varo runtime，不执行 CLI，不调用 AI。
 - 无 JS 时服务器输出完整默认代码与结果，增强控件隐藏；事件绑定完成后启用控件。Registry 的文本输入保留原生可编辑能力，组件选择至少保留一项。
 - 动效只响应用户操作，不自动轮播；减少动态效果时立即更新。演示不挂载 reveal，其他章节继续使用全局 2.5 秒超时兜底。
-- `@theme inline static` 必须保留，防止独立 CSS 引用的字体变量被 Tailwind 裁掉。
+- 独立 CSS 依赖的字体变量须在构建产物中保留，验证代码区域实际使用 Geist Mono 字体。
 
 ## 维护与验证
 

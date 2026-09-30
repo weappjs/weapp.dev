@@ -180,7 +180,11 @@
   isolation: isolate;
   display: grid;
   place-items: center;
-  min-height: calc(100svh - 64px);
+  min-height: max(22rem, calc(100svh - 64px));
+
+  --orbit-rx: 43vw;
+  --orbit-ry: 31svh;
+
   overflow: hidden;
   color: #edf5f0;
   background-color: #020308;
@@ -233,8 +237,8 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 86vw;
-  height: 62vh;
+  width: calc(var(--orbit-rx) * 2);
+  height: calc(var(--orbit-ry) * 2);
   border: 1px solid rgb(180 210 255 / 14%);
   border-radius: 50%;
   pointer-events: none;
@@ -255,8 +259,6 @@
   border-radius: 50%;
   translate: -50% -50%;
 
-  --orbit-rx: 43vw;
-  --orbit-ry: 31vh;
   --orbit-start: calc(var(--orbit-p) * 360deg);
 }
 .home-hero-tile:focus-visible {
@@ -438,18 +440,6 @@
   box-shadow: none;
 }
 
-/* Proof evidence enters each project row with a restrained perspective reveal. */
-.home-project-proof[data-scroll-proof] {
-  transform-origin: center bottom;
-}
-@media (prefers-reduced-motion: no-preference) {
-  html[data-project-proof-motion] [data-scroll-proof] {
-    opacity: var(--proof-opacity, 0.62);
-    transform: perspective(1400px) rotateX(var(--proof-rotate, 18deg)) translateY(var(--proof-lift, 3.5rem))
-      scale(var(--proof-scale, 0.84));
-  }
-}
-
 .section-intro {
   max-width: 720px;
   margin-bottom: 2.25rem;
@@ -474,66 +464,6 @@
   font-size: 1.05rem;
 }
 
-.home-project-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 2.25rem;
-  align-items: start;
-  min-width: 0;
-  padding-top: 2rem;
-  border-top: 1px solid var(--border);
-}
-.home-project-row:first-child {
-  padding-top: 0;
-  border-top: 0;
-}
-.home-project-row-reversed .home-project-proof-slot {
-  order: 2;
-}
-.home-project-row.home-project-row-with-lab {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1.5rem;
-}
-.home-project-row-with-lab .home-project-lab-slot {
-  order: 2;
-}
-.home-project-proof-slot,
-.home-project-lab-slot,
-.home-project-proof,
-.home-project-proof .demo-code {
-  min-width: 0;
-  max-width: 100%;
-}
-.home-project-proof {
-  display: grid;
-  gap: 0.85rem;
-  padding: 1rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-.home-project-proof-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font: 650 0.75rem/1.4 var(--font-mono);
-  color: var(--accent);
-}
-.home-project-proof-command {
-  padding: 0.75rem 0.9rem;
-  margin: 0;
-  background: var(--surface-soft);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-.home-project-proof-command code {
-  font: 650 0.875rem/1.4 var(--font-mono);
-  overflow-wrap: anywhere;
-}
-.home-project-proof .demo-code pre {
-  max-width: 100%;
-  overflow-x: auto;
-}
 .glow-card {
   position: relative;
   overflow: hidden;
@@ -746,25 +676,14 @@
 }
 @media (max-width: 900px) {
   .home-hero-screen {
-    min-height: calc(100svh - 58px);
+    min-height: max(22rem, calc(100svh - 58px));
+
+    --orbit-rx: 38vw;
+    --orbit-ry: 28svh;
   }
   .home-hero-planet {
     width: 3.25rem;
     height: 3.25rem;
-
-    --orbit-rx: 38vw;
-    --orbit-ry: 28vh;
-  }
-  .home-hero-orbit {
-    width: 76vw;
-    height: 56vh;
-  }
-  .home-project-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.5rem;
-  }
-  .home-project-row-reversed .home-project-proof-slot {
-    order: 0;
   }
   .build-rail-grid {
     grid-template-columns: 1fr;
@@ -774,17 +693,13 @@
   .home-hero-title {
     font-size: clamp(2.25rem, 10vw, 4.5rem);
   }
+  .home-hero-screen {
+    --orbit-rx: calc(50vw - 2rem);
+    --orbit-ry: min(36svh, calc(50svh - 3.5rem));
+  }
   .home-hero-planet {
     width: 2.75rem;
     height: 2.75rem;
-
-    /* Keep enlarged logos clear of the longest wordmark and both screen edges. */
-    --orbit-rx: calc(50vw - 2rem);
-    --orbit-ry: 36vh;
-  }
-  .home-hero-orbit {
-    width: calc(100vw - 3rem);
-    height: 52vh;
   }
   .home-hero .home-project-rail {
     padding-block: 1.25rem 1.5rem;
@@ -809,9 +724,6 @@
   .home-project-link:last-child {
     border-bottom: 0;
   }
-  .home-project-row {
-    padding-top: 1.5rem;
-  }
   .build-rail {
     width: calc(100% - 2rem);
     padding: 3.5rem 0;
@@ -826,8 +738,15 @@
     font-size: 0.68rem;
   }
 }
+
+/* Leave room for the orbit above and below the wordmark on short screens. */
+@media (max-height: 500px) and (min-width: 721px) {
+  .home-hero-title {
+    font-size: clamp(2.5rem, 8vw, 5rem);
+  }
+}
 @media (max-width: 350px) {
-  .home-hero-planet {
+  .home-hero-screen {
     --orbit-rx: calc(50vw - 1.5rem);
   }
 }

@@ -49,6 +49,14 @@ for (const locale of ['zh-CN', 'en'] as const) {
     await buildTab.focus()
     await page.keyboard.press('End')
     await expect(tabs.last()).toBeFocused()
+    await expect(tabs.last()).toBeInViewport()
+    expect(await tabs.last().evaluate((element) => {
+      const style = getComputedStyle(element)
+      const box = element.getBoundingClientRect()
+      return element.matches(':focus-visible')
+        && style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0
+        && document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === element
+    })).toBe(true)
     await page.keyboard.press('ArrowRight')
     await expect(tabs.first()).toBeFocused()
     await page.keyboard.press('ArrowLeft')
@@ -114,6 +122,9 @@ test('copy reports success and clipboard failures accessibly', async ({ page }) 
   })
   await code.getByRole('button', { name: '复制代码' }).click()
   await expect(code.getByRole('status')).toContainText('复制失败')
+  const preBox = await code.locator('pre').boundingBox()
+  const statusBox = await code.getByRole('status').boundingBox()
+  expect(statusBox!.y).toBeGreaterThanOrEqual(preBox!.y + preBox!.height)
   await expect(code.locator('pre')).toBeFocused()
   await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe(await code.locator('code').textContent())
 })
@@ -129,6 +140,7 @@ test('default examples remain readable without JavaScript', async ({ browser, vi
     await expect(page.locator('home-demos [data-demo="sqlite"]')).toContainText(route === '/' ? '不提供生产 API' : 'no production API')
     await expect(page.locator('home-demos [role="tablist"]')).toBeHidden()
     await expect(page.locator('.demo-controls:visible, [data-copy]:visible')).toHaveCount(0)
+    expect(await page.locator('home-demos build-demo pre').evaluate(element => element.scrollHeight <= element.clientHeight + 1)).toBe(true)
     await expect(page.locator('#projects .home-project-proof')).toHaveCount(3)
     await expect(page.locator('#projects .home-lab')).toHaveCount(1)
     await expect(page.locator('.home-hero home-demos')).toHaveCount(0)
@@ -136,16 +148,19 @@ test('default examples remain readable without JavaScript', async ({ browser, vi
   await context.close()
 })
 
-test('reduced motion updates results without motion or layout shifts', async ({ page }) => {
+test('reduced motion updates results without animation or moving the tab bar', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   const hero = page.locator('home-demos')
-  const box = await hero.boundingBox()
+  const heading = hero.locator('.home-lab-heading')
+  const top = await heading.evaluate(element => element.getBoundingClientRect().top + scrollY)
+  const box = await heading.boundingBox()
   for (const tab of await hero.getByRole('tab').all()) {
     await tab.click()
-    const next = await hero.boundingBox()
+    const next = await hero.locator('.home-lab-heading').boundingBox()
     expect(next?.width).toBe(box?.width)
     expect(next?.height).toBe(box?.height)
+    expect(await heading.evaluate(element => element.getBoundingClientRect().top + scrollY)).toBeCloseTo(top, 0)
     await tab.hover()
     await tab.focus()
     const animated = await hero.evaluate(element => [...element.querySelectorAll('*')].filter((child) => {
@@ -156,30 +171,40 @@ test('reduced motion updates results without motion or layout shifts', async ({ 
   }
   await hero.getByRole('tab', { name: '组件', exact: true }).click()
   await hero.locator('input[value="card"]').uncheck()
-  const after = await hero.boundingBox()
+  const after = await hero.locator('.home-lab-heading').boundingBox()
   expect(after?.width).toBe(box?.width)
   expect(after?.height).toBe(box?.height)
   expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
 })
 
-test('all demo states fit at 320 through 1440px without resizing the lab', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  for (const route of ['/', '/en/']) {
-    await page.goto(route)
-    for (const width of [320, 390, 620, 720, 900, 1100, 1440]) {
+for (const route of ['/', '/en/']) {
+  for (const width of [320, 390, 620, 768, 900, 1024, 1440]) {
+    test(`demo code and controls stay readable on ${route} at ${width}px`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await page.goto(route)
       await page.setViewportSize({ width, height: 1000 })
       const hero = page.locator('home-demos')
-      const box = await hero.boundingBox()
+      const box = await hero.locator('.home-lab-heading').boundingBox()
       for (const tab of await hero.getByRole('tab').all()) {
         await tab.click()
-        const next = await hero.boundingBox()
+        const next = await hero.locator('.home-lab-heading').boundingBox()
         expect(next?.width, `${route} ${width} width`).toBe(box?.width)
         expect(next?.height, `${route} ${width} height`).toBe(box?.height)
+        const codeBoxes = await hero.locator('pre:visible').evaluateAll(elements => elements.map(element => ({ height: element.clientHeight, content: element.scrollHeight })))
+        expect(codeBoxes.length).toBeGreaterThan(0)
+        for (const code of codeBoxes) {
+          expect(code.content).toBeLessThanOrEqual(code.height + 1)
+        }
+        const smallControls = await hero.locator('button:visible, select:visible, .demo-swatch:visible, .demo-check:visible, .demo-segments label:visible').evaluateAll(elements => elements.filter((element) => {
+          const box = element.getBoundingClientRect()
+          return box.width < 44 || box.height < 44
+        }).map(element => element.outerHTML))
+        expect(smallControls).toEqual([])
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)
         expect(overflow, `${route} ${width}`).toBe(false)
         const clipped = await hero.locator('button:visible, select:visible, .demo-pane-heading:visible').evaluateAll(elements => elements.filter(element => element.scrollWidth > element.clientWidth + 1).map(element => element.textContent))
         expect(clipped, `${route} ${width}`).toEqual([])
       }
-    }
+    })
   }
-})
+}

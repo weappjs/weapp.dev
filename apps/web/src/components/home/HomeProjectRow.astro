@@ -34,6 +34,44 @@ const describedBy = [
 ---
 
 <article data-project-row data-project-id={project.id} data-roadmap-count={project.data.roadmap?.length ?? 0} aria-labelledby={`home-project-title-${project.id}`} aria-describedby={describedBy} class:list={['home-project-row min-w-0', { 'home-project-row-reversed': project.reversed && !lab, 'home-project-row-with-lab': Boolean(lab) }]} style={`--project-accent: ${project.data.accent}`}>
+  <div class="home-project-copy" data-reveal data-project-copy style={`--reveal-delay: ${80 + index * 60}ms`}>
+    <div class="home-project-summary">
+      <p class="mb-4 font-mono text-xs font-bold text-brand">{project.stage[locale]}</p>
+      <div class="mb-5 flex items-center gap-3">
+        <img class="size-12 object-contain" src={project.data.logo} width="48" height="48" alt="" loading="lazy" decoding="async" />
+        <span id={statusId} class:list={['inline-flex items-center gap-1.5 font-mono text-xs font-[650]', projectTone]} data-project-status={project.data.status} aria-label={`${locale === 'zh-CN' ? '项目状态' : 'Project status'}: ${copy.projects.status[project.data.status]}`}>
+          {project.data.status === 'planned' ? <Clock3 size={15} stroke-width={1.8} aria-hidden="true" /> : <BadgeCheck size={15} stroke-width={1.8} aria-hidden="true" />}
+          {copy.projects.status[project.data.status]}
+        </span>
+      </div>
+      <h3 id={`home-project-title-${project.id}`} class:list={[featuredTitle, 'mb-4 [overflow-wrap:anywhere]']}>{content.name}</h3>
+      <p class="mb-3 text-lg font-[620]">{content.tagline}</p>
+      <p id={`home-project-description-${project.id}`} class="mb-6 max-w-[590px] text-copy-muted">{content.description}</p>
+    </div>
+    <div class="home-project-meta">
+      {publicMetrics && projectMetrics ? (
+        <dl class="mb-7 grid grid-cols-2 gap-8 border-y border-line py-5">
+          <div><dt class="mb-1 text-xs text-copy-muted">{copy.projects.weeklyDownloads}</dt><dd class="m-0 font-mono text-lg font-[700]">{formatCompactNumber(projectMetrics.weeklyDownloads, numberLocale)}</dd></div>
+          <div><dt class="mb-1 text-xs text-copy-muted">{copy.projects.stars}</dt><dd class="m-0 font-mono text-lg font-[700]">{formatCompactNumber(projectMetrics.stars, numberLocale)}</dd></div>
+        </dl>
+      ) : (
+        <div class="mb-7 border-y border-line py-5" data-project-readiness>
+          <p class="mb-1 font-mono text-xs font-[650] text-brand">{copy.projects.readinessTitle}</p>
+          <p id={readinessId} class="mb-0 max-w-[590px] text-sm leading-[1.7] text-copy-muted">{copy.projects.readinessBody}</p>
+        </div>
+      )}
+      <div class="flex flex-wrap items-center gap-3">
+        <a class={buttonPrimary} href={project.data.docsUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="docs" data-analytics-project={project.id}>
+          <BookOpen size={18} stroke-width={1.9} aria-hidden="true" />
+          {copy.projects.documentation}
+        </a>
+        <a class={buttonSecondary} href={projectPath(locale, project.id)} data-analytics-event="select_project" data-analytics-project={project.id}>
+          {copy.projects.details}
+          <ArrowRight size={17} stroke-width={1.9} aria-hidden="true" />
+        </a>
+      </div>
+    </div>
+  </div>
   {lab ? (
     <div class="home-project-lab-slot">
       <HomeDemos locale={locale} projects={lab} />
@@ -43,39 +81,4 @@ const describedBy = [
       <HomeProjectProof kind={project.demo} locale={locale} projectName={content.name} status={project.data.status} proof={project.data.proof} proofId={proofId} />
     </div>
   )}
-
-  <div data-reveal data-project-copy style={`--reveal-delay: ${80 + index * 60}ms`}>
-    <p class="mb-4 font-mono text-xs font-bold text-brand">{project.stage[locale]}</p>
-    <div class="mb-5 flex items-center gap-3">
-      <img class="size-12 object-contain" src={project.data.logo} width="48" height="48" alt="" loading="lazy" decoding="async" />
-      <span id={statusId} class:list={['inline-flex items-center gap-1.5 font-mono text-xs font-[650]', projectTone]} data-project-status={project.data.status} aria-label={`${locale === 'zh-CN' ? '项目状态' : 'Project status'}: ${copy.projects.status[project.data.status]}`}>
-        {project.data.status === 'planned' ? <Clock3 size={15} stroke-width={1.8} aria-hidden="true" /> : <BadgeCheck size={15} stroke-width={1.8} aria-hidden="true" />}
-        {copy.projects.status[project.data.status]}
-      </span>
-    </div>
-    <h3 id={`home-project-title-${project.id}`} class:list={[featuredTitle, 'mb-4 [overflow-wrap:anywhere]']}>{content.name}</h3>
-    <p class="mb-3 text-lg font-[620]">{content.tagline}</p>
-    <p id={`home-project-description-${project.id}`} class="mb-6 max-w-[590px] text-copy-muted">{content.description}</p>
-    {publicMetrics && projectMetrics ? (
-      <dl class="mb-7 grid grid-cols-2 gap-8 border-y border-line py-5">
-        <div><dt class="mb-1 text-xs text-copy-muted">{copy.projects.weeklyDownloads}</dt><dd class="m-0 font-mono text-lg font-[700]">{formatCompactNumber(projectMetrics.weeklyDownloads, numberLocale)}</dd></div>
-        <div><dt class="mb-1 text-xs text-copy-muted">{copy.projects.stars}</dt><dd class="m-0 font-mono text-lg font-[700]">{formatCompactNumber(projectMetrics.stars, numberLocale)}</dd></div>
-      </dl>
-    ) : (
-      <div class="mb-7 border-y border-line py-5" data-project-readiness>
-        <p class="mb-1 font-mono text-xs font-[650] text-brand">{copy.projects.readinessTitle}</p>
-        <p id={readinessId} class="mb-0 max-w-[590px] text-sm leading-[1.7] text-copy-muted">{copy.projects.readinessBody}</p>
-      </div>
-    )}
-    <div class="flex flex-wrap items-center gap-3">
-      <a class={buttonPrimary} href={project.data.docsUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="docs" data-analytics-project={project.id}>
-        <BookOpen size={18} stroke-width={1.9} aria-hidden="true" />
-        {copy.projects.documentation}
-      </a>
-      <a class={buttonSecondary} href={projectPath(locale, project.id)} data-analytics-event="select_project" data-analytics-project={project.id}>
-        {copy.projects.details}
-        <ArrowRight size={17} stroke-width={1.9} aria-hidden="true" />
-      </a>
-    </div>
-  </div>
 </article>
