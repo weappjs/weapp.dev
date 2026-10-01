@@ -17,7 +17,7 @@
 
   overflow: hidden;
   color: #edf5f0;
-  background-color: #020308;
+  background-color: #050505;
   background-image: none;
 }
 
@@ -50,7 +50,7 @@
     linear-gradient(90deg, color-mix(in srgb, var(--border) 88%, transparent) 1px, transparent 1px);
   background-size: 4.5rem 4.5rem;
   mask-image: radial-gradient(ellipse 58% 52% at 50% 48%, #000 8%, transparent 78%);
-  opacity: 0.5;
+  opacity: 0.12;
 }
 
 .home-hero-glow {
@@ -69,7 +69,7 @@
   left: 50%;
   width: calc(var(--orbit-rx) * 2);
   height: calc(var(--orbit-ry) * 2);
-  border: 1px solid rgb(180 210 255 / 14%);
+  border: 1px solid rgb(255 255 255 / 7%);
   border-radius: 50%;
   pointer-events: none;
   translate: -50% -50%;
@@ -83,8 +83,8 @@
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 4rem;
-  height: 4rem;
+  width: 3.25rem;
+  height: 3.25rem;
   pointer-events: auto;
   border-radius: 50%;
   translate: -50% -50%;
@@ -100,11 +100,11 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: linear-gradient(135deg, #aebbb8, color-mix(in srgb, var(--planet-accent) 14%, #52615d) 52%, #26322f);
+  background: #777;
   box-shadow:
     inset 0.15rem 0.15rem 0.3rem rgb(255 255 255 / 14%),
     inset -0.15rem -0.2rem 0.35rem rgb(0 0 0 / 24%),
-    0 0 0.8rem color-mix(in srgb, var(--planet-accent) 12%, transparent);
+    0 2px 12px rgb(0 0 0 / 12%);
 }
 
 /* An opaque face keeps the planet's shading out of transparent logo pixels. */
@@ -133,11 +133,11 @@
   font-size: clamp(4.25rem, 14vw, 11rem);
   font-weight: 740;
   line-height: 0.9;
-  letter-spacing: -0.07em;
+  letter-spacing: -0.04em;
   text-align: center;
   white-space: nowrap;
   color: #edf5f0;
-  text-shadow: 0 0 72px rgb(105 199 165 / 42%);
+  text-shadow: none;
 }
 
 .home-hero-screen[data-particles-active] .home-hero-title > [aria-hidden] {
@@ -158,7 +158,7 @@
 }
 
 .home-hero .home-project-rail {
-  padding-block: 1.5rem 2rem;
+  padding-block: 3rem 4rem;
   margin-top: 0;
 }
 
@@ -173,8 +173,8 @@
 .home-project-rail-group {
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: 0;
+  border-radius: 0;
   background: var(--surface);
 }
 .home-project-rail-group:has(.home-project-link:nth-child(3)) {
@@ -183,10 +183,10 @@
 .home-project-rail-title {
   margin: 0;
   padding: 0.55rem 1rem 0.4rem;
-  color: var(--accent);
-  font: 650 0.72rem/1 var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: var(--muted);
+  font: 600 0.875rem/1.4 var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
   border-bottom: 1px solid var(--border);
 }
 .home-project-rail-items {
@@ -201,8 +201,8 @@
   min-width: 0;
   min-height: 56px;
   padding: 0.7rem 1rem;
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border-right: 0;
+  border-bottom: 0;
   background: var(--surface);
   color: var(--text);
   transition: background-color 180ms ease;
@@ -230,7 +230,7 @@
 .home-project-link small {
   margin-top: 0.25rem;
   color: var(--muted);
-  font: 500 0.6875rem/1.45 var(--font-mono);
+  font: 400 0.75rem/1.45 var(--font-sans);
 }
 .home-project-index {
   display: none;
@@ -322,7 +322,7 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .home-hero-planet {
-    animation: home-hero-revolve var(--orbit-t) linear infinite;
+    animation: home-hero-revolve calc(var(--orbit-t) * 3) linear infinite;
     transition: scale 240ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   .home-hero-planet:hover,
@@ -331,6 +331,9 @@
     animation-play-state: paused;
     scale: 1.06;
   }
+}
+.home-hero-screen[data-particles-paused] .home-hero-planet {
+  animation-play-state: paused;
 }
 @keyframes home-hero-revolve {
   0% {

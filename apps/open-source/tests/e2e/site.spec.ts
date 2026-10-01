@@ -173,7 +173,7 @@ test('home hero keeps a cosmic first screen while the rest of the page follows t
     const screen = page.locator('.home-hero-screen')
     await expect(screen).toBeVisible()
     const background = await screen.evaluate(element => getComputedStyle(element).backgroundColor)
-    expect(background, theme).toBe('rgb(2, 3, 8)')
+    expect(background, theme).toBe('rgb(5, 5, 5)')
     await expect(page.locator('[data-hero-particles] canvas')).toHaveCount(1)
     await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeAttached()
     await page.locator('#about').scrollIntoViewIfNeeded()

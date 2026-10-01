@@ -11,7 +11,8 @@
     "./home.css": "./src/styles/home.css",
     "./hero.css": "./src/styles/hero.css",
     "./copy-code": "./src/scripts/copy-code.ts",
-    "./demo-copy": "./src/components/home/demos/copy.ts"
+    "./demo-copy": "./src/components/home/demos/copy.ts",
+    "./foundation.css": "./src/styles/foundation.css"
   },
   "scripts": {
     "check": "astro check && tsc --noEmit",

@@ -1,7 +1,6 @@
 ---
 import '@fontsource-variable/geist/index.css'
 import '@fontsource-variable/geist-mono/index.css'
-import '@fontsource-variable/sora/index.css'
 import '../styles/global.css'
 import { getSiteProfile } from '../lib/deployment'
 import type { Locale } from '../types/project'
@@ -54,8 +53,8 @@ const skipLabel = locale === 'zh-CN' ? '跳到主要内容' : 'Skip to main cont
     {localeSwitch && <link data-locale-switch href={localeSwitch} />}
     <script is:inline set:html={localeRedirectScript()}></script>
     <meta name="viewport" content="width=device-width" />
-    <meta name="theme-color" content="#f4f7f5" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0b110e" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <meta name="description" content={description} />
     <meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow'} />
     <meta name="author" content={author} />

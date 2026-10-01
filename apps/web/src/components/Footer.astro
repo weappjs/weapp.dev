@@ -21,7 +21,7 @@ const contributorsPath = localizePath(locale, '/contributors/')
 const privacyPath = localizePath(locale, '/privacy/')
 ---
 
-<footer class="border-t border-line bg-panel-soft pt-16 pb-6" aria-label={locale === 'zh-CN' ? '站点页脚' : 'Site footer'}>
+<footer class="border-t border-line bg-panel-soft-soft pt-16 pb-6" aria-label={locale === 'zh-CN' ? '站点页脚' : 'Site footer'}>
   <div class:list={[shell, 'grid grid-cols-[1.5fr_.75fr_.75fr] gap-14 max-[720px]:grid-cols-2 max-[720px]:gap-x-6 max-[720px]:gap-y-10']}>
     <div class="max-[720px]:col-span-2">
       <a class={wordmark} href={localizePath(locale)} aria-current={currentPath === localizePath(locale) ? 'page' : undefined}>

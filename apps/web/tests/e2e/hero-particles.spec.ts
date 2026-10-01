@@ -182,3 +182,38 @@ for (const value of ['missing', 'blank'] as const) {
     }
   })
 }
+
+test('settles the particle renderer and suspends drawing offscreen', async ({ page }) => {
+  await page.addInitScript(() => {
+    const draw = WebGL2RenderingContext.prototype.drawArrays
+    Object.assign(window, { particleDraws: 0 })
+    WebGL2RenderingContext.prototype.drawArrays = function (...args) {
+      const counter = window as unknown as { particleDraws: number }
+      counter.particleDraws += 1
+      return draw.apply(this, args)
+    }
+  })
+  await page.goto(resizeRoute)
+  const screen = page.locator('.home-hero-screen')
+  await expect(screen).toHaveAttribute('data-particles-ready', '')
+  const draws = () => page.evaluate(() => (window as unknown as { particleDraws: number }).particleDraws)
+  const initial = await draws()
+  await page.waitForTimeout(1100)
+  const idle = await draws()
+  expect(idle - initial).toBeGreaterThan(0)
+  expect(idle - initial, 'The settled hero should draw at most 10 frames per second').toBeLessThanOrEqual(12)
+  await page.locator('#releases').scrollIntoViewIfNeeded()
+  await expect(screen).toHaveAttribute('data-particles-paused', '')
+  const paused = await draws()
+  await page.waitForTimeout(400)
+  expect(await draws()).toBe(paused)
+  await screen.scrollIntoViewIfNeeded()
+  await expect.poll(draws).toBeGreaterThan(paused)
+})
+
+test('keeps sections readable before reveal observers run', async ({ page }) => {
+  await page.goto(resizeRoute)
+  const content = page.locator('#about [data-reveal]').first()
+  await content.evaluate(element => element.removeAttribute('data-visible'))
+  await expect(content).toHaveCSS('opacity', '1')
+})

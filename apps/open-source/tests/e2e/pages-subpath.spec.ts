@@ -14,7 +14,7 @@ test('loads Pages assets and navigates between languages below the repository pa
   await page.goto('/weapp.dev/')
   await expect(page.locator('#home-hero-title')).toHaveText('weapp.js.org')
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://weapp.js.org/')
-  await expect(page.locator('.home-hero-screen')).toHaveCSS('background-color', 'rgb(2, 3, 8)')
+  await expect(page.locator('.home-hero-screen')).toHaveCSS('background-color', 'rgb(5, 5, 5)')
   await page.locator('img').evaluateAll(images => images.forEach(image => (image as HTMLImageElement).loading = 'eager'))
   await expect.poll(() => page.locator('img').evaluateAll(images => images.every(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true)
   await expectSiteLink(page.getByRole('link', { name: 'English', exact: true }), '/weapp.dev/en/')

@@ -12,24 +12,14 @@ const { locale } = Astro.props
 const copy = getSiteCopy(locale).notFound
 ---
 
-<main id="main-content" class:list={[shell, 'grid min-h-[min(700px,calc(100dvh-64px))] grid-cols-[.82fr_1.18fr] items-center gap-14 py-12 max-[820px]:min-h-0 max-[820px]:grid-cols-1 max-[820px]:gap-8 max-[720px]:py-10']}>
-  <div data-reveal>
-    <strong class="font-mono text-sm text-brand">404 / {copy.code}</strong>
+<main id="main-content" class:list={[shell, 'grid min-h-[min(700px,calc(100dvh-64px))] place-items-center py-24 max-[720px]:py-16']}>
+  <div data-reveal class="max-w-[800px] text-center">
+    <strong class="block font-display text-[clamp(5rem,16vw,10rem)] font-[650] leading-none tracking-[-.04em] text-copy-muted">404</strong>
     <h1 class:list={[pageTitle, "my-5"]}>{copy.title}</h1>
-    <p class="mb-8 max-w-[540px] text-lg leading-[1.7] text-copy-muted">{copy.description}</p>
+    <p class="mx-auto mb-8 max-w-[540px] text-lg leading-[1.7] text-copy-muted">{copy.description}</p>
     <a class={buttonPrimary} href={localizePath(locale)}>
       <ArrowLeft size={18} stroke-width={1.9} aria-hidden="true" />
       {copy.action}
     </a>
   </div>
-  <figure data-reveal style="--reveal-delay: 100ms" class="relative m-0 aspect-[16/11] overflow-hidden rounded-panel border border-line bg-[#07110d] shadow-panel">
-    <picture class="absolute inset-0">
-      <source srcset="/media/brand/build-lens.avif" type="image/avif" />
-      <img class="size-full object-cover opacity-80" src="/media/brand/build-lens.webp" width="1600" height="1100" alt="" />
-    </picture>
-    <div class="absolute inset-x-6 bottom-6 border-l-2 border-[#69c7a5] bg-[rgb(5_13_9_/_80%)] px-4 py-3 font-mono text-sm text-[#dcece4] backdrop-blur-sm">
-      <span class="block text-[#79d0ae]">route.resolve()</span>
-      <span>{copy.code}</span>
-    </div>
-  </figure>
 </main>

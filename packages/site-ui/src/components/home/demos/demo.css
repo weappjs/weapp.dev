@@ -12,7 +12,7 @@
 .home-lab {
   display: block;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 20px;
 }
 
 .home-lab-heading {

@@ -1,5 +1,7 @@
 # 双应用拆分验收
 
+本文件记录拆分基线；后续设计改造与最新验证结果见[产品官网设计验收](apple-design-validation.md)。
+
 ## 已验证
 
 - pnpm install --frozen-lockfile --ignore-scripts：锁文件通过依赖策略校验。

@@ -478,6 +478,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   let assembled = false
   let startedAt = 0
   let raf = 0
+  let idleTimer = 0
   let visible = true
   let pageHidden = document.hidden
   const pointer = { x: -9999, y: -9999, strength: 0 }
@@ -506,10 +507,10 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const mobile = cssWidth < 720
     const glyphStep = Math.max(3, Math.round(3 * dpr))
     const glyphBudget = mobile ? 900 : 2400
-    const fieldBudget = mobile ? 320 : 800
+    const fieldBudget = mobile ? 160 : 400
     const word = downsamplePoints(sampleWordmark({
       text: wordmark,
-      fontFamily: titleStyle.fontFamily || 'Sora Variable, sans-serif',
+      fontFamily: titleStyle.fontFamily || 'Geist Variable, sans-serif',
       fontWeight: titleStyle.fontWeight || '740',
       fontSize,
       letterSpacingEm: 0.06,
@@ -602,9 +603,11 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   }
   screen.dataset.particlesActive = ''
 
-  const hold = 1400
-  const assemble = 1850
+  const hold = 700
+  const assemble = 1500
   const tick = (now: number) => {
+    raf = 0
+    idleTimer = 0
     if (!startedAt) {
       startedAt = now
     }
@@ -619,25 +622,38 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     gl.clear(gl.COLOR_BUFFER_BIT)
     gl.useProgram(program)
     gl.uniform2f(loc.resolution, canvas.width, canvas.height)
-    gl.uniform1f(loc.time, elapsed / 1000)
+    // After assembly, the field settles and updates at most 10 times per second.
+    const motionTime = Math.min(elapsed, hold + assemble) + Math.max(0, elapsed - hold - assemble) * 0.12
+    gl.uniform1f(loc.time, motionTime / 1000)
     gl.uniform1f(loc.progress, progress)
     gl.uniform2f(loc.pointer, pointer.x, pointer.y)
     gl.uniform1f(loc.pointerStrength, pointer.strength)
     gl.drawArrays(gl.POINTS, 0, count)
     if (visible && !pageHidden) {
-      raf = requestAnimationFrame(tick)
+      if (assembled) {
+        idleTimer = window.setTimeout(() => {
+          raf = requestAnimationFrame(tick)
+        }, 100)
+      }
+      else {
+        raf = requestAnimationFrame(tick)
+      }
     }
   }
 
   const play = () => {
-    if (raf || !visible || pageHidden) {
+    if (raf || idleTimer || !visible || pageHidden) {
       return
     }
+    delete screen.dataset.particlesPaused
     raf = requestAnimationFrame(tick)
   }
   const pause = () => {
     cancelAnimationFrame(raf)
+    window.clearTimeout(idleTimer)
+    idleTimer = 0
     raf = 0
+    screen.dataset.particlesPaused = ''
   }
 
   const onPointer = (event: PointerEvent) => {
@@ -646,7 +662,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const sy = canvas.height / Math.max(1, box.height)
     pointer.x = (event.clientX - box.left) * sx
     pointer.y = (event.clientY - box.top) * sy
-    pointer.strength = 48
+    pointer.strength = 20
   }
   const onPointerLeave = () => {
     pointer.strength = 0

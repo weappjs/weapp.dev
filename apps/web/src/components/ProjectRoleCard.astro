@@ -18,10 +18,9 @@ const roleLabels = locale === 'zh-CN' ? { engineering: '工程与构建', stylin
 const copy = locale === 'zh-CN' ? { docs: '阅读文档', details: '项目详情', roadmap: '项路线', quickStart: '第一步' } : { docs: 'Read docs', details: 'Project details', roadmap: 'roadmap items', quickStart: 'First step' }
 ---
 <article data-project-card data-project-id={project.id} aria-labelledby={`project-card-${project.id}`} aria-describedby={describedBy} data-role={role} data-maturity={project.data.status} data-platforms={project.data.platforms?.join('|') ?? ''} data-roadmap-count={project.data.roadmap?.length ?? 0} data-reveal style={`--reveal-delay:${index * 50}ms`}>
-  <div class="projects-index-number">{String(index + 1).padStart(2, '0')}</div>
   <img src={project.data.logo} width="52" height="52" alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" fetchpriority={index === 0 ? 'high' : undefined} />
   <div class="projects-index-copy">
-    <div class="flex flex-wrap items-center gap-2"><span class="font-mono text-xs font-[650] text-brand">{roleLabels[role as keyof typeof roleLabels] || role}</span><ProjectStatusBadge id={statusId} locale={locale} status={project.data.status} /></div>
+    <div class="flex flex-wrap items-center gap-2"><span class="font-sans text-xs font-[650] text-brand">{roleLabels[role as keyof typeof roleLabels] || role}</span><ProjectStatusBadge id={statusId} locale={locale} status={project.data.status} /></div>
     <h2 id={`project-card-${project.id}`}>{content.name}</h2>
     <p id={`project-card-description-${project.id}`}>{content.description}</p>
     <p id={audienceId} class="projects-index-audience"><span>{locale === 'zh-CN' ? '适合' : 'For'}</span>{content.audience}</p>
@@ -31,3 +30,21 @@ const copy = locale === 'zh-CN' ? { docs: '阅读文档', details: '项目详情
   </div>
   <div class="projects-index-actions"><a class={buttonPrimary} href={project.data.docsUrl} target="_blank" rel="noopener noreferrer" aria-label={`${copy.docs}: ${content.name}`} data-analytics-event="click_outbound" data-analytics-target="docs" data-analytics-project={project.id}>{copy.docs}</a><a class="inline-flex min-h-11 items-center justify-center px-2 text-sm font-[650] text-copy-muted hover:text-ink" href={projectPath(locale, project.id)} aria-label={`${copy.details}: ${content.name}`} data-analytics-event="select_project" data-analytics-project={project.id}>{copy.details}</a></div>
 </article>
+
+<style>
+article { display: grid; grid-template-columns: 3.25rem minmax(0, 1fr) auto; gap: 1.25rem; align-items: start; padding: 2.5rem 0; border-bottom: 1px solid var(--border); }
+img { width: 3.25rem; height: 3.25rem; object-fit: contain; }
+.projects-index-copy h2 { margin: .55rem 0 .4rem; font: 650 clamp(1.5rem, 3vw, 2rem)/1.15 var(--font-display); overflow-wrap: anywhere; }
+.projects-index-copy p { max-width: 680px; margin: 0 0 .9rem; color: var(--muted); font-size: 1rem; line-height: 1.65; }
+.projects-index-audience { display:flex; gap:.5rem; align-items:baseline; margin-top:-.35rem !important; font-size:.8rem !important; }
+.projects-index-audience span { flex:none; color:var(--accent); font:650 .7rem/1.5 var(--font-sans); text-transform:uppercase; }
+.projects-index-runtime { display:flex; gap:.5rem; align-items:baseline; margin-top:-.65rem !important; font-size:.78rem !important; }
+.projects-index-runtime span { flex:none; color:var(--muted); font:650 .7rem/1.5 var(--font-sans); text-transform:uppercase; }
+.projects-index-quickstart { display:flex; flex-wrap:wrap; align-items:baseline; gap:.55rem; margin-top:1rem; color:var(--muted); font:650 .72rem/1.5 var(--font-sans); }
+.projects-index-quickstart code { overflow-wrap:anywhere; color:var(--text); font:500 .78rem/1.5 var(--font-mono); }
+.projects-index-quickstart em { font-style:normal; }
+.projects-platform { display: inline-flex; width: fit-content; border: 1px solid var(--border); padding: .28rem .5rem; color: var(--muted); font: 650 .7rem/1 var(--font-sans); }
+.projects-index-actions { display: flex; flex-direction: column; align-items: stretch; gap: .4rem; min-width: 112px; }
+article[hidden] { display: none; }
+@media (max-width:720px) { article { grid-template-columns: 2.75rem minmax(0,1fr); gap: .8rem; } img { width: 2.75rem; height: 2.75rem; } .projects-index-actions { grid-column: 2; flex-direction: row; flex-wrap: wrap; align-items: center; } }
+</style>

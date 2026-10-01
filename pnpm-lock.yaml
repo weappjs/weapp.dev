@@ -208,9 +208,6 @@ importers:
       '@fontsource-variable/geist-mono':
         specifier: 5.3.0
         version: 5.3.0
-      '@fontsource-variable/sora':
-        specifier: 5.3.0
-        version: 5.3.0
       '@lucide/astro':
         specifier: 1.49.0
         version: 1.49.0(astro@7.3.5(@types/node@26.4.0)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
@@ -264,9 +261,6 @@ importers:
         specifier: 5.3.0
         version: 5.3.0
       '@fontsource-variable/geist-mono':
-        specifier: 5.3.0
-        version: 5.3.0
-      '@fontsource-variable/sora':
         specifier: 5.3.0
         version: 5.3.0
       '@lucide/astro':
@@ -1738,9 +1732,6 @@ packages:
 
   '@fontsource-variable/geist@5.3.0':
     resolution: {integrity: sha512-j0m+vLQuG5XAYoHtGCVu0spvlGreR3EzpECUVzkFmI1mTVnAO38l/NEPDCFgZ177JxzYJCLSmTQibIiYPilGrA==}
-
-  '@fontsource-variable/sora@5.3.0':
-    resolution: {integrity: sha512-h8kHta4Z8SkfUGeI82TUy1n3rbrKpBRGwuk4t4qCwto5oEHxlbOFD2yGP+Df5fbmTXwKGn+o667vYp0E4K8Whw==}
 
   '@gwhitney/detect-indent@7.0.1':
     resolution: {integrity: sha512-7bQW+gkKa2kKZPeJf6+c6gFK9ARxQfn+FKy9ScTBppyKRWH2KzsmweXUoklqeEiHiNVWaeP5csIdsNq6w7QhzA==}
@@ -9456,8 +9447,6 @@ snapshots:
   '@fontsource-variable/geist-mono@5.3.0': {}
 
   '@fontsource-variable/geist@5.3.0': {}
-
-  '@fontsource-variable/sora@5.3.0': {}
 
   '@gwhitney/detect-indent@7.0.1': {}
 

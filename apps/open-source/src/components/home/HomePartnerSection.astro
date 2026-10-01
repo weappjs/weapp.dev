@@ -15,22 +15,21 @@ interface Props {
   pack?: keyof typeof homeSectionPack
 }
 
-const { locale, projects, id, eyebrow, title, description, pack } = Astro.props
+const { locale, projects, id, title, description, pack } = Astro.props
 const copy = getSiteCopy(locale)
 const sectionClass = pack ? homeSectionPack[pack] : homeSection
 ---
 
 {projects.length ? <section class:list={[sectionClass, shell, 'scroll-mt-20']} id={id} aria-labelledby={`${id}-title`}>
-  <header data-reveal class="mb-8 max-w-[720px]">
-    <p class="mb-3 font-mono text-xs font-[650] text-brand">{eyebrow}</p>
+  <header data-reveal class="mb-14 max-w-[900px]">
     <h2 id={`${id}-title`} class={sectionTitle}>{title}</h2>
     <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{description}</p>
   </header>
-  <div class:list={['grid gap-px overflow-hidden rounded-panel border border-line bg-line', projects.length > 1 ? 'grid-cols-2 max-[720px]:grid-cols-1' : 'grid-cols-1']}>
+  <div class:list={['grid gap-6 overflow-hidden', projects.length > 1 ? 'grid-cols-2 max-[720px]:grid-cols-1' : 'grid-cols-1']}>
     {projects.map((project, index) => {
       const content = project.data.locales[locale]
       return (
-        <article data-reveal data-project-id={project.id} style={`--reveal-delay: ${index * 70}ms; --project-accent: ${project.data.accent}`} class="grid gap-5 bg-panel p-8">
+        <article data-reveal data-project-id={project.id} style={`--reveal-delay: ${index * 70}ms; --project-accent: ${project.data.accent}`} class="grid gap-5 rounded-panel bg-panel-soft p-8">
           <img class="size-12 object-contain" src={project.data.logo} width="48" height="48" alt="" loading="lazy" decoding="async" />
           <div>
             <h3 class="mb-2 text-2xl font-[660]">{content.name}</h3>

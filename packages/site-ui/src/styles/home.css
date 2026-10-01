@@ -1,15 +1,15 @@
 .home-project-list {
   display: grid;
-  gap: clamp(2rem, 4vw, 3rem);
+  gap: clamp(3rem, 6vw, 6rem);
 }
 
 .home-project-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: clamp(1.5rem, 4vw, 3rem);
-  align-items: start;
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: center;
   min-width: 0;
-  padding-top: clamp(2rem, 4vw, 3rem);
+  padding-top: clamp(3rem, 6vw, 6rem);
   border-top: 1px solid var(--border);
 }
 

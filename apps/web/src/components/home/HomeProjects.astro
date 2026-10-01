@@ -20,15 +20,13 @@ interface Props {
 const { locale, projects, metrics, labProjects, pack } = Astro.props
 const copy = getSiteCopy(locale)
 const sectionId = Astro.props.id ?? 'projects'
-const eyebrow = Astro.props.eyebrow ?? copy.projects.eyebrow
 const title = Astro.props.title ?? copy.projects.title
 const description = Astro.props.description ?? copy.projects.description
 const sectionClass = pack ? homeSectionPack[pack] : homeSection
 ---
 
 <section class:list={[sectionClass, shell, 'scroll-mt-20']} id={sectionId} aria-labelledby={`${sectionId}-title`}>
-  <header data-reveal class="mb-8 max-w-[720px]">
-    <p class="mb-3 font-mono text-xs font-[650] text-brand">{eyebrow}</p>
+  <header data-reveal class="mb-14 max-w-[900px]">
     <h2 id={`${sectionId}-title`} class={sectionTitle}>{title}</h2>
     <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{description}</p>
   </header>

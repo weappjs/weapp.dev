@@ -53,10 +53,10 @@ const stepIcons = [Layers2, ScanLine, Package]
 <main id="main-content">
   <HomeHero wordmark={profile.heroWordmark} overviewLabel={locale === 'zh-CN' ? `${profile.name} 首页概览` : `${profile.name} overview`} railLabel={copy.rail.label} locale={locale} railGroups={railGroups} constellation={constellation} />
 
-  <section class="border-y border-line bg-panel" id="about">
+  <section class="bg-panel" id="about" data-product-intro>
     <div class:list={[section, shell]}>
-      <header data-reveal class="mb-8 max-w-[720px]">
-        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{copy.about.title}</h2>
+      <header data-reveal class="mb-16 max-w-[900px]">
+        <h2 class="mb-4 text-[clamp(2.25rem,4.5vw,4rem)] font-[650]">{copy.about.title}</h2>
         <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{copy.about.description}</p>
         {<div class="mt-7 flex flex-wrap gap-3">
           <a class={buttonPrimary} href={localizePath(locale, '/projects/')}>{copy.hero.primary}<ArrowRight size={17} aria-hidden="true" /></a>
@@ -64,11 +64,11 @@ const stepIcons = [Layers2, ScanLine, Package]
         </div>}
 
       </header>
-      <ol class="m-0 grid list-none grid-cols-3 gap-0 border-y border-line p-0 max-[720px]:grid-cols-1 max-[720px]:border-b-0">
+      <ol class="m-0 grid list-none grid-cols-3 gap-10 p-0 max-[720px]:grid-cols-1 max-[720px]:border-b-0">
         {copy.about.items.map((item, index) => {
           const Icon = stepIcons[index]
           return (
-            <li data-reveal style={`--reveal-delay: ${index * 70}ms`} class="relative min-h-[200px] border-r border-line px-7 py-8 last:border-r-0 max-[720px]:min-h-0 max-[720px]:border-r-0 max-[720px]:border-b max-[720px]:px-0">
+            <li data-reveal style={`--reveal-delay: ${index * 70}ms`} class="relative min-h-[200px] px-0 py-6 max-[720px]:min-h-0 max-[720px]:border-r-0 max-[720px]:border-b max-[720px]:px-0">
               <div class="mb-6 flex items-center justify-between">
                 <Icon class="text-brand" size={25} stroke-width={1.65} aria-hidden="true" />
               </div>
@@ -110,7 +110,7 @@ const stepIcons = [Layers2, ScanLine, Package]
   <section class:list={[section, shell]} id="releases">
     <div class="grid grid-cols-[.75fr_1.25fr] gap-16 max-[900px]:grid-cols-1 max-[900px]:gap-10">
       <header data-reveal class="max-w-[470px]">
-        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{copy.releases.title}</h2>
+        <h2 class="mb-4 text-[clamp(2.25rem,4.5vw,4rem)] font-[650]">{copy.releases.title}</h2>
         <p class="mb-0 text-copy-muted">{copy.releases.description}</p>
       </header>
       <div data-reveal class="border-t border-line">
@@ -134,9 +134,9 @@ const stepIcons = [Layers2, ScanLine, Package]
     </div>
   </section>
 
-  <section class="border-y border-line bg-panel" id="open-source" aria-labelledby="open-source-title">
+  <section class="bg-panel" id="open-source" data-product-band aria-labelledby="open-source-title">
     <div class:list={[section, shell]}>
-      <h2 id="open-source-title" class="mb-5 text-[44px] font-[680] max-[720px]:text-[34px]">{locale === 'zh-CN' ? '在 weapp.js.org，一起参与开源' : 'Explore and contribute at weapp.js.org'}</h2>
+      <h2 id="open-source-title" class="mb-5 text-[clamp(2.25rem,4.5vw,4rem)] font-[650]">{locale === 'zh-CN' ? '在 weapp.js.org，一起参与开源' : 'Explore and contribute at weapp.js.org'}</h2>
       <p class="mb-6 max-w-[720px] text-lg text-copy-muted">{locale === 'zh-CN' ? '独立的开源生态门户，汇集项目发现、文档、源码、真实发布与贡献入口。你可以通过 issues、代码、测试和文档参与项目。weapp.dev 在这里介绍工具与工程服务，开源项目资料和社区协作也有自己的空间。' : 'An independent open-source portal for project discovery, documentation, source code, releases, and contributions. Join through issues, code, tests, or documentation. weapp.dev presents the tools and engineering services; the open-source ecosystem has its own home for reference and collaboration.'}</p>
       <div class="flex flex-wrap gap-3">
         <a class={buttonPrimary} href={'https://weapp.js.org' + localizePath(locale)}>{locale === 'zh-CN' ? '访问开源站' : 'Visit the open-source site'}<ArrowUpRight size={18} aria-hidden="true" /></a>

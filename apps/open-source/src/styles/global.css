@@ -1,163 +1,23 @@
 @import 'tailwindcss';
+@import '@weapp/site-ui/foundation.css';
 @import '@weapp/site-ui/hero.css';
 @source '../../node_modules/@weapp/site-ui/src';
 @source '../**/*.{astro,ts}';
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-@theme inline {
-  --color-canvas: var(--background);
-  --color-panel: var(--surface);
-  --color-panel-soft: var(--surface-soft);
-  --color-panel-strong: var(--surface-strong);
-  --color-panel-raised: var(--surface-raised);
-  --color-ink: var(--text);
-  --color-copy-muted: var(--muted);
-  --color-line: var(--border);
-  --color-brand: var(--accent);
-  --color-brand-hover: var(--accent-hover);
-  --color-brand-contrast: var(--accent-contrast);
-  --color-highlight: var(--highlight);
-  --font-display: 'Sora Variable', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
-  --font-sans: 'Geist Variable', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
-  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
-  --radius-panel: 12px;
-  --shadow-panel: 0 18px 48px var(--shadow);
-}
-
-:root {
-  color-scheme: light;
-
-  --background: #f4f7f5;
-  --surface: #fff;
-  --surface-soft: #edf2ef;
-  --surface-strong: #dfe8e3;
-  --surface-raised: #fff;
-  --text: #0d1712;
-  --muted: #5a6861;
-  --border: #d5ddd8;
-  --accent: #0e7958;
-  --accent-hover: #096646;
-  --accent-contrast: #fff;
-  --highlight: #f2c94c;
-  --shadow: rgb(25 60 45 / 12%);
-  --header: rgb(244 247 245 / 92%);
-}
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-
-  --background: #0b110e;
-  --surface: #111914;
-  --surface-soft: #15211b;
-  --surface-strong: #1a2a22;
-  --surface-raised: #15211b;
-  --text: #edf5f0;
-  --muted: #aab8b0;
-  --border: #304039;
-  --accent: #69c7a5;
-  --accent-hover: #86d7b9;
-  --accent-contrast: #07130e;
-  --highlight: #f2c94c;
-  --shadow: rgb(0 0 0 / 34%);
-  --header: rgb(11 17 14 / 86%);
-}
-
-@layer base {
-  *,
-  *::before,
-  *::after {
-    @apply box-border;
-  }
-
-  html {
-    @apply scroll-smooth scroll-pt-[84px] bg-canvas motion-reduce:scroll-auto;
-
-    scrollbar-gutter: stable;
-  }
-
-  body {
-    @apply m-0 min-w-80 overflow-x-clip bg-canvas font-sans text-base leading-[1.58] text-ink antialiased;
-
-    letter-spacing: 0;
-    text-rendering: optimizelegibility;
-  }
-
-  button,
-  a,
-  summary {
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  a {
-    @apply text-inherit no-underline;
-  }
-
-  button,
-  summary {
-    @apply text-inherit;
-
-    font: inherit;
-  }
-
-  img,
-  picture,
-  svg {
-    @apply block max-w-full;
-  }
-
-  h1,
-  h2,
-  h3,
-  p {
-    @apply mt-0;
-  }
-
-  h1,
-  h2,
-  h3 {
-    @apply font-display leading-[1.08];
-
-    letter-spacing: 0;
-    text-wrap: balance;
-  }
-
-  p {
-    text-wrap: pretty;
-  }
-
-  code,
-  pre {
-    @apply font-mono;
-  }
-
-  ::selection {
-    @apply bg-highlight text-[#151812];
-  }
-
-  :focus-visible {
-    @apply outline-3 outline-offset-3 outline-highlight;
-  }
-
-  dialog::backdrop {
-    background: rgb(5 13 9 / 72%);
-    backdrop-filter: blur(6px);
-  }
-}
-
 /* stylelint-disable declaration-block-single-line-max-declarations, order/properties-order, rule-empty-line-before, at-rule-empty-line-before, scss/operator-no-unspaced */
 
-[data-motion='ready'] [data-reveal] {
-  opacity: 0;
-  transform: translateY(16px);
-}
-
+/* Content is always readable, including before observers run. */
 [data-motion='ready'] [data-reveal][data-visible] {
-  opacity: 1;
-  transform: translateY(0);
-  transition:
-    opacity 520ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
-  transition-delay: var(--reveal-delay, 0ms);
+  animation: section-enter 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes section-enter {
+  from {
+    transform: translateY(8px);
+  }
+  to {
+    transform: none;
+  }
 }
 
 @keyframes hero-enter {
@@ -171,6 +31,10 @@
   }
 }
 
+[data-product-band] {
+  background: var(--surface-soft);
+}
+
 .section-intro {
   max-width: 720px;
   margin-bottom: 2.25rem;
@@ -178,9 +42,9 @@
 .section-intro-eyebrow,
 .build-rail-eyebrow {
   margin: 0 0 0.65rem;
-  color: var(--accent);
-  font: 700 0.7rem/1.4 var(--font-mono);
-  letter-spacing: 0.12em;
+  color: var(--muted);
+  font: 600 0.875rem/1.4 var(--font-sans);
+  letter-spacing: 0;
 }
 .section-intro h2,
 .build-rail h2 {

@@ -15,7 +15,7 @@ const copy = getSiteCopy(locale).analytics
 <dialog data-analytics-dialog class="m-auto w-[min(590px,calc(100vw-32px))] rounded-panel border border-line bg-panel p-0 text-ink shadow-panel" aria-labelledby="analytics-dialog-title" aria-describedby="analytics-dialog-description">
   <form data-analytics-preferences-form class="p-7 max-[720px]:p-5" method="dialog">
     <header class="mb-7 grid grid-cols-[44px_1fr_40px] items-start gap-4 max-[520px]:grid-cols-[1fr_40px]">
-      <span class="grid size-11 place-items-center rounded-[6px] bg-panel-soft text-brand max-[520px]:hidden" aria-hidden="true">
+      <span class="grid size-11 place-items-center rounded-xl bg-panel-soft text-brand max-[520px]:hidden" aria-hidden="true">
         <ShieldCheck size={22} stroke-width={1.7} />
       </span>
       <div>
@@ -30,7 +30,7 @@ const copy = getSiteCopy(locale).analytics
       <span class="max-w-[360px]">{copy.enabled}</span>
       <input class="size-5 shrink-0 accent-brand" type="checkbox" data-analytics-enabled />
     </label>
-    <p data-analytics-privacy-signal hidden class="mt-4 mb-0 rounded-[6px] bg-panel-soft p-3 text-sm text-copy-muted">{copy.privacySignal}</p>
+    <p data-analytics-privacy-signal hidden class="mt-4 mb-0 rounded-xl bg-panel-soft p-3 text-sm text-copy-muted">{copy.privacySignal}</p>
     <div class="mt-6 flex justify-end">
       <button class={buttonPrimary} type="submit">{copy.save}</button>
     </div>
