@@ -1,13 +1,18 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalEnv": ["WEAPP_DEPLOY_TARGET"],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**", "dist-pages/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
     },
     "check": {
-      "dependsOn": ["^check"],
+      "dependsOn": [
+        "^check"
+      ],
       "outputs": []
     },
     "dev": {
@@ -15,15 +20,21 @@
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^lint"],
+      "dependsOn": [
+        "^lint"
+      ],
       "outputs": []
     },
     "lint:styles": {
-      "dependsOn": ["^lint:styles"],
+      "dependsOn": [
+        "^lint:styles"
+      ],
       "outputs": []
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     }
   }

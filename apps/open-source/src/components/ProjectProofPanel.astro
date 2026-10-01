@@ -1,0 +1,34 @@
+---
+import type { Locale } from '../types/project'
+import type { ProjectEntry } from '../lib/projects'
+interface Props { locale: Locale; project: ProjectEntry }
+const { locale, project } = Astro.props
+const content = project.data.locales[locale]
+const statusLabel = locale === 'zh-CN' ? ({ stable: '稳定', beta: '测试版', planned: '规划中' } as Record<string, string>) : ({ stable: 'Stable', beta: 'Beta', planned: 'Planned' } as Record<string, string>)
+const proof = {
+  'weapp-vite': { zh: '单目标构建边界', en: 'Single-target build boundary', file: 'vite.config.ts', code: `weapp({\n  buildScope: 'wechat',\n  platforms: ['wechat'],\n})` },
+  'weapp-tailwindcss': { zh: '小程序样式接入', en: 'Mini-app style integration', file: 'app.css', code: `@import 'tailwindcss';\n\n/* classes stay in your templates */\n<button class="px-4 py-2 text-white">\n  开始构建\n</button>` },
+  varo: { zh: 'Registry 安装命令', en: 'Registry install command', file: 'terminal', code: `pnpm dlx @varo-ui/cli add \\\n  --target weapp \\\n  button input card` },
+  'weapp-sqlite': { zh: '本地数据能力（规划中）', en: 'Local data capability (planned)', file: 'planning.md', code: `status: planned\napi: to be confirmed\nplatforms: to be confirmed\n\n# no production API is promised yet` },
+  'vite-plugin-taro': { zh: 'Taro + Vite 迁移', en: 'Taro + Vite migration', file: 'package.json', code: `npm create vite-taro@latest my-app\n\n# keep React + Taro APIs\n# move the build pipeline to Vite` },
+}[project.id]
+const plannedProof = locale === 'zh-CN'
+  ? `status: planned\napi: 待确认\nplatforms: 待确认\n\n# 当前不承诺生产 API`
+  : `status: planned\napi: to be confirmed\nplatforms: to be confirmed\n\n# no production API is promised yet`
+const displayProof = project.data.status === 'planned' ? { zh: '规划边界', en: 'Planning boundary', file: 'planning.md', code: plannedProof } : proof
+const statusId = `project-proof-status-${project.id}`
+---
+<section class="project-proof-panel" data-proof-count={project.data.proof?.length ?? 0} aria-labelledby="project-proof-title" aria-describedby={`project-proof-description ${statusId}`}>
+  <div><p class="mb-2 font-mono text-xs font-[650] text-brand">{locale === 'zh-CN' ? '工程证据' : 'ENGINEERING PROOF'}</p><h2 id="project-proof-title">{displayProof ? (locale === 'zh-CN' ? displayProof.zh : displayProof.en) : content.tagline}</h2><p id="project-proof-description">{locale === 'zh-CN' ? '从一段真实的配置、命令或边界说明开始判断项目是否适合你的工程。' : 'Start with a real config, command, or boundary note when deciding if this project fits your codebase.'}</p></div>
+  <div class="project-proof-code"><div class="project-proof-code-head"><span>{displayProof?.file ?? 'project.md'}</span><span id={statusId} aria-label={`${locale === 'zh-CN' ? '项目状态' : 'Project status'}: ${statusLabel[project.data.status]}`}>{statusLabel[project.data.status]}</span></div>{project.data.proof?.length ? <ul class="project-proof-list">{project.data.proof.map(item => <li>{typeof item === 'string' ? item : item[locale]}</li>)}</ul> : <pre><code>{displayProof?.code ?? content.description}</code></pre>}</div>
+</section>
+<style>
+  .project-proof-panel { display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); gap:2rem; align-items:stretch; padding:1.5rem; border:1px solid var(--border); background:var(--surface-soft); }
+  .project-proof-panel h2 { margin:0 0 .65rem; font:680 1.5rem/1.15 var(--font-display); text-wrap:balance; }
+  .project-proof-panel p { margin:0; max-width:34rem; color:var(--muted); font-size:.9rem; line-height:1.7; }
+  .project-proof-code { min-width:0; overflow:hidden; border:1px solid var(--border); background:var(--surface); }
+  .project-proof-code-head { display:flex; justify-content:space-between; gap:1rem; padding:.7rem .85rem; border-bottom:1px solid var(--border); color:var(--muted); font:650 .7rem/1 var(--font-mono); }
+  .project-proof-code pre { margin:0; overflow-x:auto; padding:1rem; color:var(--text); font:400 .8rem/1.7 var(--font-mono); }
+  .project-proof-list { display:grid; gap:.7rem; margin:0; padding:1.1rem 1.25rem 1.25rem 2.25rem; color:var(--text); font-size:.85rem; line-height:1.6; }
+  @media (max-width:720px) { .project-proof-panel { grid-template-columns:1fr; gap:1.25rem; padding:1rem; } }
+</style>

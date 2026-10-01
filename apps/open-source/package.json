@@ -1,0 +1,50 @@
+{
+  "name": "@weapp/open-source",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsx scripts/prepare-project-assets.ts && astro build && pnpm og:generate && pnpm pages:prepare && pnpm pages:rewrite && tsx scripts/validate-build.ts",
+    "pages:rewrite": "tsx scripts/rewrite-github-pages-paths.ts",
+    "pages:prepare": "tsx scripts/prepare-pages-content.ts",
+    "check": "astro check && tsc --noEmit",
+    "dev": "tsx scripts/prepare-project-assets.ts && astro dev",
+    "lint": "eslint .",
+    "lint:styles": "stylelint 'src/**/*.css'",
+    "metrics": "pnpm --filter @weapp/project-catalog metrics",
+    "metrics:sync": "pnpm --filter @weapp/project-catalog metrics:sync",
+    "media:generate": "tsx scripts/generate-media.ts",
+    "media:prepare-showcase": "node scripts/prepare-showcase-retail.mjs",
+    "media:capture-showcase": "node scripts/capture-showcase.mjs",
+    "media:showcase": "tsx scripts/generate-showcase.ts",
+    "media:verify-showcase": "pnpm media:verify-home",
+    "media:verify-home": "node scripts/verify-home.mjs",
+    "metrics:update-fallback": "pnpm --filter @weapp/project-catalog metrics:sync",
+    "og:generate": "tsx scripts/generate-og.ts",
+    "preview": "astro preview",
+    "test": "vitest run",
+    "test:e2e": "pnpm build && playwright test",
+    "test:e2e:analytics-live": "WEAPP_ANALYTICS_LIVE_TEST=1 playwright test tests/e2e/analytics-live.spec.ts --project=desktop"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "3.7.4",
+    "@fontsource-variable/geist": "5.3.0",
+    "@fontsource-variable/geist-mono": "5.3.0",
+    "@lucide/astro": "1.49.0",
+    "@weapp/project-catalog": "workspace:*",
+    "@weapp/site-ui": "workspace:*",
+    "astro": "7.3.5"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "node-html-parser": "9.0.4",
+    "sharp": "0.35.5",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.2",
+    "weapp-tailwindcss": "5.5.11"
+  }
+}

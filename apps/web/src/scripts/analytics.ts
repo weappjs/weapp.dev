@@ -5,7 +5,7 @@ export const ANALYTICS_SITE_IDS = {
   ga4: 'G-P7XL4TEVNM',
 } as const
 
-export const PRODUCTION_ANALYTICS_HOSTS = ['weapp.dev', 'weapp.js.org'] as const
+export const PRODUCTION_ANALYTICS_HOSTS = ['weapp.dev'] as const
 
 export function isProductionAnalyticsHost(hostname: string): boolean {
   return (PRODUCTION_ANALYTICS_HOSTS as readonly string[]).includes(hostname)

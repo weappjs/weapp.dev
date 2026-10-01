@@ -21,7 +21,7 @@ const contributorsPath = localizePath(locale, '/contributors/')
 const privacyPath = localizePath(locale, '/privacy/')
 ---
 
-<footer class="border-t border-line bg-panel-soft pt-16 pb-6" aria-label={locale === 'zh-CN' ? '站点页脚' : 'Site footer'}>
+<footer class="border-t border-line bg-panel-soft-soft pt-16 pb-6" aria-label={locale === 'zh-CN' ? '站点页脚' : 'Site footer'}>
   <div class:list={[shell, 'grid grid-cols-[1.5fr_.75fr_.75fr] gap-14 max-[720px]:grid-cols-2 max-[720px]:gap-x-6 max-[720px]:gap-y-10']}>
     <div class="max-[720px]:col-span-2">
       <a class={wordmark} href={localizePath(locale)} aria-current={currentPath === localizePath(locale) ? 'page' : undefined}>
@@ -50,12 +50,13 @@ const privacyPath = localizePath(locale, '/privacy/')
         {copy.footer.source}
       </a>
       <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={privacyPath} aria-current={currentPath === privacyPath ? 'page' : undefined}>{copy.footer.privacy}</a>
-      {profile.features.services && <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={`${pricingPath}#services`} data-analytics-event="navigate_section" data-analytics-section="services">{locale === 'zh-CN' ? '迁移与培训' : 'Migration and training'}</a>}
-      {profile.features.sponsorship && <>
+      {<a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={`${pricingPath}#services`} data-analytics-event="navigate_section" data-analytics-section="services">{locale === 'zh-CN' ? '迁移与培训' : 'Migration and training'}</a>}
+      {<>
         <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={`${pricingPath}#sponsor`} data-analytics-event="navigate_section" data-analytics-section="sponsor">{locale === 'zh-CN' ? '开源赞助' : 'Open-source sponsorship'}</a>
         <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={contributorsPath} aria-current={currentPath === contributorsPath ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="contributors">{copy.footer.contributors}</a>
         <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={localizePath(locale, '/sponsors/')} aria-current={currentPath === localizePath(locale, '/sponsors/') ? 'page' : undefined} data-analytics-event="navigate_page" data-analytics-page="sponsors">{locale === 'zh-CN' ? '赞助图谱' : 'Sponsor graph'}</a>
       </>}
+      <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={'https://weapp.js.org' + localizePath(locale)}>{locale === 'zh-CN' ? '开源站 · weapp.js.org' : 'Open source · weapp.js.org'}</a>
       <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href={profile.organizationUrl} target="_blank" rel="noopener noreferrer">{locale === 'zh-CN' ? '参与开源 · weappjs' : 'Contribute · weappjs'}</a>
       <a class="flex min-h-11 max-w-full w-fit items-center gap-2 text-sm hover:text-brand" href="/releases.xml" data-analytics-event="navigate_section" data-analytics-section="release_feed">
         <Rss size={15} stroke-width={1.8} aria-hidden="true" />

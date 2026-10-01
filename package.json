@@ -9,12 +9,12 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "build:cloudflare": "pnpm --filter @weapp.dev/web build:cloudflare",
-    "check": "turbo run lint lint:styles check test",
+    "build:cloudflare": "pnpm --filter @weapp.dev/web build",
+    "check": "pnpm check:boundaries && turbo run lint lint:styles check test",
     "dev": "turbo run dev --filter=@weapp.dev/web",
     "lint": "turbo run lint lint:styles",
-    "metrics": "pnpm --filter @weapp.dev/web metrics",
-    "metrics:sync": "pnpm --filter @weapp.dev/web metrics:sync",
+    "metrics": "pnpm --filter @weapp/project-catalog metrics",
+    "metrics:sync": "pnpm --filter @weapp/project-catalog metrics:sync",
     "preview": "pnpm --filter @weapp.dev/web preview",
     "repo:check": "repo check",
     "repo:doctor": "repo doctor",
@@ -23,9 +23,10 @@
     "test": "turbo run test",
     "prepare": "husky",
     "typecheck": "turbo run check",
-    "build:pages": "pnpm --filter @weapp.dev/web build:pages",
-    "dev:pages": "pnpm --filter @weapp.dev/web dev:pages",
-    "preview:pages": "pnpm --filter @weapp.dev/web preview:pages"
+    "build:pages": "pnpm --filter @weapp/open-source build",
+    "dev:pages": "pnpm --filter @weapp/open-source dev",
+    "preview:pages": "pnpm --filter @weapp/open-source preview",
+    "check:boundaries": "node scripts/check-boundaries.mjs && vitest run --config scripts/vitest.config.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",

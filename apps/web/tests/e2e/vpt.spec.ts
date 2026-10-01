@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import vpt from '../../src/content/projects/vite-plugin-taro.json' with { type: 'json' }
+import vpt from '@weapp/project-catalog/projects/vite-plugin-taro.json' with { type: 'json' }
 import { expectSiteLink, siteOrigin } from './site-target'
 import { expect, test } from './test'
 
@@ -32,9 +32,9 @@ for (const locale of ['zh-CN', 'en'] as const) {
     await expect(page.locator(`link[hreflang="${locale === 'zh-CN' ? 'en-US' : 'zh-CN'}"]`)).toHaveAttribute('href', `${siteOrigin}${alternate}`)
     const schemas = (await page.locator('script[type="application/ld+json"]').allTextContents()).map(text => JSON.parse(text))
     expect(schemas).toContainEqual(expect.objectContaining({
-      '@type': 'SoftwareSourceCode',
+      '@type': 'WebPage',
       'name': 'VPT',
-      'codeRepository': `https://github.com/${vpt.github}`,
+      'relatedLink': `https://weapp.js.org${path}`,
     }))
 
     for (const image of await page.locator('main img').all()) {

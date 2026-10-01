@@ -1,0 +1,33 @@
+---
+import type { Locale } from '../types/project'
+import type { ProjectEntry } from '../lib/projects'
+import { getToolchainProjects } from '../lib/toolchain'
+import { projectPath } from '../i18n/ui'
+interface Props { locale: Locale; projects: ProjectEntry[] }
+const { locale, projects } = Astro.props
+const labels = locale === 'zh-CN' ? { engineering: '工程', styling: '样式', components: '组件', data: '数据', title: 'weapp 生态四件套，各管一层', kicker: 'weapp 工具链', view: '查看项目', status: { stable: '稳定', beta: '测试版', planned: '规划中' } } : { engineering: 'Engineering', styling: 'Styling', components: 'Components', data: 'Data', title: 'Four weapp tools, each with one job', kicker: 'WEAPP TOOLCHAIN', view: 'View project', status: { stable: 'Stable', beta: 'Beta', planned: 'Planned' } }
+const items = getToolchainProjects(projects)
+---
+<section class="toolchain-map" aria-labelledby="toolchain-title">
+  <header data-reveal><p class="mb-3 font-mono text-xs font-[650] text-brand">{labels.kicker}</p><h2 id="toolchain-title">{labels.title}</h2></header>
+<ol class="toolchain-map-list">{items.map(({ project, role }, index) => { const content = project.data.locales[locale]; const titleId = `toolchain-project-${project.id}`; const descriptionId = `toolchain-description-${project.id}`; const roleId = `toolchain-role-${project.id}`; const statusId = `toolchain-status-${project.id}`; return <li data-project-id={project.id} data-reveal style={`--reveal-delay:${index * 60}ms`} aria-labelledby={titleId} aria-describedby={`${descriptionId} ${roleId} ${statusId}`}><span class="toolchain-step" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><div class="toolchain-connector" aria-hidden="true"></div><img src={project.data.logo} width="40" height="40" alt="" loading="lazy" decoding="async" /><div class="toolchain-copy"><div class="toolchain-meta"><strong id={roleId}>{labels[role]}</strong><span id={statusId} class="toolchain-status" aria-label={`${locale === 'zh-CN' ? '项目状态' : 'Project status'}: ${labels.status[project.data.status]}`}>{labels.status[project.data.status]}</span></div><h3 id={titleId}>{content.name}</h3><p id={descriptionId}>{content.tagline}</p></div><a href={projectPath(locale, project.id)} aria-label={`${labels.view}: ${content.name}`} data-analytics-event="select_project" data-analytics-project={project.id}>{labels.view}</a></li> })}</ol>
+</section>
+<style>
+  .toolchain-map { padding: 2rem; border: 1px solid var(--border); background: var(--surface); }
+  .toolchain-map h2 { max-width: 620px; margin: 0; font: 680 clamp(1.6rem, 3vw, 2.6rem)/1.1 var(--font-display); text-wrap: balance; }
+  .toolchain-map-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 2rem 0 0; padding: 0; list-style: none; }
+  .toolchain-map-list li { position: relative; min-width: 0; padding: 1.25rem 1rem 1.2rem; border-top: 1px solid var(--border); transition: background-color 200ms ease, border-color 200ms ease; }
+  .toolchain-map-list li:hover, .toolchain-map-list li:focus-within { background: var(--surface-soft); border-color: var(--accent); }
+  .toolchain-step { color: var(--accent); font: 650 .72rem/1 var(--font-mono); }
+  .toolchain-connector { position: absolute; top: 1.58rem; right: -1px; width: 1rem; height: 1px; background: var(--accent); }
+  .toolchain-map-list li:last-child .toolchain-connector { display: none; }
+  .toolchain-map-list img { display: block; width: 2.5rem; height: 2.5rem; margin: 1.25rem 0 1rem; object-fit: contain; }
+  .toolchain-meta { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+  .toolchain-status { color: var(--muted); font: 650 0.68rem/1 var(--font-mono); }
+  .toolchain-copy strong { color: var(--accent); font: 650 .72rem/1 var(--font-mono); text-transform: uppercase; }
+  .toolchain-copy h3 { margin: .45rem 0 .3rem; font-size: 1rem; overflow-wrap: anywhere; }
+  .toolchain-copy p { margin: 0; color: var(--muted); font-size: .82rem; line-height: 1.5; }
+  .toolchain-map-list a { display: inline-flex; margin-top: 1.1rem; color: var(--text); font-size: .8rem; font-weight: 650; }
+  @media (prefers-reduced-motion: reduce) { .toolchain-map-list li { transition: none; } }
+  @media (max-width: 900px) { .toolchain-map-list { grid-template-columns: 1fr; } .toolchain-map-list li { display: grid; grid-template-columns: 2rem 2.5rem 1fr auto; gap: .75rem; align-items: center; padding: 1rem 0; } .toolchain-map-list li img { margin: 0; } .toolchain-connector { top: auto; right: auto; left: 1rem; bottom: -.5rem; width: 1px; height: 1rem; } .toolchain-copy h3 { margin-top: .3rem; } .toolchain-map-list a { margin-top: 0; } }
+</style>

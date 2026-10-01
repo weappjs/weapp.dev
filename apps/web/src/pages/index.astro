@@ -14,18 +14,18 @@ const locale = 'zh-CN' as const
 const projects = await getProjects()
 const metrics = await loadProjectMetrics()
 const homeProjects = await getHomeProjects(projects)
-const title = `${profile.name} | ${profile.features.services ? '小程序工程工具链与服务' : 'JavaScript 小程序开源生态'}`
-const description = profile.features.services ? '面向真实小程序工程的开放工具链：weapp-vite 负责构建，weapp-tailwindcss 负责样式，Varo 负责组件交付，weapp-sqlite 规划本地数据能力，VPT 连接 Taro 与 React 团队。' : '汇集 JavaScript 小程序开源项目：构建工具、样式工具、Vue 与 React 运行时及组件库。浏览项目关系、真实源码、文档和参与贡献的入口。'
+const title = `${profile.name} | 小程序工具链与工程服务`
+const description = '面向真实仓库的小程序迁移、企业培训与模板定制。先评估范围，再确认报价与验收方式。'
 ---
 
 <BaseLayout
   locale={locale}
   title={title}
   description={description}
-  imageAlt={`${profile.name} 小程序工程工具链地图`}
+  imageAlt={`${profile.name} 小程序工程交付服务`}
   schemas={[organizationSchema(), websiteSchema(locale), projectListSchema(locale, projects)]}
 >
   <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
-  <HomePage locale={locale} projects={projects} homeProjects={homeProjects} metrics={metrics} />
+  <HomePage locale={locale} projects={projects} metrics={metrics} homeProjects={homeProjects} />
   <Footer locale={locale} projects={projects} currentPath={Astro.url.pathname} />
 </BaseLayout>

@@ -1,0 +1,139 @@
+@theme inline {
+  --color-canvas: var(--background);
+  --color-panel: var(--surface);
+  --color-panel-soft: var(--surface-soft);
+  --color-panel-strong: var(--surface-strong);
+  --color-panel-raised: var(--surface-raised);
+  --color-ink: var(--text);
+  --color-copy-muted: var(--muted);
+  --color-line: var(--border);
+  --color-brand: var(--accent);
+  --color-brand-hover: var(--accent-hover);
+  --color-brand-contrast: var(--accent-contrast);
+  --color-highlight: var(--highlight);
+  --font-display: 'Geist Variable', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-sans: 'Geist Variable', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+  --radius-panel: 20px;
+  --shadow-panel: 0 18px 48px var(--shadow);
+}
+
+:root {
+  color-scheme: light;
+
+  --background: #fff;
+  --surface: #fff;
+  --surface-soft: #f5f5f7;
+  --surface-strong: #e8e8ed;
+  --surface-raised: #fff;
+  --text: #1d1d1f;
+  --muted: #626266;
+  --border: #d2d2d7;
+  --accent: #0e7958;
+  --accent-hover: #096646;
+  --accent-contrast: #fff;
+  --highlight: #f2c94c;
+  --shadow: rgb(0 0 0 / 10%);
+  --header: rgb(255 255 255 / 88%);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --background: #000;
+  --surface: #111112;
+  --surface-soft: #1c1c1e;
+  --surface-strong: #29292c;
+  --surface-raised: #1c1c1e;
+  --text: #f5f5f7;
+  --muted: #a1a1a6;
+  --border: #38383c;
+  --accent: #69c7a5;
+  --accent-hover: #86d7b9;
+  --accent-contrast: #07130e;
+  --highlight: #f2c94c;
+  --shadow: rgb(0 0 0 / 34%);
+  --header: rgb(18 18 20 / 88%);
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    @apply box-border;
+  }
+
+  html {
+    @apply scroll-smooth scroll-pt-[84px] bg-canvas motion-reduce:scroll-auto;
+
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    @apply m-0 min-w-80 overflow-x-clip bg-canvas font-sans text-base leading-[1.58] text-ink antialiased;
+
+    letter-spacing: 0;
+    text-rendering: optimizelegibility;
+  }
+
+  button,
+  a,
+  summary {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+
+  button,
+  summary {
+    @apply text-inherit;
+
+    font: inherit;
+  }
+
+  img,
+  picture,
+  svg {
+    @apply block max-w-full;
+  }
+
+  h1,
+  h2,
+  h3,
+  p {
+    @apply mt-0;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display leading-[1.08];
+
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  code,
+  pre {
+    @apply font-mono;
+  }
+
+  ::selection {
+    @apply bg-highlight text-[#151812];
+  }
+
+  :focus-visible {
+    @apply outline-3 outline-offset-3 outline-highlight;
+  }
+
+  dialog::backdrop {
+    background: rgb(5 13 9 / 72%);
+    backdrop-filter: blur(6px);
+  }
+}

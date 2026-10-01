@@ -10,6 +10,7 @@ import RoadmapStrip from './RoadmapStrip.astro'
 import PlatformMatrix from './PlatformMatrix.astro'
 import ProjectStatusBadge from './ProjectStatusBadge.astro'
 import QuickStartPanel from './QuickStartPanel.astro'
+import { projectService } from '../lib/services'
 
 interface Props {
   locale: Locale
@@ -31,10 +32,12 @@ const secondaryVisualCopy = secondaryVisual?.locales[locale]
 const publicMetrics = showsPublicMetrics(project.data.status)
 const quickStartNote = typeof project.data.quickStart?.note === 'string' ? project.data.quickStart.note : project.data.quickStart?.note?.[locale]
 const installCommand = project.data.installCommand ?? project.data.quickStart?.command
+const service = projectService(project, locale)
+
 ---
 
 <main id="main-content" style={`--project-accent: ${project.data.accent}`}>
-  <section aria-labelledby="project-title" class:list={[shell, 'project-detail-hero grid items-center gap-12 py-10 max-[820px]:gap-8 max-[720px]:py-8', hasVisuals ? 'min-h-[min(690px,calc(100dvh-100px))] grid-cols-[.92fr_1.08fr] max-[820px]:min-h-0 max-[820px]:grid-cols-1' : 'grid-cols-1']}>
+  <section aria-labelledby="project-title" class:list={[shell, 'project-detail-hero grid items-center gap-16 py-20 max-[820px]:gap-10 max-[720px]:py-12', hasVisuals ? 'min-h-[min(690px,calc(100dvh-100px))] grid-cols-[.85fr_1.15fr] max-[820px]:min-h-0 max-[820px]:grid-cols-1' : 'grid-cols-1']}>
     <div data-reveal>
       <a class="mb-10 inline-flex items-center gap-2 text-sm font-[620] text-copy-muted transition-colors hover:text-ink max-[720px]:mb-8" href={localizePath(locale, '/projects/')} data-analytics-event="navigate_section" data-analytics-section="projects">
         <ArrowLeft size={17} stroke-width={1.9} aria-hidden="true" />
@@ -45,16 +48,16 @@ const installCommand = project.data.installCommand ?? project.data.quickStart?.c
         <ProjectStatusBadge locale={locale} status={project.data.status} />
       </div>
       <div class="mb-5 flex flex-wrap gap-2">
-        {project.data.role ? <span class="inline-flex items-center border border-line bg-panel-soft px-2.5 py-1.5 font-mono text-xs font-[650] text-brand">{roleLabel[project.data.role] || project.data.role}</span> : null}
+        {project.data.role ? <span class="inline-flex items-center border border-line bg-panel-soft px-2.5 py-1.5 font-sans text-xs font-[650] text-brand">{roleLabel[project.data.role] || project.data.role}</span> : null}
         <PlatformMatrix locale={locale} platforms={project.data.platforms} runtime={project.data.runtime} />
-        {project.data.dataCompleteness === 'planned' ? <span class="inline-flex items-center border border-line px-2.5 py-1.5 font-mono text-xs text-copy-muted">{locale === 'zh-CN' ? '资料整理中' : 'Data in progress'}</span> : null}
+        {project.data.dataCompleteness === 'planned' ? <span class="inline-flex items-center border border-line px-2.5 py-1.5 font-sans text-xs text-copy-muted">{locale === 'zh-CN' ? '资料整理中' : 'Data in progress'}</span> : null}
       </div>
-      <h1 id="project-title" class="mb-5 font-display text-[clamp(2.125rem,5.4vw,4.5rem)] font-[700] [overflow-wrap:anywhere]">{content.name}</h1>
+      <h1 id="project-title" class="mb-5 font-display text-[clamp(2.25rem,5.4vw,5rem)] font-[700] [overflow-wrap:anywhere]">{content.name}</h1>
       <p class="mb-3 text-2xl font-[620] leading-[1.35] max-[720px]:text-xl">{content.tagline}</p>
       <p class="mb-6 max-w-[630px] text-lg leading-[1.7] text-copy-muted">{content.description}</p>
       <p class="mb-6 text-sm text-copy-muted">{locale === 'zh-CN' ? '维护者：' : 'Maintained by: '}{project.data.maintainer}</p>
       {project.id === 'vite-plugin-taro' ? (
-        <p class="mb-6 max-w-[630px] rounded-[6px] border border-line bg-panel-soft px-4 py-3 font-mono text-xs leading-[1.6] text-copy-muted" data-project-adjacent>
+        <p class="mb-6 max-w-[630px] rounded-xl border border-line bg-panel-soft px-4 py-3 font-sans text-xs leading-[1.6] text-copy-muted" data-project-adjacent>
           {copy.project.adjacentNote}
         </p>
       ) : null}
@@ -75,7 +78,7 @@ const installCommand = project.data.installCommand ?? project.data.quickStart?.c
     </div>
 
     {primaryVisual && primaryVisualCopy ? <figure data-reveal style="--reveal-delay: 100ms" class="m-0 overflow-hidden rounded-panel border border-line bg-panel-soft">
-      <div class="aspect-[16/11] overflow-hidden">
+      <div class="aspect-[16/10] overflow-hidden">
         <picture>
           <source srcset={primaryVisual.avif} type="image/avif" />
           <img class="size-full object-cover object-top" src={primaryVisual.src} width={primaryVisual.width} height={primaryVisual.height} alt={primaryVisualCopy.alt} fetchpriority="high" decoding="async" />
@@ -92,9 +95,9 @@ const installCommand = project.data.installCommand ?? project.data.quickStart?.c
       <h2 id="project-visuals-title" class={sectionTitle}>{copy.project.visualProof}</h2>
       <p class="mb-0 text-copy-muted">{copy.project.visualProofDescription}</p>
     </header>
-    <div class="grid grid-cols-[1.12fr_.88fr] items-start gap-5 max-[720px]:grid-cols-1">
+    <div class="grid grid-cols-[1.5fr_.7fr] items-start gap-5 max-[720px]:grid-cols-1">
       <figure data-reveal class="m-0 overflow-hidden rounded-panel border border-line bg-panel">
-        <div class="aspect-[16/11] overflow-hidden">
+        <div class="aspect-[16/10] overflow-hidden">
           <picture>
             <source srcset={primaryVisual.avif} type="image/avif" />
             <img class="size-full object-cover object-top" src={primaryVisual.src} width={primaryVisual.width} height={primaryVisual.height} alt={primaryVisualCopy.alt} loading="lazy" decoding="async" />
@@ -117,7 +120,7 @@ const installCommand = project.data.installCommand ?? project.data.quickStart?.c
   <ProjectProofPanel locale={locale} project={project} />
   <RoadmapStrip locale={locale} project={project} />
 
-  <section class="border-y border-line bg-panel-soft" aria-label={locale === 'zh-CN' ? '项目能力与使用场景' : 'Project capabilities and use cases'}>
+  <section class="bg-panel-soft" aria-label={locale === 'zh-CN' ? '项目能力与使用场景' : 'Project capabilities and use cases'}>
     <div class:list={[section, shell, 'grid grid-cols-[1.15fr_.85fr] gap-20 max-[820px]:grid-cols-1 max-[820px]:gap-12']}>
       <div data-reveal aria-labelledby="project-capabilities-title">
         <h2 id="project-capabilities-title" class:list={[featuredTitle, 'mb-7']}>{copy.project.capabilities}</h2>
@@ -185,7 +188,7 @@ const installCommand = project.data.installCommand ?? project.data.quickStart?.c
 
   <section class:list={[shell, 'mb-24 grid grid-cols-[1fr_auto] items-center gap-10 rounded-panel border border-line bg-panel p-9 max-[620px]:grid-cols-1 max-[620px]:p-6']} aria-labelledby="project-future-docs-title">
     <div data-reveal>
-      <p class="mb-3 font-mono text-xs font-[650] text-brand">{copy.project.futureDocs}</p>
+      <p class="mb-3 font-sans text-xs font-[650] text-brand">{copy.project.futureDocs}</p>
       <h2 id="project-future-docs-title" class="mb-3 text-2xl font-[660]"><code class="text-xl [overflow-wrap:anywhere] max-[620px]:text-base">{project.data.futureDocsPath}</code></h2>
       <p class="mb-0 max-w-[640px] text-sm text-copy-muted">{copy.project.futureDocsNote}</p>
     </div>
@@ -193,6 +196,15 @@ const installCommand = project.data.installCommand ?? project.data.quickStart?.c
       <ArrowUpRight size={23} stroke-width={1.7} aria-hidden="true" />
     </a>
   </section>
+  <section class="bg-panel-soft" aria-labelledby="service-scope-title"><div class:list={[section, shell]}>
+    <h2 id="service-scope-title" class="text-3xl font-semibold">{locale === 'zh-CN' ? '实施范围' : 'Implementation scope'}</h2>
+    <p class="mt-5 font-semibold text-brand" data-service-status>{service.label}</p>
+    <p class="mt-4 max-w-[720px] text-copy-muted" data-service-scope>{service.scope}</p>
+    <div class="mt-8 flex flex-wrap gap-3">
+      {service.available && <a class={buttonPrimary} href={localizePath(locale, '/pricing/') + '#contact'}>{locale === 'zh-CN' ? '沟通迁移与培训' : 'Discuss migration and training'}</a>}
+      <a class={buttonSecondary} href={service.openSourceUrl}>{locale === 'zh-CN' ? '在开源站查看项目与参与方式' : 'Explore the project and contribute on the open-source site'}</a>
+    </div>
+  </div></section>
 </main>
 
 <script>

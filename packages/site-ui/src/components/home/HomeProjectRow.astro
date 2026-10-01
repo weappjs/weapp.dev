@@ -1,0 +1,84 @@
+---
+import { ArrowRight, BadgeCheck, BookOpen, Clock3 } from '@lucide/astro'
+import type { Locale, ProjectMetrics } from '@weapp/project-catalog/types'
+import type { HomeProject } from '../../lib/home-projects'
+import { formatCompactNumber, showsPublicMetrics } from '@weapp/project-catalog/metrics'
+import type { ProjectLabels } from '../../lib/copy'
+import { buttonPrimary, buttonSecondary, featuredTitle, projectTone } from '../../styles/classes'
+import HomeDemos from './demos/HomeDemos.astro'
+import HomeProjectProof from './HomeProjectProof.astro'
+
+interface Props {
+  locale: Locale
+  labels: ProjectLabels
+  detailsUrl: string
+  project: HomeProject
+  index: number
+  metrics?: ProjectMetrics
+  labProjects?: HomeProject[]
+}
+
+const { locale, project, index, metrics: projectMetrics, labProjects, labels, detailsUrl } = Astro.props
+const content = project.data.locales[locale]
+const numberLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
+const publicMetrics = Boolean(projectMetrics) && showsPublicMetrics(project.data.status)
+const lab = labProjects?.length ? labProjects : null
+const proofId = `home-project-proof-${project.id}`
+const statusId = `home-project-status-${project.id}`
+const readinessId = `home-project-readiness-${project.id}`
+const describedBy = [
+  `home-project-description-${project.id}`,
+  statusId,
+  lab ? null : proofId,
+  publicMetrics ? null : readinessId,
+].filter(Boolean).join(' ')
+---
+
+<article data-project-row data-project-id={project.id} data-roadmap-count={project.data.roadmap?.length ?? 0} aria-labelledby={`home-project-title-${project.id}`} aria-describedby={describedBy} class:list={['home-project-row min-w-0', { 'home-project-row-reversed': project.reversed && !lab, 'home-project-row-with-lab': Boolean(lab) }]} style={`--project-accent: ${project.data.accent}`}>
+  <div class="home-project-copy" data-reveal data-project-copy style={`--reveal-delay: ${80 + index * 60}ms`}>
+    <div class="home-project-summary">
+      <div class="mb-5 flex items-center gap-3">
+        <img class="size-12 object-contain" src={project.data.logo} width="48" height="48" alt="" loading="lazy" decoding="async" />
+        <span id={statusId} class:list={['inline-flex items-center gap-1.5 font-sans text-sm font-[650]', projectTone]} data-project-status={project.data.status} aria-label={`${locale === 'zh-CN' ? '项目状态' : 'Project status'}: ${labels.status[project.data.status]}`}>
+          {project.data.status === 'planned' ? <Clock3 size={15} stroke-width={1.8} aria-hidden="true" /> : <BadgeCheck size={15} stroke-width={1.8} aria-hidden="true" />}
+          {labels.status[project.data.status]}
+        </span>
+      </div>
+      <h3 id={`home-project-title-${project.id}`} class:list={[featuredTitle, 'mb-4 [overflow-wrap:anywhere]']}>{content.name}</h3>
+      <p class="mb-3 text-xl font-[600]">{content.tagline}</p>
+      <p id={`home-project-description-${project.id}`} class="mb-6 max-w-[590px] text-copy-muted">{content.description}</p>
+    </div>
+    <div class="home-project-meta">
+      {publicMetrics && projectMetrics ? (
+        <dl class="mb-7 grid grid-cols-2 gap-8 py-5">
+          <div><dt class="mb-1 text-xs text-copy-muted">{labels.weeklyDownloads}</dt><dd class="m-0 font-mono text-lg font-[700]">{formatCompactNumber(projectMetrics.weeklyDownloads, numberLocale)}</dd></div>
+          <div><dt class="mb-1 text-xs text-copy-muted">{labels.stars}</dt><dd class="m-0 font-mono text-lg font-[700]">{formatCompactNumber(projectMetrics.stars, numberLocale)}</dd></div>
+        </dl>
+      ) : (
+        <div class="mb-7 py-5" data-project-readiness>
+          <p class="mb-1 font-sans text-sm font-[650] text-brand">{labels.readinessTitle}</p>
+          <p id={readinessId} class="mb-0 max-w-[590px] text-sm leading-[1.7] text-copy-muted">{labels.readinessBody}</p>
+        </div>
+      )}
+      <div class="flex flex-wrap items-center gap-3">
+        <a class={buttonPrimary} href={project.data.docsUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="docs" data-analytics-project={project.id}>
+          <BookOpen size={18} stroke-width={1.9} aria-hidden="true" />
+          {labels.documentation}
+        </a>
+        <a class={buttonSecondary} href={detailsUrl} data-analytics-event="select_project" data-analytics-project={project.id}>
+          {labels.details}
+          <ArrowRight size={17} stroke-width={1.9} aria-hidden="true" />
+        </a>
+      </div>
+    </div>
+  </div>
+  {lab ? (
+    <div class="home-project-lab-slot">
+      <HomeDemos locale={locale} projects={lab} />
+    </div>
+  ) : (
+    <div class="home-project-proof-slot">
+      <HomeProjectProof labels={labels.proof} kind={project.demo} locale={locale} projectName={content.name} status={project.data.status} proof={project.data.proof} proofId={proofId} />
+    </div>
+  )}
+</article>

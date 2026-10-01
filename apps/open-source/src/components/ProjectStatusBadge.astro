@@ -1,0 +1,14 @@
+---
+import { Check, Clock3, FlaskConical } from '@lucide/astro'
+import type { Locale } from '../types/project'
+import type { ProjectDefinition } from '../types/project'
+import { projectTone } from '../styles/classes'
+
+interface Props { locale: Locale; status: ProjectDefinition['status']; id?: string }
+const { locale, status, id } = Astro.props
+const label = locale === 'zh-CN' ? { stable: '稳定', beta: '测试版', planned: '规划中' } : { stable: 'Stable', beta: 'Beta', planned: 'Planned' }
+---
+<span id={id} class:list={['inline-flex items-center gap-1.5 font-mono text-xs font-[650]', projectTone]} data-project-status={status} aria-label={`${locale === 'zh-CN' ? '项目状态' : 'Project status'}: ${label[status]}`}>
+  {status === 'planned' ? <Clock3 size={15} stroke-width={2} aria-hidden="true" /> : status === 'beta' ? <FlaskConical size={15} stroke-width={2} aria-hidden="true" /> : <Check size={15} stroke-width={2} aria-hidden="true" />}
+  {label[status]}
+</span>

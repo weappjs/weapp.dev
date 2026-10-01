@@ -1,0 +1,54 @@
+---
+import { Folder, FileCode } from '@lucide/astro'
+import type { Locale } from '@weapp/project-catalog/types'
+import CodePanel from './CodePanel.astro'
+import { demoCopy } from './copy'
+import { buildExample, buildTargets } from './build'
+
+interface Props { locale: Locale, instance: string }
+const { locale, instance } = Astro.props
+const copy = demoCopy[locale]
+const example = buildExample(0)
+---
+<build-demo class="home-demo" data-demo="build">
+  <div class="demo-controls-space">
+    <fieldset class="demo-controls" disabled hidden>
+      <legend class="sr-only">{copy.target}</legend>
+      <div class="demo-segments">{buildTargets.map((target, index) => <label data-target={target.id}><input type="radio" name={`${instance}-target`} value={index} checked={index === 0} /><span>{copy.targets[index]}</span></label>)}</div>
+    </fieldset>
+  </div>
+  <div class="demo-body">
+    <CodePanel parts={example.parts} locale={locale} filename="vite.config.ts" />
+    <div class="demo-preview demo-build-output">
+      <div class="demo-pane-heading">{copy.output}</div>
+      <div class="demo-file-tree">
+        <div class="demo-directory"><Folder size={20} aria-hidden="true" /><code data-directory>{example.directory}/</code></div>
+        <div class="demo-tree-branch"><span>pages/index/</span><ul>{example.files.map((file, index) => <li><FileCode size={16} aria-hidden="true" /><code data-output-file={index}>{file}</code></li>)}</ul></div>
+      </div>
+      <code class="demo-build-command" data-build-command>{example.command}</code>
+      <div class="demo-note">{copy.buildNote}</div>
+    </div>
+  </div>
+</build-demo>
+<script>
+  import { updateCode } from './code'
+  import { buildExample } from './build'
+
+  class BuildDemo extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.ready) return
+      const controls = this.querySelector('fieldset')!
+      controls.addEventListener('change', () => {
+        const example = buildExample(Number(this.querySelector<HTMLInputElement>('input:checked')!.value))
+        updateCode(this, example.parts)
+        this.querySelector('[data-directory]')!.textContent = `${example.directory}/`
+        this.querySelector('[data-build-command]')!.textContent = example.command
+        this.querySelectorAll('[data-output-file]').forEach((file, index) => { file.textContent = example.files[index] })
+      })
+      controls.disabled = false
+      controls.hidden = false
+      this.dataset.ready = 'true'
+    }
+  }
+  customElements.define('build-demo', BuildDemo)
+</script>

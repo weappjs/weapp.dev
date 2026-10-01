@@ -14,8 +14,8 @@ const locale = 'en' as const
 const projects = await getProjects()
 const metrics = await loadProjectMetrics()
 const homeProjects = await getHomeProjects(projects)
-const title = `${profile.name} | ${profile.features.services ? 'Mini-app engineering and services' : 'Open-source JavaScript mini-program ecosystem'}`
-const description = profile.features.services ? 'An open toolchain for real mini-app projects: weapp-vite handles builds, weapp-tailwindcss handles styling, Varo delivers editable components, weapp-sqlite is planning local data capabilities, and VPT connects Taro and React teams.' : 'Open-source JavaScript tools for mini-program development. Explore build tooling, styling, Vue and React runtimes, and component libraries, with source code and documentation for each project.'
+const title = `${profile.name} | Mini-app tools and engineering services`
+const description = 'Mini-app migration, team training, and template customization for real repositories. Agree scope, pricing, and acceptance criteria before implementation.'
 ---
 
 <BaseLayout
@@ -26,6 +26,6 @@ const description = profile.features.services ? 'An open toolchain for real mini
   schemas={[organizationSchema(), websiteSchema(locale), projectListSchema(locale, projects)]}
 >
   <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
-  <HomePage locale={locale} projects={projects} homeProjects={homeProjects} metrics={metrics} />
+  <HomePage locale={locale} projects={projects} metrics={metrics} homeProjects={homeProjects} />
   <Footer locale={locale} projects={projects} currentPath={Astro.url.pathname} />
 </BaseLayout>

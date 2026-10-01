@@ -1,0 +1,390 @@
+/* stylelint-disable declaration-block-single-line-max-declarations, order/properties-order, rule-empty-line-before, at-rule-empty-line-before, scss/operator-no-unspaced */
+.home-hero {
+  overflow-x: clip;
+  color: var(--text);
+  background: var(--background);
+}
+
+.home-hero-screen {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-height: max(22rem, calc(100svh - 64px));
+
+  --orbit-rx: 43vw;
+  --orbit-ry: 31svh;
+
+  overflow: hidden;
+  color: #edf5f0;
+  background-color: #050505;
+  background-image: none;
+}
+
+.home-hero-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.home-hero-particle-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.home-hero-constellation {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.home-hero-gridlines {
+  position: absolute;
+  inset: -12%;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--border) 88%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--border) 88%, transparent) 1px, transparent 1px);
+  background-size: 4.5rem 4.5rem;
+  mask-image: radial-gradient(ellipse 58% 52% at 50% 48%, #000 8%, transparent 78%);
+  opacity: 0.12;
+}
+
+.home-hero-glow {
+  display: none;
+}
+
+@property --orbit-turn {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+.home-hero-orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--orbit-rx) * 2);
+  height: calc(var(--orbit-ry) * 2);
+  border: 1px solid rgb(255 255 255 / 7%);
+  border-radius: 50%;
+  pointer-events: none;
+  translate: -50% -50%;
+}
+
+.home-hero-tile,
+.home-hero-planet {
+  position: absolute;
+  top: calc(50% + sin(calc(var(--orbit-start) + var(--orbit-turn) * 360deg)) * var(--orbit-ry));
+  left: calc(50% + cos(calc(var(--orbit-start) + var(--orbit-turn) * 360deg)) * var(--orbit-rx));
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  pointer-events: auto;
+  border-radius: 50%;
+  translate: -50% -50%;
+
+  --orbit-start: calc(var(--orbit-p) * 360deg);
+}
+.home-hero-tile:focus-visible {
+  outline: 2px solid var(--highlight);
+  outline-offset: -3px;
+}
+
+.home-hero-planet-body {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #777;
+  box-shadow:
+    inset 0.15rem 0.15rem 0.3rem rgb(255 255 255 / 14%),
+    inset -0.15rem -0.2rem 0.35rem rgb(0 0 0 / 24%),
+    0 2px 12px rgb(0 0 0 / 12%);
+}
+
+/* An opaque face keeps the planet's shading out of transparent logo pixels. */
+.home-hero-planet-face {
+  position: absolute;
+  inset: 7%;
+  z-index: 1;
+  border-radius: 50%;
+  background: #f4f7f5;
+  pointer-events: none;
+}
+
+.home-hero-tile img {
+  position: relative;
+  z-index: 2;
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+}
+
+.home-hero-title {
+  position: relative;
+  z-index: 1;
+  max-width: none;
+  margin: 0;
+  font-size: clamp(4.25rem, 14vw, 11rem);
+  font-weight: 740;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  text-align: center;
+  white-space: nowrap;
+  color: #edf5f0;
+  text-shadow: none;
+}
+
+.home-hero-screen[data-particles-active] .home-hero-title > [aria-hidden] {
+  visibility: hidden;
+}
+
+.home-hero-screen[data-particles-active] .home-hero-gridlines,
+.home-hero-screen[data-particles-active] .home-hero-glow {
+  opacity: 0;
+}
+
+.home-hero-letter {
+  display: inline-block;
+}
+
+.home-hero-dot {
+  color: #69c7a5;
+}
+
+.home-hero .home-project-rail {
+  padding-block: 3rem 4rem;
+  margin-top: 0;
+}
+
+.home-project-rail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+.home-project-rail-group {
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--surface);
+}
+.home-project-rail-group:has(.home-project-link:nth-child(3)) {
+  grid-column: 1 / -1;
+}
+.home-project-rail-title {
+  margin: 0;
+  padding: 0.55rem 1rem 0.4rem;
+  color: var(--muted);
+  font: 600 0.875rem/1.4 var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
+  border-bottom: 1px solid var(--border);
+}
+.home-project-rail-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.home-project-link {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 0;
+  min-height: 56px;
+  padding: 0.7rem 1rem;
+  border-right: 0;
+  border-bottom: 0;
+  background: var(--surface);
+  color: var(--text);
+  transition: background-color 180ms ease;
+}
+.home-project-link:last-child {
+  border-right: 0;
+}
+.home-project-link:hover,
+.home-project-link:focus-visible {
+  background: var(--surface-soft);
+}
+.home-project-link img {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+}
+.home-project-link strong,
+.home-project-link small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.home-project-link strong {
+  font: 650 0.875rem/1.35 var(--font-display);
+}
+.home-project-link small {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font: 400 0.75rem/1.45 var(--font-sans);
+}
+.home-project-index {
+  display: none;
+}
+.home-project-arrow {
+  color: var(--muted);
+}
+.home-project-link:hover .home-project-arrow,
+.home-project-link:focus-visible .home-project-arrow {
+  color: var(--accent);
+}
+
+.home-project-visual-link {
+  display: block;
+  min-width: 0;
+  color: inherit;
+}
+.home-project-visual-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+}
+.home-project-title-link {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 0.18em;
+}
+.home-project-title-link:hover,
+.home-project-title-link:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+}
+[data-project-row] {
+  border-color: var(--border);
+}
+[data-project-visual] {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+@media (max-width: 1100px) {
+  .home-hero-title {
+    font-size: clamp(3.75rem, 11vw, 8rem);
+  }
+}
+@media (max-width: 900px) {
+  .home-hero-screen {
+    min-height: max(22rem, calc(100svh - 58px));
+
+    --orbit-rx: 38vw;
+    --orbit-ry: 28svh;
+  }
+  .home-hero-planet {
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+}
+@media (max-width: 720px) {
+  .home-hero-title {
+    font-size: clamp(2.25rem, 10vw, 4.5rem);
+  }
+  .home-hero-screen {
+    --orbit-rx: calc(50vw - 2rem);
+    --orbit-ry: min(36svh, calc(50svh - 3.5rem));
+  }
+  .home-hero-planet {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+  .home-hero .home-project-rail {
+    padding-block: 1.25rem 1.5rem;
+  }
+}
+
+/* Leave room for the orbit above and below the wordmark on short screens. */
+@media (max-height: 500px) and (min-width: 721px) {
+  .home-hero-title {
+    font-size: clamp(2.5rem, 8vw, 5rem);
+  }
+}
+@media (max-width: 350px) {
+  .home-hero-screen {
+    --orbit-rx: calc(50vw - 1.5rem);
+  }
+}
+@media (max-width: 520px) {
+  .home-hero-stage {
+    aspect-ratio: 4 / 3;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .home-hero-planet {
+    animation: home-hero-revolve calc(var(--orbit-t) * 3) linear infinite;
+    transition: scale 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .home-hero-planet:hover,
+  .home-hero-planet:focus-visible {
+    z-index: 6;
+    animation-play-state: paused;
+    scale: 1.06;
+  }
+}
+.home-hero-screen[data-particles-paused] .home-hero-planet {
+  animation-play-state: paused;
+}
+@keyframes home-hero-revolve {
+  0% {
+    --orbit-turn: 0;
+  }
+
+  100% {
+    --orbit-turn: 1;
+  }
+}
+@keyframes home-hero-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes home-hero-pulse {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes home-hero-letter {
+  from {
+    opacity: 0;
+    transform: translateY(0.28em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes home-hero-dot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .home-hero {
+    background: var(--background);
+  }
+  .home-hero-glow {
+    opacity: 0.35;
+    filter: none;
+  }
+}
+
+/* stylelint-enable declaration-block-single-line-max-declarations, order/properties-order, rule-empty-line-before, at-rule-empty-line-before, scss/operator-no-unspaced */

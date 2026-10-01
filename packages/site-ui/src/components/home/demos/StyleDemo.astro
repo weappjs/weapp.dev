@@ -1,0 +1,67 @@
+---
+import type { Locale } from '@weapp/project-catalog/types'
+import CodePanel from './CodePanel.astro'
+import { demoCopy } from './copy'
+import { buttonClasses, defaultStyle, styleCode, styleColors } from './style'
+
+interface Props { locale: Locale, instance: string }
+const { locale, instance } = Astro.props
+const copy = demoCopy[locale]
+---
+<style-demo class="home-demo" data-demo="style" data-locale={locale}>
+  <div class="demo-controls-space">
+    <fieldset class="demo-controls" hidden disabled>
+      <legend class="sr-only">{copy.tabs.style}</legend>
+      <div class="demo-colors" role="group" aria-label={copy.color}>
+        {styleColors.map((color, index) => <label class="demo-swatch" style={`--swatch: ${color.swatch}`} title={copy.colors[index]}><input type="radio" name={`${instance}-color`} value={index} checked={index === 0} aria-label={copy.colors[index]} /></label>)}
+      </div>
+      <label class="demo-select-label"><span>{copy.radius}</span><select data-radius aria-label={copy.radius}>{copy.radii.map((label, index) => <option value={index} selected={index === 1}>{label}</option>)}</select></label>
+      <label class="demo-check"><input type="checkbox" data-compact />{copy.compact}</label>
+    </fieldset>
+  </div>
+  <div class="demo-body">
+    <CodePanel parts={styleCode(defaultStyle, copy.button)} locale={locale} filename="button.html" />
+    <div class="demo-preview">
+      <div class="demo-pane-heading">{copy.result}<span class="demo-small-tag">CSS</span></div>
+      <div class="demo-button-stage"><button type="button" data-style-button class={buttonClasses(defaultStyle)} aria-pressed="false" disabled>{copy.button}</button></div>
+      <div class="demo-note">{copy.styleNote}</div>
+    </div>
+  </div>
+</style-demo>
+<script>
+  import type { Locale } from '@weapp/project-catalog/types'
+  import { updateCode } from './code'
+  import { demoCopy } from './copy'
+  import { buttonClasses, defaultStyle, styleCode } from './style'
+
+  class StyleDemo extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.ready) return
+      const copy = demoCopy[this.dataset.locale as Locale]
+      const state = { ...defaultStyle }
+      const controls = this.querySelector('fieldset')!
+      const preview = this.querySelector<HTMLButtonElement>('[data-style-button]')!
+      const render = () => {
+        const label = preview.getAttribute('aria-pressed') === 'true' ? copy.saved : copy.button
+        preview.className = buttonClasses(state)
+        preview.textContent = label
+        updateCode(this, styleCode(state, label))
+      }
+      controls.addEventListener('change', () => {
+        state.color = Number(this.querySelector<HTMLInputElement>('input[type="radio"]:checked')!.value)
+        state.radius = Number(this.querySelector<HTMLSelectElement>('[data-radius]')!.value)
+        state.compact = this.querySelector<HTMLInputElement>('[data-compact]')!.checked
+        render()
+      })
+      preview.addEventListener('click', () => {
+        preview.setAttribute('aria-pressed', String(preview.getAttribute('aria-pressed') !== 'true'))
+        render()
+      })
+      controls.disabled = false
+      controls.hidden = false
+      preview.disabled = false
+      this.dataset.ready = 'true'
+    }
+  }
+  customElements.define('style-demo', StyleDemo)
+</script>

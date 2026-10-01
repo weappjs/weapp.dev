@@ -1,70 +1,4 @@
-import type { SiteProfile } from '../lib/deployment'
 import type { Locale } from '../types/project'
-import { getSiteProfile } from '../lib/deployment'
-import { donationCopy } from './donation'
-
-const contributorCopy = {
-  eyebrow: '开放协作',
-  title: '贡献者基金与积分规则',
-  updated: 'Updated September 30, 2026',
-  description: '公开记录贡献如何被识别、汇总并回流到小程序生态。未指定项目的赞助净额中，25% 进入贡献者基金；指定项目捐赠经确认后单独处理。',
-  pricingAction: '查看赞助方式',
-  allocationTitle: donationCopy['zh-CN'].allocationTitle,
-  buckets: [
-    { share: '60%', name: '核心维护', body: '维护者时间、测试、CI、域名和文档站。' },
-    { share: '25%', name: '贡献者基金', body: '按季分配给有效贡献，支持公开任务和定向赏金。' },
-    { share: '15%', name: '周边开源', body: '支持小程序生态相关的上游和周边开源项目。' },
-  ],
-  contents: '本页目录',
-  sections: [
-    { title: '贡献如何计入', body: '代码、文档、测试、问题复现和社区支持都会进入公开贡献记录。' },
-    { title: '审核与记录', body: '维护者会在合并或确认贡献后更新记录，并保留可追溯的仓库链接。' },
-  ],
-  weightsTitle: '积分权重',
-  weights: [
-    { points: 5, name: '代码贡献', rule: '合并一个可验证的修复或功能。' },
-    { points: 3, name: '文档与测试', rule: '补充文档、测试或可复现示例。' },
-    { points: 1, name: '社区支持', rule: '帮助复现问题、回答使用问题或整理反馈。' },
-  ],
-  reposTitle: '关联仓库',
-  repos: [
-    { name: 'weapp-vite', url: 'https://github.com/weapp-vite/weapp-vite' },
-    { name: 'weapp-tailwindcss', url: 'https://github.com/sonofmagic/weapp-tailwindcss' },
-  ],
-  reposNote: '贡献应当能够在公开仓库或公开讨论中被验证。',
-  payoutTitle: '发放流程',
-  payout: ['按季度汇总贡献积分。', '公开核对贡献记录和基金余额。', '在确认信息后向贡献者发放或滚存基金。'],
-} as const
-
-const contributorCopyEn = {
-  eyebrow: 'Open collaboration',
-  title: 'Contributors fund and point rules',
-  updated: 'Updated September 30, 2026',
-  description: 'A public record of how contributions are recognized, reviewed, and returned to the mini-program ecosystem. The fund receives 25% of net donations without a designated project; confirmed project-specific donations are handled separately.',
-  pricingAction: 'Explore sponsorship',
-  allocationTitle: donationCopy.en.allocationTitle,
-  buckets: [
-    { share: '60%', name: 'Core maintenance', body: 'Maintainer time, testing, CI, domains, and documentation sites.' },
-    { share: '25%', name: 'Contributors fund', body: 'Quarterly allocation for verified contributions, public tasks, and targeted bounties.' },
-    { share: '15%', name: 'Adjacent open source', body: 'Support upstream and adjacent open-source projects in the mini-program ecosystem.' },
-  ],
-  contents: 'On this page',
-  sections: [
-    { title: 'What counts as a contribution', body: 'Code, documentation, tests, issue reproductions, and community support are recorded publicly.' },
-    { title: 'Review and records', body: 'Maintainers update the record after merging or confirming a contribution and retain traceable repository links.' },
-  ],
-  weightsTitle: 'Point weights',
-  weights: [
-    { points: 5, name: 'Code contributions', rule: 'A merged, verifiable fix or feature.' },
-    { points: 3, name: 'Documentation and tests', rule: 'Additional documentation, tests, or reproducible examples.' },
-    { points: 1, name: 'Community support', rule: 'Help reproduce issues, answer usage questions, or organize feedback.' },
-  ],
-  reposTitle: 'Related repositories',
-  repos: contributorCopy.repos,
-  reposNote: 'Contributions must be verifiable in a public repository or public discussion.',
-  payoutTitle: 'Distribution process',
-  payout: ['Total contribution points each quarter.', 'Publicly review contribution records and the fund balance.', 'After confirming the details, distribute funds to contributors or carry the balance forward.'],
-} as const
 
 export const siteCopy = {
   'zh-CN': {
@@ -94,9 +28,18 @@ export const siteCopy = {
       title: '保留你的写法，升级交付链路',
       description: '工具分别接管样式转换、工程构建与组件源码，让现有小程序可以渐进接入，也让 H5 与新项目共享现代开发体验。',
       items: [
-        { title: '编写', body: '继续使用原生小程序、Vue SFC 或跨端框架，保留团队熟悉的页面与组件边界。' },
-        { title: '构建', body: '让 weapp-tailwindcss 处理样式与类名，让 weapp-vite 处理依赖、路由和多平台构建生命周期。' },
-        { title: '组装', body: '从 Varo Registry 安装可编辑的双端组件、业务 Blocks 与 Agent UI，并在真实运行时中验证交付。' },
+        {
+          title: '编写',
+          body: '继续使用原生小程序、Vue SFC 或跨端框架，保留团队熟悉的页面与组件边界。',
+        },
+        {
+          title: '构建',
+          body: '让 weapp-tailwindcss 处理样式与类名，让 weapp-vite 处理依赖、路由和多平台构建生命周期。',
+        },
+        {
+          title: '组装',
+          body: '从 Varo Registry 安装可编辑的双端组件、业务 Blocks 与 Agent UI，并在真实运行时中验证交付。',
+        },
       ],
     },
     rail: {
@@ -166,9 +109,24 @@ export const siteCopy = {
       title: '让小程序工程拥有开放的现代底座',
       description: '我们希望把样式、构建与组件能力连接成一套开放、可组合、可验证的工程生态。',
       items: [
-        { title: '开放的工具链', body: '每个工具都能独立使用，也能通过清晰边界组合起来。', owns: '独立可用的开源工具', notOwns: '封闭的平台锁定' },
-        { title: '熟悉的开发体验', body: '保留原生小程序、Vue SFC 与跨端框架的写法，降低迁移成本。', owns: '渐进迁移的熟悉写法', notOwns: '强制重写现有应用' },
-        { title: '可验证的交付结果', body: '让构建输出、运行时表现和发布记录都可以被检查与复现。', owns: '可检查的构建与运行结果', notOwns: '无法复现的黑盒交付' },
+        {
+          title: '开放的工具链',
+          body: '每个工具都能独立使用，也能通过清晰边界组合起来。',
+          owns: '独立可用的开源工具',
+          notOwns: '封闭的平台锁定',
+        },
+        {
+          title: '熟悉的开发体验',
+          body: '保留原生小程序、Vue SFC 与跨端框架的写法，降低迁移成本。',
+          owns: '渐进迁移的熟悉写法',
+          notOwns: '强制重写现有应用',
+        },
+        {
+          title: '可验证的交付结果',
+          body: '让构建输出、运行时表现和发布记录都可以被检查与复现。',
+          owns: '可检查的构建与运行结果',
+          notOwns: '无法复现的黑盒交付',
+        },
       ],
       ownsLabel: '我们提供',
       notOwnsLabel: '我们不提供',
@@ -191,11 +149,23 @@ export const siteCopy = {
       title: '把工具链接入你的真实项目',
       description: '围绕现有代码库提供迁移、接入与培训，先确认范围，再交付可以验证的工程结果。开源赞助另设入口，不包含服务权益。',
       pagesTitle: '支持开源项目继续维护',
-      pagesDescription: donationCopy['zh-CN'].policy,
+      pagesDescription: '指定项目的捐赠经我确认后按指定用途单独处理；未指定项目的赞助，按公开的默认比例分配。',
       cards: [
-        { kind: 'service', title: '迁移与培训', body: '当前可交付的人工服务，围绕 weapp-vite + weapp-tailwindcss 接入真实仓库。' },
-        { kind: 'roadmap', title: '建设中的能力', body: '云构建、官方模板和私有组件仓库会在具备稳定交付链路后再开放。' },
-        { kind: 'sponsorship', title: '赞助开源', body: '一次性 ¥20 / ¥200 / ¥1,000 支持维护；¥200 起经确认和授权可展示 GitHub link，并同步 weapp.dev、tw.weapp.dev、vite.weapp.dev 公开名单。' },
+        {
+          kind: 'service',
+          title: '迁移与培训',
+          body: '当前可交付的人工服务，围绕 weapp-vite + weapp-tailwindcss 接入真实仓库。',
+        },
+        {
+          kind: 'roadmap',
+          title: '建设中的能力',
+          body: '云构建、官方模板和私有组件仓库会在具备稳定交付链路后再开放。',
+        },
+        {
+          kind: 'sponsorship',
+          title: '赞助开源',
+          body: '一次性 ¥20 / ¥200 / ¥1,000 支持维护；¥200 起经确认和授权可展示 GitHub link，并同步 weapp.dev、tw.weapp.dev、vite.weapp.dev 公开名单。',
+        },
       ],
       pricing: '查看路线图',
       trial: '支持开源',
@@ -209,14 +179,54 @@ export const siteCopy = {
       sponsorTitle: '支持 weapp.dev 开源',
       sponsorDescription: '中国开源项目需要持续的时间、基础设施和维护投入。赞助不是购买服务，而是帮助这套工具继续发布、修复和陪伴社区。',
       sponsorTiers: [
-        { id: 'supporter', name: '普通支持', price: '¥20', cadence: '一次性 / 永久', body: '经确认并授权后，永久保留公开致谢。' },
-        { id: 'bronze', name: '铜牌赞助', price: '¥200', cadence: '一次性 / 永久', body: '经确认并授权后，展示 GitHub 头像、用户名和主页链接。' },
-        { id: 'silver', name: '银牌赞助', price: '¥1,000', cadence: '一次性 / 永久', body: '进入突出展示名单，并包含铜牌赞助权益。' },
-        { id: 'gold', name: 'Gold 企业合作', price: '¥2,000 起', cadence: '按合作周期', body: '单站月度 ¥2,000 / 30 天；双站月度 ¥3,000 / 30 天；双站季度 ¥8,000 / 90 天；定制合作单独沟通。' },
+        {
+          id: 'supporter',
+          name: '普通支持',
+          price: '¥20',
+          cadence: '一次性 / 永久',
+          body: '经确认并授权后，永久保留公开致谢。',
+        },
+        {
+          id: 'bronze',
+          name: '铜牌赞助',
+          price: '¥200',
+          cadence: '一次性 / 永久',
+          body: '经确认并授权后，展示 GitHub 头像、用户名和主页链接。',
+        },
+        {
+          id: 'silver',
+          name: '银牌赞助',
+          price: '¥1,000',
+          cadence: '一次性 / 永久',
+          body: '进入突出展示名单，并包含铜牌赞助权益。',
+        },
+        {
+          id: 'gold',
+          name: 'Gold 企业合作',
+          price: '¥2,000 起',
+          cadence: '按合作周期',
+          body: '单站月度 ¥2,000 / 30 天；双站月度 ¥3,000 / 30 天；双站季度 ¥8,000 / 90 天；定制合作单独沟通。',
+        },
       ],
       sponsorAction: '申请赞助方式',
-      sponsorAllocation: donationCopy['zh-CN'].allocation,
-      sponsorAllocationBuckets: contributorCopy.buckets,
+      sponsorAllocation: '已确认到账且未指定项目的赞助，扣除支付手续费后，净额的 60% 用于核心维护、25% 进入贡献者基金、15% 支持上游和周边开源项目。指定项目捐赠经确认后单独处理，不纳入这三项默认分配。',
+      sponsorAllocationBuckets: [
+        {
+          share: '60%',
+          name: '核心维护',
+          body: '维护者时间、测试、CI、域名和文档站。',
+        },
+        {
+          share: '25%',
+          name: '贡献者基金',
+          body: '按季分配给有效贡献，支持公开任务和定向赏金。',
+        },
+        {
+          share: '15%',
+          name: '周边开源',
+          body: '支持小程序生态相关的上游和周边开源项目。',
+        },
+      ],
       sponsorNote: '赞助不是购买服务，也不包含技术支持、模板源码、云构建额度或订阅权益。公开展示需完成 GitHub 身份确认、维护者审核和明确授权；获准记录可同步展示在 weapp.dev、tw.weapp.dev、vite.weapp.dev。',
       sponsorSites: '公开名单（仅展示已确认并授权的 GitHub 或企业信息）',
       sponsorEmpty: '目前没有可公开展示的记录。',
@@ -226,41 +236,127 @@ export const siteCopy = {
       templatesTitle: '第一批官方模板',
       templatesDescription: '这是建设方向，不代表模板已经上线或可以购买。未来计划邀请制上架，先做能过审、能换皮的场景。',
       templates: [
-        { name: '到店核销', category: '生活服务', pages: '门店、券、核销、订单' },
-        { name: '预约', category: '医疗 / 丽人 / 教育', pages: '项目、日历、下单、提醒' },
-        { name: '会员卡', category: '品牌', pages: '开卡、积分、等级' },
-        { name: '内容订阅', category: '资讯', pages: '列表、详情、付费墙' },
-        { name: '轻电商', category: '电商', pages: '货架、购物车、订单' },
-        { name: 'B2B 展示', category: '企业官网', pages: '案例、表单线索' },
+        {
+          name: '到店核销',
+          category: '生活服务',
+          pages: '门店、券、核销、订单',
+        },
+        {
+          name: '预约',
+          category: '医疗 / 丽人 / 教育',
+          pages: '项目、日历、下单、提醒',
+        },
+        {
+          name: '会员卡',
+          category: '品牌',
+          pages: '开卡、积分、等级',
+        },
+        {
+          name: '内容订阅',
+          category: '资讯',
+          pages: '列表、详情、付费墙',
+        },
+        {
+          name: '轻电商',
+          category: '电商',
+          pages: '货架、购物车、订单',
+        },
+        {
+          name: 'B2B 展示',
+          category: '企业官网',
+          pages: '案例、表单线索',
+        },
       ],
       buildTitle: '云构建，仍在建设中',
       buildDescription: '未来计划支持从 GitHub / Gitee 拉仓、指定平台构建、上传体验版，并回传二维码与日志。当前不承诺可用时间或配额。',
-      buildSteps: ['GitHub / Gitee 拉仓', '指定平台构建', '上传体验版', '返回二维码、日志与体积报告'],
+      buildSteps: [
+        'GitHub / Gitee 拉仓',
+        '指定平台构建',
+        '上传体验版',
+        '返回二维码、日志与体积报告',
+      ],
       servicesTitle: '与工具链绑定的实施服务',
       services: [
-        { name: '单页 / 单仓库迁移', price: '¥8,000-15,000', body: '接入 weapp-vite + Tailwind，确保 CI 能绿。' },
-        { name: '全项目迁移', price: '¥20,000-40,000', body: '覆盖路由、分包、多端输出与体积基线。' },
-        { name: '企业培训', price: '¥12,000 / 天', body: '最多 20 人，含实验仓库。' },
-        { name: '模板定制', price: '¥2,000-8,000 / 关键页', body: '按页面定制，或上架后按 15% 分成。' },
+        {
+          name: '单页 / 单仓库迁移',
+          price: '¥8,000-15,000',
+          body: '接入 weapp-vite + Tailwind，确保 CI 能绿。',
+        },
+        {
+          name: '全项目迁移',
+          price: '¥20,000-40,000',
+          body: '覆盖路由、分包、多端输出与体积基线。',
+        },
+        {
+          name: '企业培训',
+          price: '¥12,000 / 天',
+          body: '最多 20 人，含实验仓库。',
+        },
+        {
+          name: '模板定制',
+          price: '¥2,000-8,000 / 关键页',
+          body: '按页面定制，或上架后按 15% 分成。',
+        },
       ],
       slaTitle: '当前支持边界',
       slaRows: [
-        { name: '开源社区', channel: 'GitHub Issues', response: '公开讨论，不承诺时间' },
-        { name: '人工服务', channel: '微信 / QQ / 邮箱', response: '按项目范围确认' },
-        { name: '赞助者', channel: '无专属支持', response: '赞助不购买服务权益' },
+        {
+          name: '开源社区',
+          channel: 'GitHub Issues',
+          response: '公开讨论，不承诺时间',
+        },
+        {
+          name: '人工服务',
+          channel: '微信 / QQ / 邮箱',
+          response: '按项目范围确认',
+        },
+        {
+          name: '赞助者',
+          channel: '无专属支持',
+          response: '赞助不购买服务权益',
+        },
       ],
       boundaryTitle: '开源边界写在这里',
       boundary: [
-        { label: '永远开源', body: '编译、插件、本地 CLI、基础模板骨架' },
-        { label: '未来可能收费', body: '云队列、官方完整模板、私有 registry、企业支持，均须等真实交付能力上线。' },
-        { label: '永远不做', body: '在 MIT 包里检测 license、文档墙、付费 Issue' },
+        {
+          label: '永远开源',
+          body: '编译、插件、本地 CLI、基础模板骨架',
+        },
+        {
+          label: '未来可能收费',
+          body: '云队列、官方完整模板、私有 registry、企业支持，均须等真实交付能力上线。',
+        },
+        {
+          label: '永远不做',
+          body: '在 MIT 包里检测 license、文档墙、付费 Issue',
+        },
       ],
       faqTitle: '常见问题',
       faq: [
-        { question: '赞助 weapp.dev 会获得什么产品权益吗？', answer: '不会。赞助是对开源维护的支持，不包含技术支持、模板源码、云构建额度或其他商业权益。' },
-        { question: '赞助收入会如何使用？', answer: donationCopy['zh-CN'].allocation },
-        ...donationCopy['zh-CN'].faq,
-        { question: '现在可以购买 Pro、Team 或 Enterprise 吗？', answer: '不能。这些能力仍在建设中，页面只用于公开方向，不代表已经开放或可以收款。' },
+        {
+          question: '赞助 weapp.dev 会获得什么产品权益吗？',
+          answer: '不会。赞助是对开源维护的支持，不包含技术支持、模板源码、云构建额度或其他商业权益。',
+        },
+        {
+          question: '赞助收入会如何使用？',
+          answer: '已确认到账且未指定项目的赞助，扣除支付手续费后，净额的 60% 用于核心维护、25% 进入贡献者基金、15% 支持上游和周边开源项目。指定项目捐赠经确认后单独处理，不纳入这三项默认分配。',
+        },
+        {
+          question: '可以捐给其他开源项目吗？',
+          answer: '可以。捐赠时备注「捐给 XXX 项目」，也可以后续私信我。指定项目的捐赠经我确认后按指定用途单独处理，不纳入默认的 60%／25%／15% 分配。',
+        },
+        {
+          question: '捐赠时忘记备注项目怎么办？',
+          answer: '可以在捐赠后私信我，补充项目名称和捐赠信息，便于核对。具体用途在确认后按指定项目单独处理。',
+        },
+        {
+          question: '如何出现在公开致谢名单中？',
+          answer: '需要先确认 GitHub 身份或企业信息，并经过维护者审核和明确授权。公开展示遵循对应档位的规则；捐赠备注和私信内容不会作为公开致谢信息自动发布。',
+        },
+        {
+          question: '现在可以购买 Pro、Team 或 Enterprise 吗？',
+          answer: '不能。这些能力仍在建设中，页面只用于公开方向，不代表已经开放或可以收款。',
+        },
       ],
       ctaTitle: '让开源项目有继续维护的预算',
       ctaBody: '赞助、指定项目捐赠或迁移与培训咨询，都可以通过微信、QQ 或邮箱联系我。点击图标查看账号和加好友二维码；GitHub 仍可用于公开讨论。',
@@ -295,7 +391,7 @@ export const siteCopy = {
       plannedSetupNote: '该项目仍在规划中，安装命令将在正式发布后提供。',
     },
     footer: {
-      description: '面向小程序开发的开源工具栈。',
+      description: '面向真实仓库的小程序迁移、培训与定制服务。',
       projects: '项目',
       resources: '资源',
       docs: '文档',
@@ -321,7 +417,11 @@ export const siteCopy = {
       updated: '更新日期：2026 年 9 月 22 日',
       contents: '本页目录',
       dataFlow: '数据流',
-      dataFlowItems: ['访问站点', '检查统计偏好', '允许时发送统计'],
+      dataFlowItems: [
+        '访问站点',
+        '检查统计偏好',
+        '允许时发送统计',
+      ],
       preferences: '打开统计偏好',
       sections: [
         {
@@ -330,7 +430,7 @@ export const siteCopy = {
         },
         {
           title: '使用哪些服务',
-          body: '正式站点使用百度统计和 Google Analytics 4 了解访问与有限交互。关闭统计或浏览器发出全局隐私控制、请勿跟踪信号时，不加载这两个平台；预览域名和本地开发也不会加载。',
+          body: '正式站点使用百度统计和 Google Analytics 4 了解访问与有限交互。关闭统计或浏览器发出全局隐私控制、请勿跟踪信号时，不加载这两个平台；预览域名和本地开发也不会加载。 weapp.dev 由 Cloudflare 托管，托管平台可能另行记录流量和性能指标；本页统计偏好只控制百度统计和 Google Analytics。',
         },
         {
           title: '如何控制统计',
@@ -348,7 +448,78 @@ export const siteCopy = {
       action: '返回首页',
       code: 'ROUTE_NOT_EMITTED',
     },
-    contributors: contributorCopy,
+    contributors: {
+      eyebrow: '开放协作',
+      title: '贡献者基金与积分规则',
+      updated: 'Updated September 30, 2026',
+      description: '公开记录贡献如何被识别、汇总并回流到小程序生态。未指定项目的赞助净额中，25% 进入贡献者基金；指定项目捐赠经确认后单独处理。',
+      pricingAction: '查看赞助方式',
+      allocationTitle: '未指定项目的赞助如何分配',
+      buckets: [
+        {
+          share: '60%',
+          name: '核心维护',
+          body: '维护者时间、测试、CI、域名和文档站。',
+        },
+        {
+          share: '25%',
+          name: '贡献者基金',
+          body: '按季分配给有效贡献，支持公开任务和定向赏金。',
+        },
+        {
+          share: '15%',
+          name: '周边开源',
+          body: '支持小程序生态相关的上游和周边开源项目。',
+        },
+      ],
+      contents: '本页目录',
+      sections: [
+        {
+          title: '贡献如何计入',
+          body: '代码、文档、测试、问题复现和社区支持都会进入公开贡献记录。',
+        },
+        {
+          title: '审核与记录',
+          body: '维护者会在合并或确认贡献后更新记录，并保留可追溯的仓库链接。',
+        },
+      ],
+      weightsTitle: '积分权重',
+      weights: [
+        {
+          points: 5,
+          name: '代码贡献',
+          rule: '合并一个可验证的修复或功能。',
+        },
+        {
+          points: 3,
+          name: '文档与测试',
+          rule: '补充文档、测试或可复现示例。',
+        },
+        {
+          points: 1,
+          name: '社区支持',
+          rule: '帮助复现问题、回答使用问题或整理反馈。',
+        },
+      ],
+      reposTitle: '关联仓库',
+      repos: [
+        {
+          name: 'weapp-vite',
+          url: 'https://github.com/weapp-vite/weapp-vite',
+        },
+        {
+          name: 'weapp-tailwindcss',
+          url: 'https://github.com/sonofmagic/weapp-tailwindcss',
+        },
+      ],
+      reposNote: '贡献应当能够在公开仓库或公开讨论中被验证。',
+      payoutTitle: '发放流程',
+      payout: [
+        '按季度汇总贡献积分。',
+        '公开核对贡献记录和基金余额。',
+        '在确认信息后向贡献者发放或滚存基金。',
+      ],
+    },
   },
   'en': {
     languageName: 'English',
@@ -377,9 +548,18 @@ export const siteCopy = {
       title: 'Keep your syntax. Upgrade delivery.',
       description: 'Separate tools own style transforms, project builds, and component source, so existing mini-apps can migrate gradually while H5 and new products share modern DX.',
       items: [
-        { title: 'Author', body: 'Keep native mini-app syntax, Vue SFC, or a cross-platform framework with the page boundaries your team already knows.' },
-        { title: 'Build', body: 'Let weapp-tailwindcss own styles and classes while weapp-vite owns dependencies, routes, and multi-platform build lifecycles.' },
-        { title: 'Compose', body: 'Install editable dual-target components, business blocks, and Agent UI from the Varo registry, then verify delivery in the real runtime.' },
+        {
+          title: 'Author',
+          body: 'Keep native mini-app syntax, Vue SFC, or a cross-platform framework with the page boundaries your team already knows.',
+        },
+        {
+          title: 'Build',
+          body: 'Let weapp-tailwindcss own styles and classes while weapp-vite owns dependencies, routes, and multi-platform build lifecycles.',
+        },
+        {
+          title: 'Compose',
+          body: 'Install editable dual-target components, business blocks, and Agent UI from the Varo registry, then verify delivery in the real runtime.',
+        },
       ],
     },
     rail: {
@@ -449,9 +629,24 @@ export const siteCopy = {
       title: 'An open, modern foundation for mini-app engineering',
       description: 'We want to connect styling, builds, and components into an open, composable, and verifiable engineering ecosystem.',
       items: [
-        { title: 'Open tooling', body: 'Each tool works independently, then composes through clear boundaries when you need the full stack.', owns: 'Open tools that work independently', notOwns: 'A locked platform workflow' },
-        { title: 'Familiar development', body: 'Keep native mini-app syntax, Vue SFC, and cross-platform workflows while lowering migration cost.', owns: 'A gradual migration path', notOwns: 'A forced rewrite of existing apps' },
-        { title: 'Verifiable delivery', body: 'Make build output, runtime behavior, and release records inspectable and reproducible.', owns: 'Inspectable build and runtime results', notOwns: 'An irreproducible black-box delivery' },
+        {
+          title: 'Open tooling',
+          body: 'Each tool works independently, then composes through clear boundaries when you need the full stack.',
+          owns: 'Open tools that work independently',
+          notOwns: 'A locked platform workflow',
+        },
+        {
+          title: 'Familiar development',
+          body: 'Keep native mini-app syntax, Vue SFC, and cross-platform workflows while lowering migration cost.',
+          owns: 'A gradual migration path',
+          notOwns: 'A forced rewrite of existing apps',
+        },
+        {
+          title: 'Verifiable delivery',
+          body: 'Make build output, runtime behavior, and release records inspectable and reproducible.',
+          owns: 'Inspectable build and runtime results',
+          notOwns: 'An irreproducible black-box delivery',
+        },
       ],
       ownsLabel: 'What we provide',
       notOwnsLabel: 'What we do not provide',
@@ -474,11 +669,23 @@ export const siteCopy = {
       title: 'Bring the toolchain into your project',
       description: 'Migration, integration, and training for your existing codebase, with a clear scope and verifiable engineering results. Open-source sponsorship is separate and does not include services.',
       pagesTitle: 'Keep open source maintained',
-      pagesDescription: donationCopy.en.policy,
+      pagesDescription: 'After I confirm the details, donations for a named project are handled separately for that purpose. Donations without a designated project follow the published default allocation.',
       cards: [
-        { kind: 'service', title: 'Migration and training', body: 'Human-delivered services for connecting real repositories to weapp-vite + weapp-tailwindcss.' },
-        { kind: 'roadmap', title: 'In development', body: 'Cloud builds, official templates, and private component registries will open after delivery is stable.' },
-        { kind: 'sponsorship', title: 'Sponsor open source', body: 'One-time ¥20 / ¥200 / ¥1,000 support for maintenance; ¥200+ can receive an approved GitHub link across weapp.dev, tw.weapp.dev, and vite.weapp.dev.' },
+        {
+          kind: 'service',
+          title: 'Migration and training',
+          body: 'Human-delivered services for connecting real repositories to weapp-vite + weapp-tailwindcss.',
+        },
+        {
+          kind: 'roadmap',
+          title: 'In development',
+          body: 'Cloud builds, official templates, and private component registries will open after delivery is stable.',
+        },
+        {
+          kind: 'sponsorship',
+          title: 'Sponsor open source',
+          body: 'One-time ¥20 / ¥200 / ¥1,000 support for maintenance; ¥200+ can receive an approved GitHub link across weapp.dev, tw.weapp.dev, and vite.weapp.dev.',
+        },
       ],
       pricing: 'View roadmap',
       trial: 'Support open source',
@@ -492,14 +699,54 @@ export const siteCopy = {
       sponsorTitle: 'Sponsor weapp.dev open source',
       sponsorDescription: 'Chinese open source needs sustained time, infrastructure, and maintenance. Sponsorship is not a service purchase; it helps this toolchain keep shipping and supporting its community.',
       sponsorTiers: [
-        { id: 'supporter', name: 'Supporter', price: '¥20', cadence: 'one-time / permanent', body: 'A permanent public thank-you after confirmation and authorization.' },
-        { id: 'bronze', name: 'Bronze sponsor', price: '¥200', cadence: 'one-time / permanent', body: 'After identity confirmation and authorization, show a GitHub avatar, username, and profile link.' },
-        { id: 'silver', name: 'Silver sponsor', price: '¥1,000', cadence: 'one-time / permanent', body: 'Featured individual recognition, including Bronze benefits.' },
-        { id: 'gold', name: 'Gold business partner', price: '¥2,000+', cadence: 'by partnership term', body: 'Single-site monthly ¥2,000 / 30 days; dual-site monthly ¥3,000 / 30 days; dual-site quarterly ¥8,000 / 90 days; custom terms by discussion.' },
+        {
+          id: 'supporter',
+          name: 'Supporter',
+          price: '¥20',
+          cadence: 'one-time / permanent',
+          body: 'A permanent public thank-you after confirmation and authorization.',
+        },
+        {
+          id: 'bronze',
+          name: 'Bronze sponsor',
+          price: '¥200',
+          cadence: 'one-time / permanent',
+          body: 'After identity confirmation and authorization, show a GitHub avatar, username, and profile link.',
+        },
+        {
+          id: 'silver',
+          name: 'Silver sponsor',
+          price: '¥1,000',
+          cadence: 'one-time / permanent',
+          body: 'Featured individual recognition, including Bronze benefits.',
+        },
+        {
+          id: 'gold',
+          name: 'Gold business partner',
+          price: '¥2,000+',
+          cadence: 'by partnership term',
+          body: 'Single-site monthly ¥2,000 / 30 days; dual-site monthly ¥3,000 / 30 days; dual-site quarterly ¥8,000 / 90 days; custom terms by discussion.',
+        },
       ],
       sponsorAction: 'Request sponsorship details',
-      sponsorAllocation: donationCopy.en.allocation,
-      sponsorAllocationBuckets: contributorCopyEn.buckets,
+      sponsorAllocation: 'For confirmed donations without a designated project, the net amount after payment fees is allocated 60% to core maintenance, 25% to the contributors fund, and 15% to upstream and adjacent open source. Confirmed project-specific donations are handled separately and excluded from this default split.',
+      sponsorAllocationBuckets: [
+        {
+          share: '60%',
+          name: 'Core maintenance',
+          body: 'Maintainer time, testing, CI, domains, and documentation sites.',
+        },
+        {
+          share: '25%',
+          name: 'Contributors fund',
+          body: 'Quarterly allocation for verified contributions, public tasks, and targeted bounties.',
+        },
+        {
+          share: '15%',
+          name: 'Adjacent open source',
+          body: 'Support upstream and adjacent open-source projects in the mini-program ecosystem.',
+        },
+      ],
       sponsorNote: 'Sponsorship is not a service purchase and does not include technical support, template source, cloud-build minutes, or subscription access. Public display requires GitHub identity confirmation, maintainer review, and explicit authorization; approved records may appear on weapp.dev, tw.weapp.dev, and vite.weapp.dev.',
       sponsorSites: 'Public recognition (confirmed and authorized GitHub or business details only)',
       sponsorEmpty: 'No public records are available yet.',
@@ -509,41 +756,127 @@ export const siteCopy = {
       templatesTitle: 'The first official templates',
       templatesDescription: 'This is a direction, not a live catalog or purchasable inventory. Future publishing will be invite-only and focused on reviewable, rebrandable scenarios.',
       templates: [
-        { name: 'Store redemption', category: 'Local services', pages: 'Store, coupons, redemption, orders' },
-        { name: 'Booking', category: 'Healthcare / beauty / education', pages: 'Services, calendar, checkout, reminders' },
-        { name: 'Membership card', category: 'Brand', pages: 'Activation, points, tiers' },
-        { name: 'Content subscription', category: 'Publishing', pages: 'Feed, detail, paywall' },
-        { name: 'Light commerce', category: 'Commerce', pages: 'Catalog, cart, orders' },
-        { name: 'B2B showcase', category: 'Company site', pages: 'Cases, lead forms' },
+        {
+          name: 'Store redemption',
+          category: 'Local services',
+          pages: 'Store, coupons, redemption, orders',
+        },
+        {
+          name: 'Booking',
+          category: 'Healthcare / beauty / education',
+          pages: 'Services, calendar, checkout, reminders',
+        },
+        {
+          name: 'Membership card',
+          category: 'Brand',
+          pages: 'Activation, points, tiers',
+        },
+        {
+          name: 'Content subscription',
+          category: 'Publishing',
+          pages: 'Feed, detail, paywall',
+        },
+        {
+          name: 'Light commerce',
+          category: 'Commerce',
+          pages: 'Catalog, cart, orders',
+        },
+        {
+          name: 'B2B showcase',
+          category: 'Company site',
+          pages: 'Cases, lead forms',
+        },
       ],
       buildTitle: 'Cloud builds are still in development',
       buildDescription: 'The future path is to pull from GitHub / Gitee, build for a target platform, upload a trial version, and return a QR code and logs. No availability or quota is promised today.',
-      buildSteps: ['Pull from GitHub / Gitee', 'Build for a target', 'Upload trial version', 'Return QR, logs, and bundle report'],
+      buildSteps: [
+        'Pull from GitHub / Gitee',
+        'Build for a target',
+        'Upload trial version',
+        'Return QR, logs, and bundle report',
+      ],
       servicesTitle: 'Implementation tied to the toolchain',
       services: [
-        { name: 'Single page / repository migration', price: '¥8,000-15,000', body: 'Adopt weapp-vite + Tailwind and leave CI green.' },
-        { name: 'Full project migration', price: '¥20,000-40,000', body: 'Routes, sub-packages, multi-target output, and bundle baseline.' },
-        { name: 'Enterprise training', price: '¥12,000 / day', body: 'Up to 20 people, including a lab repository.' },
-        { name: 'Template customization', price: '¥2,000-8,000 / key page', body: 'Per-page customization, or 15% revenue share after listing.' },
+        {
+          name: 'Single page / repository migration',
+          price: '¥8,000-15,000',
+          body: 'Adopt weapp-vite + Tailwind and leave CI green.',
+        },
+        {
+          name: 'Full project migration',
+          price: '¥20,000-40,000',
+          body: 'Routes, sub-packages, multi-target output, and bundle baseline.',
+        },
+        {
+          name: 'Enterprise training',
+          price: '¥12,000 / day',
+          body: 'Up to 20 people, including a lab repository.',
+        },
+        {
+          name: 'Template customization',
+          price: '¥2,000-8,000 / key page',
+          body: 'Per-page customization, or 15% revenue share after listing.',
+        },
       ],
       slaTitle: 'Current support boundaries',
       slaRows: [
-        { name: 'Open source', channel: 'GitHub Issues', response: 'Public discussion, no time promise' },
-        { name: 'Human services', channel: 'WeChat / QQ / email', response: 'Confirmed per project scope' },
-        { name: 'Sponsors', channel: 'No dedicated support', response: 'Sponsorship does not buy service benefits' },
+        {
+          name: 'Open source',
+          channel: 'GitHub Issues',
+          response: 'Public discussion, no time promise',
+        },
+        {
+          name: 'Human services',
+          channel: 'WeChat / QQ / email',
+          response: 'Confirmed per project scope',
+        },
+        {
+          name: 'Sponsors',
+          channel: 'No dedicated support',
+          response: 'Sponsorship does not buy service benefits',
+        },
       ],
       boundaryTitle: 'The open-source boundary is explicit',
       boundary: [
-        { label: 'Always open', body: 'Compilers, plugins, local CLI, starter template skeletons' },
-        { label: 'Potentially paid later', body: 'Cloud queues, complete official templates, private registries, and enterprise support only after real delivery exists.' },
-        { label: 'Never', body: 'License checks in MIT packages, docs walls, paid-only Issues' },
+        {
+          label: 'Always open',
+          body: 'Compilers, plugins, local CLI, starter template skeletons',
+        },
+        {
+          label: 'Potentially paid later',
+          body: 'Cloud queues, complete official templates, private registries, and enterprise support only after real delivery exists.',
+        },
+        {
+          label: 'Never',
+          body: 'License checks in MIT packages, docs walls, paid-only Issues',
+        },
       ],
       faqTitle: 'Frequently asked questions',
       faq: [
-        { question: 'What do sponsors receive?', answer: 'Sponsorship supports open-source maintenance and does not include technical support, template source, cloud-build minutes, or other commercial benefits.' },
-        { question: 'How is sponsorship income used?', answer: donationCopy.en.allocation },
-        ...donationCopy.en.faq,
-        { question: 'Can I buy Pro, Team, or Enterprise today?', answer: 'No. These capabilities are still in development. The page describes direction, not an open checkout or payment commitment.' },
+        {
+          question: 'What do sponsors receive?',
+          answer: 'Sponsorship supports open-source maintenance and does not include technical support, template source, cloud-build minutes, or other commercial benefits.',
+        },
+        {
+          question: 'How is sponsorship income used?',
+          answer: 'For confirmed donations without a designated project, the net amount after payment fees is allocated 60% to core maintenance, 25% to the contributors fund, and 15% to upstream and adjacent open source. Confirmed project-specific donations are handled separately and excluded from this default split.',
+        },
+        {
+          question: 'Can I donate to another open-source project?',
+          answer: 'Yes. Add “Donate to XXX project” to your donation note, or message me privately afterwards. Once I confirm the details, the donation is handled separately for that project and excluded from the default 60% / 25% / 15% split.',
+        },
+        {
+          question: 'What if I forgot to name a project?',
+          answer: 'Message me privately afterwards with the project name and donation details so I can match the donation. Once confirmed, it will be handled separately for the designated project.',
+        },
+        {
+          question: 'How can I appear in the public acknowledgements?',
+          answer: 'Public recognition requires confirmed GitHub or business details, maintainer review, and explicit authorization, following the relevant tier rules. Donation notes and private messages are not automatically published as acknowledgements.',
+        },
+        {
+          question: 'Can I buy Pro, Team, or Enterprise today?',
+          answer: 'No. These capabilities are still in development. The page describes direction, not an open checkout or payment commitment.',
+        },
       ],
       ctaTitle: 'Give open source a budget to keep going',
       ctaBody: 'Contact me via WeChat, QQ, or email about sponsorship, a donation to a specific project, or migration and training. Open an icon for account details and a QR code. GitHub remains available for public discussions.',
@@ -578,7 +911,7 @@ export const siteCopy = {
       plannedSetupNote: 'This project is still planned; an install command will be provided after release.',
     },
     footer: {
-      description: 'The open-source tool stack for mini-app development.',
+      description: 'Mini-app migration, training, and customization for real repositories.',
       projects: 'Projects',
       resources: 'Resources',
       docs: 'Documentation',
@@ -604,7 +937,11 @@ export const siteCopy = {
       updated: 'Updated September 22, 2026',
       contents: 'On this page',
       dataFlow: 'Data flow',
-      dataFlowItems: ['Visit the site', 'Check analytics preferences', 'Send metrics when allowed'],
+      dataFlowItems: [
+        'Visit the site',
+        'Check analytics preferences',
+        'Send metrics when allowed',
+      ],
       preferences: 'Open analytics preferences',
       sections: [
         {
@@ -613,7 +950,7 @@ export const siteCopy = {
         },
         {
           title: 'Services we use',
-          body: 'The production site uses Baidu Analytics and Google Analytics 4 to measure visits and limited interactions. Neither platform loads when analytics is disabled or the browser signals Global Privacy Control or Do Not Track. Preview domains and local development do not load them either.',
+          body: 'The production site uses Baidu Analytics and Google Analytics 4 to measure visits and limited interactions. Neither platform loads when analytics is disabled or the browser signals Global Privacy Control or Do Not Track. Preview domains and local development do not load them either. weapp.dev is hosted on Cloudflare, which may separately record hosting traffic and performance metrics. These analytics preferences control only Baidu Analytics and Google Analytics.',
         },
         {
           title: 'Your controls',
@@ -631,68 +968,82 @@ export const siteCopy = {
       action: 'Return home',
       code: 'ROUTE_NOT_EMITTED',
     },
-    contributors: contributorCopyEn,
+    contributors: {
+      eyebrow: 'Open collaboration',
+      title: 'Contributors fund and point rules',
+      updated: 'Updated September 30, 2026',
+      description: 'A public record of how contributions are recognized, reviewed, and returned to the mini-program ecosystem. The fund receives 25% of net donations without a designated project; confirmed project-specific donations are handled separately.',
+      pricingAction: 'Explore sponsorship',
+      allocationTitle: 'Default allocation without a designated project',
+      buckets: [
+        {
+          share: '60%',
+          name: 'Core maintenance',
+          body: 'Maintainer time, testing, CI, domains, and documentation sites.',
+        },
+        {
+          share: '25%',
+          name: 'Contributors fund',
+          body: 'Quarterly allocation for verified contributions, public tasks, and targeted bounties.',
+        },
+        {
+          share: '15%',
+          name: 'Adjacent open source',
+          body: 'Support upstream and adjacent open-source projects in the mini-program ecosystem.',
+        },
+      ],
+      contents: 'On this page',
+      sections: [
+        {
+          title: 'What counts as a contribution',
+          body: 'Code, documentation, tests, issue reproductions, and community support are recorded publicly.',
+        },
+        {
+          title: 'Review and records',
+          body: 'Maintainers update the record after merging or confirming a contribution and retain traceable repository links.',
+        },
+      ],
+      weightsTitle: 'Point weights',
+      weights: [
+        {
+          points: 5,
+          name: 'Code contributions',
+          rule: 'A merged, verifiable fix or feature.',
+        },
+        {
+          points: 3,
+          name: 'Documentation and tests',
+          rule: 'Additional documentation, tests, or reproducible examples.',
+        },
+        {
+          points: 1,
+          name: 'Community support',
+          rule: 'Help reproduce issues, answer usage questions, or organize feedback.',
+        },
+      ],
+      reposTitle: 'Related repositories',
+      repos: [
+        {
+          name: 'weapp-vite',
+          url: 'https://github.com/weapp-vite/weapp-vite',
+        },
+        {
+          name: 'weapp-tailwindcss',
+          url: 'https://github.com/sonofmagic/weapp-tailwindcss',
+        },
+      ],
+      reposNote: 'Contributions must be verifiable in a public repository or public discussion.',
+      payoutTitle: 'Distribution process',
+      payout: [
+        'Total contribution points each quarter.',
+        'Publicly review contribution records and the fund balance.',
+        'After confirming the details, distribute funds to contributors or carry the balance forward.',
+      ],
+    },
   },
 } as const
-
-/** Localized content for the site's purpose; project facts stay shared. */
-export function getSiteCopy(locale: Locale, profile: SiteProfile = getSiteProfile()) {
-  const copy = siteCopy[locale]
-  if (profile.features.services) {
-    const hostingNote = locale === 'zh-CN'
-      ? 'weapp.dev 由 Cloudflare 托管，托管平台可能另行记录流量和性能指标；本页统计偏好只控制百度统计和 Google Analytics。'
-      : 'weapp.dev is hosted on Cloudflare, which may separately record hosting traffic and performance metrics. These analytics preferences control only Baidu Analytics and Google Analytics.'
-    return {
-      ...copy,
-      privacy: {
-        ...copy.privacy,
-        sections: copy.privacy.sections.map((section, index) => index === 1 ? { ...section, body: `${section.body} ${hostingNote}` } : section),
-      },
-    }
-  }
-
-  const openSource = locale === 'zh-CN'
-    ? {
-        hero: { title: profile.heroWordmark, description: '汇集 JavaScript 与 TypeScript 小程序开源项目，从工程构建、样式与组件到运行时框架。', primary: '浏览开源项目', secondary: '查看 GitHub 组织' },
-        about: {
-          eyebrow: '开源生态',
-          title: '一个入口，发现小程序开源项目',
-          description: 'weapp 是我们为小程序开源生态选择的共同名称。这里汇集 JavaScript 与 TypeScript 项目，帮助你了解各自的职责，并找到文档、源码和参与方式。',
-          items: [
-            { title: '找到项目', body: '按 weapp、Taro、Vue Mini、Rezor 和 uni-app 生态浏览，查看项目状态和适合的使用场景。' },
-            { title: '了解边界', body: '构建、样式、组件、数据和运行时各有职责。项目可以独立采用，相关能力也可以组合。' },
-            { title: '参与协作', body: '从真实仓库提交问题、改进文档或贡献代码。相关 weapp-* 仓库计划逐步汇集到 weappjs 组织，迁移前保留原有入口与维护者信息。' },
-          ],
-        },
-        collaboration: { eyebrow: '参与贡献', title: '从一个问题、一段文档开始', description: '在 weappjs 发现相关仓库，或进入项目自己的源码仓库参与讨论。这里的项目由各自维护者和社区共同维护。', action: '前往 weappjs' },
-        footer: { description: 'JavaScript 与 TypeScript 小程序开源项目集合。', copyright: `${profile.name}，网站源码以 MIT License 开放。` },
-        privacyDescription: `${profile.name} 使用访问与有限交互统计来维护站点和改进开源项目内容。`,
-      }
-    : {
-        hero: { title: profile.heroWordmark, description: 'Discover JavaScript and TypeScript open-source projects for mini-programs, from builds and styling to components and runtimes.', primary: 'Explore open-source projects', secondary: 'Visit the GitHub organization' },
-        about: {
-          eyebrow: 'Open-source ecosystem',
-          title: 'One starting point for mini-program open source',
-          description: 'weapp is the umbrella name for our mini-program open-source ecosystem. Discover JavaScript and TypeScript projects, understand what each does, and find its documentation, source, and ways to contribute.',
-          items: [
-            { title: 'Find a project', body: 'Browse the weapp, Taro, Vue Mini, Rezor, and uni-app ecosystems, with project status and practical use cases.' },
-            { title: 'Understand its role', body: 'Builds, styling, components, data, and runtimes have distinct responsibilities. Adopt tools independently or combine the capabilities you need.' },
-            { title: 'Contribute together', body: 'Report issues, improve documentation, or contribute code in the original repositories. Related weapp-* repositories are planned to move into weappjs over time; current links and maintainer attribution remain in place until then.' },
-          ],
-        },
-        collaboration: { eyebrow: 'Contribute', title: 'Start with an issue or a documentation fix', description: 'Discover repositories in weappjs, or join a project through its own source repository. Each project is maintained by its respective maintainers and community.', action: 'Visit weappjs' },
-        footer: { description: 'JavaScript and TypeScript open-source projects for mini-programs.', copyright: `${profile.name}. Website source available under the MIT License.` },
-        privacyDescription: `${profile.name} uses visit and limited interaction metrics to maintain the site and improve its open-source project content.`,
-      }
-
-  return {
-    ...copy,
-    hero: { ...copy.hero, ...openSource.hero },
-    about: openSource.about,
-    collaboration: openSource.collaboration,
-    footer: { ...copy.footer, ...openSource.footer },
-    privacy: { ...copy.privacy, description: openSource.privacyDescription },
-  }
+export function getSiteCopy(locale: Locale) {
+  return siteCopy[locale]
 }
 
 export function localizePath(locale: Locale, path = '/'): string {

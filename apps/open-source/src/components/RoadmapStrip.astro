@@ -1,0 +1,41 @@
+---
+import type { Locale } from '../types/project'
+import type { ProjectEntry } from '../lib/projects'
+
+interface Props { locale: Locale; project: ProjectEntry }
+const { locale, project } = Astro.props
+const roadmap = project.data.roadmap ?? []
+const labels = locale === 'zh-CN'
+  ? { kicker: '路线状态', title: '接下来会确认什么', planned: '规划中', inProgress: '进行中', shipped: '已发布', statusLabel: '状态' }
+  : { kicker: 'ROADMAP', title: 'What gets confirmed next', planned: 'Planned', inProgress: 'In progress', shipped: 'Shipped', statusLabel: 'Status' }
+const statusLabels = { planned: labels.planned, 'in-progress': labels.inProgress, shipped: labels.shipped }
+---
+
+{roadmap.length ? <section class="roadmap-strip" aria-labelledby="roadmap-title">
+  <header>
+    <p>{labels.kicker}</p>
+    <h2 id="roadmap-title">{labels.title}</h2>
+  </header>
+  <ol>
+    {roadmap.map((item, index) => { const labelId = `roadmap-item-${project.id}-${index + 1}`; const statusId = `roadmap-status-${project.id}-${index + 1}`; return <li data-roadmap-status={item.status ?? 'planned'} aria-labelledby={labelId} aria-describedby={statusId}>
+      <span class="roadmap-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+      <div><strong id={labelId}>{typeof item.label === 'string' ? item.label : item.label[locale]}</strong><span id={statusId} class:list={['roadmap-status', `roadmap-status-${item.status ?? 'planned'}`]} aria-label={`${labels.statusLabel}: ${statusLabels[item.status ?? 'planned']}`}>{statusLabels[item.status ?? 'planned']}</span></div>
+    </li> })}
+  </ol>
+</section> : null}
+
+<style>
+  .roadmap-strip { display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); gap:2rem; padding:1.5rem; border:1px solid var(--border); background:var(--surface-soft); }
+  .roadmap-strip header p { margin:0 0 .5rem; color:var(--accent); font:650 .7rem/1 var(--font-mono); text-transform:uppercase; letter-spacing:.08em; }
+  .roadmap-strip h2 { margin:0; font:680 1.5rem/1.15 var(--font-display); text-wrap:balance; }
+  .roadmap-strip ol { display:grid; gap:.6rem; margin:0; padding:0; list-style:none; }
+  .roadmap-strip li { display:grid; grid-template-columns:2rem minmax(0,1fr); gap:.75rem; align-items:center; min-height:3rem; border-bottom:1px solid var(--border); }
+  .roadmap-strip li:last-child { border-bottom:0; }
+  .roadmap-index { color:var(--accent); font:650 .72rem/1 var(--font-mono); }
+  .roadmap-strip li div { display:flex; flex-wrap:wrap; align-items:center; gap:.65rem; }
+  .roadmap-strip strong { font-size:.9rem; font-weight:620; }
+  .roadmap-status { color:var(--muted); font:650 .68rem/1 var(--font-mono); }
+  .roadmap-status-shipped { color:var(--accent); }
+  .roadmap-status-in-progress { color:var(--accent); }
+  @media (max-width:720px) { .roadmap-strip { grid-template-columns:1fr; gap:1.25rem; padding:1rem; } }
+</style>

@@ -1,14 +1,38 @@
-name: CI
+name: Commercial CI
 
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'scripts/**'
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - turbo.json
+      - '*.config.*'
+      - tsconfig.json
+      - .node-version
+      - .github/workflows/ci.yml
   push:
     branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'scripts/**'
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - turbo.json
+      - '*.config.*'
+      - tsconfig.json
+      - .node-version
+      - .github/workflows/ci.yml
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: web-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -16,102 +40,49 @@ permissions:
 
 jobs:
   verify:
+    name: Verify commercial application
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
-
+    timeout-minutes: 25
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
-        # version comes from package.json packageManager (currently pnpm@12.8.1)
-
-      - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version-file: .node-version
           cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run static checks and unit tests
-        run: pnpm check
-
-      - name: Build and validate the static site
+      - run: pnpm install --frozen-lockfile
+      - name: Check dependency boundaries
+        run: pnpm check:boundaries
+      - name: Check shared catalog
+        run: pnpm --filter @weapp/project-catalog check && pnpm --filter @weapp/project-catalog lint && pnpm --filter @weapp/project-catalog test
+      - name: Check shared UI
+        run: pnpm --filter @weapp/site-ui lint && pnpm --filter @weapp/site-ui lint:styles && pnpm --filter @weapp/site-ui check && pnpm --filter @weapp/site-ui test
+      - name: Check application
+        run: pnpm --filter @weapp.dev/web lint && pnpm --filter @weapp.dev/web lint:styles && pnpm --filter @weapp.dev/web check && pnpm --filter @weapp.dev/web test
+      - name: Build and validate
         run: pnpm --filter @weapp.dev/web build
-
-      - name: Upload the static site
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - name: Install browser
+        run: pnpm --filter @weapp.dev/web exec playwright install --with-deps chromium
+      - name: Test deployment artifact
+        run: pnpm --filter @weapp.dev/web exec playwright test
+      - name: Retain validated artifact for deployment and rollback
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: web-dist
           path: apps/web/dist
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 1
-
-      - name: Prepare the GitHub Pages site
-        env:
-          WEAPP_DEPLOY_TARGET: github-pages
-        run: pnpm --filter @weapp.dev/web build:pages
-
-      - name: Upload the GitHub Pages site
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+          retention-days: 30
+      - name: Retain failure evidence
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: web-pages-dist
-          path: apps/web/dist-pages
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 1
-
-  e2e:
-    needs: verify
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: weapp
-            artifact: web-dist
-            directory: dist
-          - target: github-pages
-            artifact: web-pages-dist
-            directory: dist-pages
-    env:
-      WEAPP_DEPLOY_TARGET: ${{ matrix.target }}
-
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version-file: .node-version
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Download the static site
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: apps/web/${{ matrix.directory }}
-
-      - name: Install the Playwright browser
-        run: pnpm --filter @weapp.dev/web exec playwright install --with-deps chromium
-
-      - name: Run end-to-end tests
-        run: pnpm --filter @weapp.dev/web exec playwright test
+          name: web-test-results
+          path: apps/web/test-results
+          retention-days: 7
 
   deploy-production:
-    needs: [verify, e2e]
+    needs: verify
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -154,40 +125,8 @@ jobs:
           set -o pipefail
           pnpm exec wrangler deploy --message "${GITHUB_SHA}" 2>&1 | tee "$GITHUB_STEP_SUMMARY"
 
-  deploy-pages:
-    needs: [verify, e2e]
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    environment:
-      name: github-pages
-      url: ${{ steps.pages.outputs.page_url }}
-    concurrency:
-      group: deploy-pages
-      cancel-in-progress: false
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-
-    steps:
-      - name: Download the GitHub Pages site
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: web-pages-dist
-          path: dist
-
-      - name: Upload the GitHub Pages artifact
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
-        with:
-          path: dist
-
-      - name: Deploy to GitHub Pages
-        id: pages
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
-
   deploy-preview:
-    needs: [verify, e2e]
+    needs: verify
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 10

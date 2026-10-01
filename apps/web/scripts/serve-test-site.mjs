@@ -2,13 +2,8 @@ import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { extname, resolve, sep } from 'node:path'
-import process from 'node:process'
 
-const target = process.env.WEAPP_DEPLOY_TARGET ?? 'weapp'
-if (!['weapp', 'github-pages'].includes(target)) {
-  throw new Error(`Unknown WEAPP_DEPLOY_TARGET: ${target}`)
-}
-const root = resolve(target === 'github-pages' ? 'dist-pages' : 'dist')
+const root = resolve('dist')
 await stat(resolve(root, 'index.html'))
 const types = {
   '.html': 'text/html; charset=utf-8',
@@ -37,14 +32,8 @@ createServer(async (request, response) => {
   }
   try {
     const url = new URL(request.url ?? '/', 'http://127.0.0.1:4321')
-    let pathname = decodeURIComponent(url.pathname)
-    if (target === 'github-pages' && pathname === '/weapp.dev') {
-      response.writeHead(308, { location: `/weapp.dev/${url.search}` }).end()
-      return
-    }
-    if (target === 'github-pages' && pathname.startsWith('/weapp.dev/')) {
-      pathname = pathname.slice('/weapp.dev'.length)
-    }
+    const pathname = decodeURIComponent(url.pathname)
+
     let file = resolve(root, `.${pathname}`)
     if (file !== root && !file.startsWith(`${root}${sep}`)) {
       response.writeHead(403).end()

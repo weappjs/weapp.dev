@@ -9,7 +9,7 @@ const output = resolve(import.meta.dirname, '..', site.outputDir)
 const template = await readFile(resolve(import.meta.dirname, 'assets/og.svg'), 'utf8')
 const svg = template
   .replace('{{wordmark}}', site.name)
-  .replace('{{description}}', site.features.services ? 'Open tooling and engineering for mini-apps' : 'Open-source projects for JavaScript mini-apps')
+  .replace('{{description}}', 'Migration, training and mini-app delivery')
 
 await mkdir(output, { recursive: true })
 await writeFile(resolve(output, 'og.svg'), svg, 'utf8')

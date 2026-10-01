@@ -1,0 +1,36 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07110d"/>
+      <stop offset="1" stop-color="#14241d"/>
+    </linearGradient>
+    <linearGradient id="green-sheet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8bd8b7" stop-opacity=".62"/>
+      <stop offset="1" stop-color="#0e7958" stop-opacity=".16"/>
+    </linearGradient>
+    <linearGradient id="silver-sheet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f7f5" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#89a79a" stop-opacity=".06"/>
+    </linearGradient>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="28" stdDeviation="24" flood-color="#020805" flood-opacity=".58"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <path d="M590 526 L884 324 L1240 376 L930 594 Z" fill="#06100c" opacity=".7" filter="url(#shadow)"/>
+  <path d="M548 432 L842 230 L1216 286 L902 500 Z" fill="url(#green-sheet)" stroke="#b7ead4" stroke-opacity=".3" stroke-width="2" filter="url(#shadow)"/>
+  <path d="M514 338 L804 144 L1170 194 L864 404 Z" fill="url(#silver-sheet)" stroke="#f4f7f5" stroke-opacity=".24" stroke-width="2" filter="url(#shadow)"/>
+  <path d="M688 522 L920 360 L1144 396 L906 558 Z" fill="#0e7958" fill-opacity=".32" stroke="#70c6a5" stroke-opacity=".3" stroke-width="2"/>
+  <g transform="translate(68 62) scale(1.03125)">
+    <path d="M6 17L28 5L58 12L36 24L6 17Z" fill="#D9E7DF" stroke="#7E9E8F" stroke-width="1.5"/>
+    <path d="M6 30L28 18L58 25L36 37L6 30Z" fill="#79D0AE" stroke="#3C9E78" stroke-width="1.5"/>
+    <path d="M6 43L28 31L58 38L36 50L6 43Z" fill="#0E7958" stroke="#07583F" stroke-width="1.5"/>
+  </g>
+  <text x="68" y="250" font-family="Arial, sans-serif" font-size="82" font-weight="700" fill="#edf5f0">{{wordmark}}</text>
+  <text x="72" y="312" font-family="Arial, sans-serif" font-size="28" font-weight="500" fill="#b8c8bf">{{description}}</text>
+  <text x="72" y="498" font-family="monospace" font-size="20" fill="#79d0ae">STYLE</text>
+  <path d="M146 491 H206" stroke="#53675d" stroke-width="2"/>
+  <text x="224" y="498" font-family="monospace" font-size="20" fill="#d9e7df">BUILD</text>
+  <path d="M296 491 H356" stroke="#53675d" stroke-width="2"/>
+  <text x="374" y="498" font-family="monospace" font-size="20" fill="#d9e7df">SHIP</text>
+</svg>

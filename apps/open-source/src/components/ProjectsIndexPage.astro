@@ -1,0 +1,105 @@
+---
+import type { Locale } from '../types/project'
+import type { ProjectEntry } from '../lib/projects'
+import { getProjectsInEcosystem, getToolchainProjects } from '../lib/toolchain'
+import { getSiteProfile } from '../lib/deployment'
+import { pageTitle, section, shell } from '../styles/classes'
+import ProjectRoleCard from './ProjectRoleCard.astro'
+interface Props { locale: Locale; projects: ProjectEntry[] }
+const { locale, projects } = Astro.props
+const profile = getSiteProfile()
+const copy = locale === 'zh-CN' ? { eyebrow: '项目目录', title: '按生态区选择', description: 'weapp 原生工具链、Taro、Vue Mini、Rezor 和 uni-app 分开列出。先选生态，再进对应项目。', taroEyebrow: 'Taro 生态', taroTitle: 'Taro / React 迁移', taroDescription: 'VPT 把已有 Taro 工程接到 Vite。', vueMiniEyebrow: 'Vue Mini 生态', vueMiniTitle: 'Vue 3 小程序框架', vueMiniDescription: '独立运行时，负责页面写法。', rezorEyebrow: 'Rezor 生态', rezorTitle: 'React 小程序框架', rezorDescription: '独立运行时，资料目前以仓库为主。', ecosystemEyebrow: 'uni-app 生态', ecosystemTitle: 'Uni Helper 和 Wot UI', ecosystemDescription: '服务 uni-app 组织，和 weapp 原生工具链分开。' } : { eyebrow: 'Project catalog', title: 'Choose by ecosystem', description: 'The weapp native toolchain, Taro, Vue Mini, Rezor, and uni-app are listed as separate ecosystems. Pick the region, then the project.', taroEyebrow: 'Taro ecosystem', taroTitle: 'Taro / React migration', taroDescription: 'VPT moves an existing Taro project onto Vite.', vueMiniEyebrow: 'Vue Mini ecosystem', vueMiniTitle: 'Vue 3 mini-program framework', vueMiniDescription: 'A standalone runtime for how you write pages.', rezorEyebrow: 'Rezor ecosystem', rezorTitle: 'React mini-program framework', rezorDescription: 'A standalone runtime; the catalog currently points at the repository.', ecosystemEyebrow: 'uni-app ecosystem', ecosystemTitle: 'Uni Helper and Wot UI', ecosystemDescription: 'They serve the uni-app org and sit apart from the weapp native toolchain.' }
+const roleLabels = locale === 'zh-CN' ? { engineering: '工程与构建', styling: '样式系统', components: '组件与交付', data: '本地数据' } : { engineering: 'Engineering', styling: 'Styling', components: 'Components', data: 'Local data' }
+const maturityLabels = locale === 'zh-CN' ? { all: '全部成熟度', stable: '稳定', beta: '测试版', planned: '规划中' } : { all: 'All maturity', stable: 'Stable', beta: 'Beta', planned: 'Planned' }
+const allPlatforms = [...new Set(getToolchainProjects(projects).flatMap(({ project }) => project.data.platforms ?? []))].sort()
+---
+<main id="main-content"><section class:list={[section, shell, 'projects-index-hero']} aria-labelledby="projects-index-title"><h1 id="projects-index-title" class={pageTitle}>{copy.title}</h1><p class="mt-6 max-w-[680px] text-lg text-copy-muted">{copy.description}</p></section><section class:list={[section, shell, 'border-t border-line']} aria-label={locale === 'zh-CN' ? '工具链项目目录与筛选' : 'Toolchain project catalog and filters'}><div class="projects-index-filters" data-project-filters role="group" aria-controls="toolchain-project-list" aria-describedby="project-filter-count" aria-label={locale === 'zh-CN' ? '筛选工具链项目' : 'Filter toolchain projects'}><label>{locale === 'zh-CN' ? '工具链角色' : 'Role'}<select disabled data-filter-role aria-controls="toolchain-project-list" aria-label={locale === 'zh-CN' ? '按工具链角色筛选' : 'Filter by toolchain role'}><option value="">{locale === 'zh-CN' ? '全部角色' : 'All roles'}</option>{Object.entries(roleLabels).map(([role, label]) => <option value={role}>{label}</option>)}</select></label><label>{locale === 'zh-CN' ? '成熟度' : 'Maturity'}<select disabled data-filter-maturity aria-controls="toolchain-project-list" aria-label={locale === 'zh-CN' ? '按成熟度筛选' : 'Filter by maturity'}><option value="">{maturityLabels.all}</option><option value="stable">{maturityLabels.stable}</option><option value="beta">{maturityLabels.beta}</option><option value="planned">{maturityLabels.planned}</option></select></label><label>{locale === 'zh-CN' ? '平台' : 'Platform'}<select disabled data-filter-platform aria-controls="toolchain-project-list" aria-label={locale === 'zh-CN' ? '按平台筛选' : 'Filter by platform'}><option value="">{locale === 'zh-CN' ? '全部平台' : 'All platforms'}</option>{allPlatforms.map(platform => <option value={platform}>{platform}</option>)}</select></label><button type="button" data-filter-reset disabled aria-controls="toolchain-project-list" class="projects-index-reset">{locale === 'zh-CN' ? '重置筛选' : 'Reset filters'}</button><output id="project-filter-count" data-filter-count role="status" aria-live="polite" aria-atomic="true">{getToolchainProjects(projects).length} {locale === 'zh-CN' ? '个项目' : 'projects'}</output></div><noscript><p class="projects-filter-note">{locale === 'zh-CN' ? '启用 JavaScript 后可筛选项目。以下展示 weapp 生态四个项目。' : 'Enable JavaScript to filter. The four weapp ecosystem projects are listed below.'}</p></noscript><div class="projects-filter-empty" data-filter-empty hidden role="status" aria-live="polite" aria-atomic="true"><h2>{locale === 'zh-CN' ? '没有符合这些条件的项目' : 'No projects match these filters'}</h2><p>{locale === 'zh-CN' ? '试试减少筛选条件，或重置后查看 weapp 生态全部项目。' : 'Try fewer filters, or reset to browse the weapp ecosystem.'}</p><button type="button" data-filter-clear class="projects-index-reset">{locale === 'zh-CN' ? '查看全部项目' : 'Show all projects'}</button></div><div id="toolchain-project-list" class="projects-index-list">{getToolchainProjects(projects).map(({ project, role }, index) => <ProjectRoleCard locale={locale} project={project} role={role} index={index} />)}</div></section><section class:list={[section, shell, 'border-t border-line']} aria-labelledby="taro-index-title"><h2 id="taro-index-title" class="mb-4 text-[2.125rem] font-[680]">{copy.taroTitle}</h2><p class="mb-10 max-w-[680px] text-copy-muted">{copy.taroDescription}</p><div class="projects-index-list">{getProjectsInEcosystem(projects, 'taro').map((project, index) => <ProjectRoleCard locale={locale} project={project} role="migration" index={index} />)}</div></section><section class:list={[section, shell, 'border-t border-line']} aria-labelledby="vue-mini-index-title"><h2 id="vue-mini-index-title" class="mb-4 text-[2.125rem] font-[680]">{copy.vueMiniTitle}</h2><p class="mb-10 max-w-[680px] text-copy-muted">{copy.vueMiniDescription}</p><div class="projects-index-list">{getProjectsInEcosystem(projects, 'vue-mini').map((project, index) => <ProjectRoleCard locale={locale} project={project} role="framework" index={index} />)}</div></section><section class:list={[section, shell, 'border-t border-line']} aria-labelledby="rezor-index-title"><h2 id="rezor-index-title" class="mb-4 text-[2.125rem] font-[680]">{copy.rezorTitle}</h2><p class="mb-10 max-w-[680px] text-copy-muted">{copy.rezorDescription}</p><div class="projects-index-list">{getProjectsInEcosystem(projects, 'rezor').map((project, index) => <ProjectRoleCard locale={locale} project={project} role="framework" index={index} />)}</div></section><section class:list={[section, shell, 'border-t border-line']} aria-labelledby="ecosystem-index-title"><h2 id="ecosystem-index-title" class="mb-4 text-[2.125rem] font-[680]">{copy.ecosystemTitle}</h2><p class="mb-10 max-w-[680px] text-copy-muted">{copy.ecosystemDescription}</p><div class="projects-index-list">{getProjectsInEcosystem(projects, 'uni-app').map((project, index) => <ProjectRoleCard locale={locale} project={project} role="ecosystem" index={index} />)}</div></section>{<aside class:list={[shell, 'projects-support-entry']} aria-labelledby="projects-contribute-title"><div><h2 id="projects-contribute-title">{locale === 'zh-CN' ? '参与项目，一起完善工具' : 'Help improve the projects'}</h2><p>{locale === 'zh-CN' ? '通过项目源码入口提交问题、改进文档或贡献代码，也可以在 weappjs 查找相关仓库。' : 'Use each project’s source link to report issues, improve documentation, or contribute code. Find related repositories in weappjs.'}</p></div><a href={profile.organizationUrl} class="projects-support-action" target="_blank" rel="noopener noreferrer">{locale === 'zh-CN' ? '前往 weappjs' : 'Visit weappjs'}</a></aside>}</main>
+<script>
+  const root = document.querySelector('[data-project-filters]')
+  if (root) {
+    const cards = [...document.querySelectorAll<HTMLElement>('#toolchain-project-list [data-project-card]')]
+    const role = root.querySelector<HTMLSelectElement>('[data-filter-role]')!
+    const maturity = root.querySelector<HTMLSelectElement>('[data-filter-maturity]')!
+    const platform = root.querySelector<HTMLSelectElement>('[data-filter-platform]')!
+    const reset = root.querySelector<HTMLButtonElement>('[data-filter-reset]')!
+    const count = root.querySelector<HTMLOutputElement>('[data-filter-count]')!
+    const empty = document.querySelector<HTMLElement>('[data-filter-empty]')!
+    const clear = document.querySelector<HTMLButtonElement>('[data-filter-clear]')!
+    const filterKeys = { role: 'role', maturity: 'maturity', platform: 'platform' } as const
+    const readUrlState = () => {
+      const url = new URL(window.location.href)
+      let changed = false
+      for (const [key, control] of Object.entries({ role, maturity, platform }) as [keyof typeof filterKeys, HTMLSelectElement][]) {
+        const param = filterKeys[key]
+        const value = url.searchParams.get(param) || ''
+        if (value && ![...control.options].some(option => option.value === value)) {
+          url.searchParams.delete(param)
+          changed = true
+          control.value = ''
+        } else {
+          control.value = value
+        }
+      }
+      if (changed) window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+    }
+    const writeUrlState = () => {
+      const url = new URL(window.location.href)
+      for (const [key, value] of Object.entries({ role: role.value, maturity: maturity.value, platform: platform.value })) {
+        if (value) url.searchParams.set(key, value)
+        else url.searchParams.delete(key)
+      }
+      window.history.pushState(null, '', `${url.pathname}${url.search}${url.hash}`)
+    }
+    const apply = () => {
+      let visible = 0
+      cards.forEach((card) => {
+        const matches = (!role.value || card.dataset.role === role.value) && (!maturity.value || card.dataset.maturity === maturity.value) && (!platform.value || card.dataset.platforms?.split('|').includes(platform.value))
+        card.hidden = !matches
+        if (matches) visible += 1
+      })
+      empty.hidden = visible !== 0
+      count.textContent = `${visible} ${document.documentElement.lang.startsWith('zh') ? '个项目' : visible === 1 ? 'project' : 'projects'}`
+    }
+    const onFilterChange = () => { apply(); writeUrlState() }
+    maturity.addEventListener('change', onFilterChange)
+    role.addEventListener('change', onFilterChange)
+    platform.addEventListener('change', onFilterChange)
+    const resetFilters = () => {
+      role.value = ''
+      maturity.value = ''
+      platform.value = ''
+      apply()
+      writeUrlState()
+      role.focus()
+    }
+    reset.addEventListener('click', resetFilters)
+    clear.addEventListener('click', resetFilters)
+    readUrlState()
+    apply()
+    window.addEventListener('popstate', () => { readUrlState(); apply() })
+    ;[role, maturity, platform, reset].forEach(control => { control.disabled = false })
+  }
+</script>
+<style>
+  .projects-index-hero { padding-top: clamp(4rem, 8vw, 7rem); padding-bottom: 4rem; }
+  .projects-filter-empty[hidden] { display: none; }
+  .projects-filter-note, .projects-filter-empty p { color: var(--muted); line-height: 1.6; }
+  .projects-filter-empty { padding: 2rem 0; border-top: 1px solid var(--border); }
+  .projects-filter-empty h2 { margin: 0; font: 660 1.5rem/1.2 var(--font-display); }
+  .projects-filter-empty p { margin: .75rem 0 1.25rem; max-width: 65ch; }
+  .projects-index-filters :disabled { cursor: not-allowed; opacity: .65; }
+  .projects-index-list { border-top: 1px solid var(--border); }
+  .projects-index-filters { display:flex; flex-wrap:wrap; gap:1rem; align-items:end; margin-bottom:1.25rem; }
+  .projects-index-filters label { display:grid; gap:.4rem; color:var(--muted); font:650 .7rem/1 var(--font-sans); text-transform:uppercase; }
+  .projects-index-filters select { border-radius: 12px; min-width:10rem; min-height:2.75rem; border:1px solid var(--border); padding:.5rem .65rem; background:var(--surface); color:var(--text); font:400 .9rem/1.2 var(--font-sans); text-transform:none; }
+  .projects-index-filters output { margin-left:auto; color:var(--muted); font:650 .75rem/1 var(--font-sans); }
+  .projects-index-reset { border-radius: 999px; min-height:2.75rem; border:1px solid var(--border); padding:.5rem .7rem; background:transparent; color:var(--muted); font:650 .7rem/1 var(--font-sans); cursor:pointer; }
+  .projects-index-reset:hover,.projects-index-reset:focus-visible { border-color:var(--accent); color:var(--text); }
+  .projects-support-entry { display:flex; align-items:center; justify-content:space-between; gap:2rem; margin-top:5rem; margin-bottom:5rem; padding:1.5rem 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+  .projects-support-entry h2 { margin:0 0 .45rem; font:680 1.5rem/1.2 var(--font-display); }
+  .projects-support-entry p:last-child { margin:0; color:var(--muted); }
+  .projects-support-action { display:inline-flex; min-height:2.75rem; align-items:center; justify-content:center; border:1px solid var(--border); padding:.625rem 1rem; font-size:.875rem; font-weight:680; white-space:nowrap; }
+  .projects-support-action:hover,.projects-support-action:focus-visible { border-color:var(--accent); color:var(--accent); }
+  .projects-support-actions { display:flex; flex-wrap:wrap; gap:.65rem; }
+  @media (max-width:720px) { .projects-support-entry { align-items:flex-start; flex-direction:column; gap:1rem; margin-top:4rem; margin-bottom:4rem; } }
+</style>

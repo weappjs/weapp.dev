@@ -4,7 +4,6 @@ import { donationCopy } from '../i18n/donation'
 import '../styles/support.css'
 import { ArrowRight, Heart } from '@lucide/astro'
 import type { Locale } from '../types/project'
-import { getSiteProfile } from '../lib/deployment'
 import { localizePath, getSiteCopy } from '../i18n/ui'
 import { buttonSecondary, pageTitle, section, shell } from '../styles/classes'
 
@@ -14,7 +13,6 @@ interface Props {
 
 const { locale } = Astro.props
 const copy = getSiteCopy(locale).contributors
-const profile = getSiteProfile()
 const contents = [
   ...copy.sections.map((item, index) => ({ title: item.title, href: `#contributors-section-${index + 1}` })),
   { title: copy.weightsTitle, href: '#contributors-weights-title' },
@@ -23,7 +21,7 @@ const contents = [
 ]
 ---
 
-{profile.features.sponsorship && <main id="main-content" class="support-page">
+<main id="main-content" class="support-page">
   <section class:list={[section, shell]} aria-labelledby="contributors-title">
     <header data-reveal class="mb-16 grid grid-cols-[.7fr_1.3fr] gap-16 max-[820px]:mb-12 max-[820px]:grid-cols-1 max-[820px]:gap-8">
       <div>
@@ -113,11 +111,11 @@ const contents = [
       </div>
     </div>
   </section>
-</main>}
+</main>
 
 <style is:global>
-  .contributors-bucket-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--border); background: var(--border); }
-  .contributors-bucket-grid article { min-height: 210px; padding: 1.75rem; background: var(--surface); }
+  .contributors-bucket-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; overflow: hidden; border: 0; background: transparent; }
+  .contributors-bucket-grid article { min-height: 210px; padding: 2rem; border-radius: 20px; background: var(--surface); }
   .contributors-table th, .contributors-table td { padding: .9rem .75rem .9rem 0; border-bottom: 1px solid var(--border); vertical-align: top; }
   .contributors-navigation { position: sticky; top: 6rem; border-top: 1px solid var(--border); }
   .contributors-navigation a { display: flex; align-items: center; min-height: 44px; padding-block: .75rem; border-top: 1px solid var(--border); font-size: .875rem; }

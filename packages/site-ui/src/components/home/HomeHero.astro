@@ -1,0 +1,104 @@
+---
+import { ArrowUpRight } from '@lucide/astro'
+import type { Locale } from '@weapp/project-catalog/types'
+import type { HomeProject } from '../../lib/home-projects'
+import { shell } from '../../styles/classes'
+import HeroParticles from './HeroParticles.astro'
+
+
+
+interface RailProject {
+  id: string
+  data: HomeProject['data']
+  stage: HomeProject['stage']
+}
+
+interface RailGroup {
+  id: string
+  label: string
+  projects: RailProject[]
+}
+
+interface Props {
+  locale: Locale
+  wordmark: string
+  overviewLabel: string
+  railLabel: string
+  railGroups: RailGroup[]
+  constellation: Array<{ id: string, href: string, logo: string, name: string, accent: string }>
+}
+
+const { locale, railGroups, constellation, wordmark, overviewLabel, railLabel } = Astro.props
+---
+
+<section class="home-hero" aria-label={overviewLabel}>
+  <div class="home-hero-screen">
+    <script is:inline>
+      document.documentElement.setAttribute('data-hero-cosmos', '')
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.currentScript.parentElement.setAttribute('data-particles-active', '')
+      }
+    </script>
+    <HeroParticles wordmark={wordmark} />
+    <div class="home-hero-constellation">
+      <span class="home-hero-gridlines" aria-hidden="true"></span>
+      <span class="home-hero-orbit" aria-hidden="true"></span>
+      {constellation.map((mark, index) => {
+        const orbitP = ((index + 0.5) / constellation.length).toFixed(4)
+        return (
+          <a
+            class={`home-hero-tile home-hero-planet home-hero-planet--${mark.id}`}
+            href={mark.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={locale === 'zh-CN' ? `打开 ${mark.name} 官方站点` : `Open ${mark.name} official site`}
+            data-analytics-event="click_outbound"
+            data-analytics-target="project_home"
+            data-analytics-project={mark.id}
+            style={`--orbit-t: 80s; --orbit-p: ${orbitP}; --planet-accent: ${mark.accent};`}
+          >
+            <span class="home-hero-planet-body" aria-hidden="true"></span>
+            <span class="home-hero-planet-face" aria-hidden="true"></span>
+            <img src={mark.logo} width="48" height="48" alt="" decoding="async" />
+          </a>
+        )
+      })}
+    </div>
+    <h1 id="home-hero-title" class="home-hero-title" aria-label={wordmark}>
+      <span aria-hidden="true">{[...wordmark].map((char, index) => <span class={char === '.' ? 'home-hero-letter home-hero-dot' : 'home-hero-letter'} style={`--i:${index}`}>{char}</span>)}</span>
+    </h1>
+  </div>
+
+  <nav class:list={[shell, 'home-project-rail']} aria-label={railLabel}>
+    {railGroups.map(group => (
+      <section class="home-project-rail-group" aria-labelledby={`home-rail-${group.id}`}>
+        <h2 id={`home-rail-${group.id}`} class="home-project-rail-title">{group.label}</h2>
+        <div class="home-project-rail-items">
+          {group.projects.map((project, index) => {
+            const content = project.data.locales[locale]
+            return (
+              <a class="home-project-link" href={project.data.docsUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="project_home" data-analytics-project={project.id}>
+                <img src={project.data.logo} width="34" height="34" alt="" loading={index === 0 && group.id === 'weapp' ? 'eager' : 'lazy'} fetchpriority={index === 0 && group.id === 'weapp' ? 'high' : undefined} decoding="async" />
+                <span class="min-w-0"><strong>{content.name}</strong><small>{project.stage[locale]} / {content.tagline}</small></span>
+                <ArrowUpRight class="home-project-arrow" size={17} stroke-width={1.8} aria-hidden="true" />
+              </a>
+            )
+          })}
+        </div>
+      </section>
+    ))}
+  </nav>
+</section>
+
+<style is:global>
+  /* Layout CSS can emit a truncated copy of this name; this file loads later so 0% → 100% survives. */
+  @keyframes home-hero-revolve {
+    0% {
+      --orbit-turn: 0;
+    }
+
+    100% {
+      --orbit-turn: 1;
+    }
+  }
+</style>

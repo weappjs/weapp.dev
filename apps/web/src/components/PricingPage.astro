@@ -25,11 +25,11 @@ const hero = { eyebrow: pricing.eyebrow, title: pricing.title, description: pric
 
 ---
 
-{profile.features.services && <main id="main-content" class="support-page pricing-page">
+{<main id="main-content" class="support-page pricing-page">
   <section class="pricing-hero">
     <div class:list={[shell, 'pricing-hero-inner']}>
       <div data-reveal>
-        <h1 class="mb-6 max-w-[780px] text-[64px] font-[740] leading-[1.15] max-[1000px]:text-[52px] max-[720px]:text-[36px]">{hero.title}</h1>
+        <h1 class="mb-6 max-w-[780px] text-[64px] font-[650] leading-[1.15] max-[1000px]:text-[52px] max-[720px]:text-[36px]">{hero.title}</h1>
         <p class="mb-8 max-w-[650px] text-xl leading-[1.5] text-copy-muted max-[720px]:text-base">{hero.description}</p>
         <div class="flex flex-wrap items-center gap-3">
           <a class={buttonPrimary} href="#services" data-analytics-event="navigate_section" data-analytics-section="services">
@@ -49,10 +49,10 @@ const hero = { eyebrow: pricing.eyebrow, title: pricing.title, description: pric
     </div>
   </section>
 
-  <section class="border-y border-line bg-panel" id="services">
+  <section class="bg-panel" id="services">
     <div class:list={[section, shell]}>
       <header data-reveal class="mb-12 max-w-[700px]">
-        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.servicesTitle}</h2>
+        <h2 class="mb-4 text-[clamp(2.25rem,4.5vw,4rem)] font-[650]">{pricing.servicesTitle}</h2>
       </header>
       <div class="pricing-service-list">
         {pricing.services.map((service, index) => (
@@ -67,10 +67,10 @@ const hero = { eyebrow: pricing.eyebrow, title: pricing.title, description: pric
     </div>
   </section>
 
-  <section class="border-y border-line bg-panel-soft" id="sponsor">
+  <section class="bg-panel-soft" id="sponsor">
     <div class:list={[section, shell]}>
       <header data-reveal class="mb-12 max-w-[720px]">
-        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.sponsorTitle}</h2>
+        <h2 class="mb-4 text-[clamp(2.25rem,4.5vw,4rem)] font-[650]">{pricing.sponsorTitle}</h2>
         <p class="mb-0 max-w-[650px] text-lg text-copy-muted max-[720px]:text-base">{pricing.sponsorDescription}</p>
       </header>
       <DonationGuidance locale={locale} headingLevel="h3" steps />
@@ -124,10 +124,10 @@ const hero = { eyebrow: pricing.eyebrow, title: pricing.title, description: pric
     </div>
   </section>
 
-  <section class="border-y border-line bg-panel-soft" id="roadmap">
+  <section class="bg-panel-soft" id="roadmap">
     <div class:list={[section, shell]}>
       <header data-reveal class="mb-12 max-w-[700px]">
-        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.roadmapTitle}</h2>
+        <h2 class="mb-4 text-[clamp(2.25rem,4.5vw,4rem)] font-[650]">{pricing.roadmapTitle}</h2>
         <p class="mb-4 text-lg text-copy-muted max-[720px]:text-base">{pricing.roadmapDescription}</p>
         <h3 class="mb-3 text-xl font-[660]">{pricing.templatesTitle}</h3>
         <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{pricing.templatesDescription}</p>
@@ -150,7 +150,7 @@ const hero = { eyebrow: pricing.eyebrow, title: pricing.title, description: pric
   <section class:list={[section, shell]} id="cloud-build">
     <div class="grid grid-cols-[.76fr_1.24fr] gap-16 max-[900px]:grid-cols-1 max-[900px]:gap-10">
       <header data-reveal class="max-w-[470px]">
-        <h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.buildTitle}</h2>
+        <h2 class="mb-4 text-[clamp(2.25rem,4.5vw,4rem)] font-[650]">{pricing.buildTitle}</h2>
         <p class="mb-0 text-copy-muted">{pricing.buildDescription}</p>
       </header>
       <ol class="pricing-build-path m-0 list-none p-0">
@@ -166,23 +166,23 @@ const hero = { eyebrow: pricing.eyebrow, title: pricing.title, description: pric
 
   <section class:list={[section, shell]} id="support">
     <div class="grid grid-cols-[.72fr_1.28fr] gap-16 max-[900px]:grid-cols-1 max-[900px]:gap-10">
-      <header data-reveal class="max-w-[470px]"><h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.slaTitle}</h2></header>
+      <header data-reveal class="max-w-[470px]"><h2 class="mb-4 text-[clamp(2.25rem,4.5vw,4rem)] font-[650]">{pricing.slaTitle}</h2></header>
       <div data-reveal class="overflow-x-auto border-t border-line">
         <table class="pricing-sla-table w-full border-collapse text-left text-sm"><thead><tr><th>{locale === 'zh-CN' ? '层级' : 'Tier'}</th><th>{locale === 'zh-CN' ? '渠道' : 'Channel'}</th><th>{locale === 'zh-CN' ? '响应' : 'Response'}</th></tr></thead><tbody>{pricing.slaRows.map(row => <tr><th scope="row">{row.name}</th><td>{row.channel}</td><td>{row.response}</td></tr>)}</tbody></table>
       </div>
     </div>
   </section>
 
-  <section class="border-y border-line bg-panel-soft" id="boundary">
+  <section class="bg-panel-soft" id="boundary">
     <div class:list={[section, shell]}>
-      <header data-reveal class="mb-12 max-w-[700px]"><h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.boundaryTitle}</h2></header>
+      <header data-reveal class="mb-12 max-w-[700px]"><h2 class="mb-4 text-[clamp(2.25rem,4.5vw,4rem)] font-[650]">{pricing.boundaryTitle}</h2></header>
       <div class="pricing-boundary-grid">{pricing.boundary.map((item, index) => <article data-reveal style={`--reveal-delay: ${index * 70}ms`}><span class="pricing-boundary-mark" aria-hidden="true">{index === 0 ? '+' : index === 1 ? '$' : 'x'}</span><h3 class="mb-2 text-xl font-[660]">{item.label}</h3><p class="mb-0 text-sm leading-[1.7] text-copy-muted">{item.body}</p></article>)}</div>
     </div>
   </section>
 
   <section class:list={[section, shell]} id="faq">
     <div class="grid grid-cols-[.72fr_1.28fr] gap-16 max-[900px]:grid-cols-1 max-[900px]:gap-10">
-      <header data-reveal class="max-w-[470px]"><h2 class="mb-4 text-[44px] font-[680] max-[720px]:text-[34px]">{pricing.faqTitle}</h2></header>
+      <header data-reveal class="max-w-[470px]"><h2 class="mb-4 text-[clamp(2.25rem,4.5vw,4rem)] font-[650]">{pricing.faqTitle}</h2></header>
       <div data-reveal class="border-t border-line">{pricing.faq.map(item => <details class="border-b border-line py-5"><summary class="cursor-pointer py-2 text-lg font-[650]">{item.question}</summary><p class="mt-3 mb-0 max-w-[650px] text-sm leading-[1.7] text-copy-muted">{item.answer}</p></details>)}</div>
     </div>
   </section>
@@ -200,11 +200,11 @@ const hero = { eyebrow: pricing.eyebrow, title: pricing.title, description: pric
 
 <style is:global>
   .pricing-hero { background: var(--background); color: var(--text); }
-  .pricing-hero-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .42fr); gap: clamp(2rem, 5vw, 4rem); align-items: end; min-height: 520px; padding-top: 5rem; padding-bottom: 5rem; }
+  .pricing-hero-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .42fr); gap: clamp(2rem, 5vw, 4rem); align-items: end; min-height: 520px; padding-top: 7rem; padding-bottom: 7rem; }
   .pricing-hero-note { display: flex; gap: 1rem; align-items: flex-start; max-width: 290px; padding-bottom: .5rem; color: var(--muted); font-size: .86rem; }
   .pricing-note-line { width: 2.5rem; height: 1px; margin-top: .7rem; flex: 0 0 auto; background: var(--accent); }
-  .pricing-sponsor-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--border); background: var(--border); }
-  .pricing-sponsor-tier { overflow-wrap: anywhere; display: flex; flex-direction: column; min-width: 0; min-height: 280px; padding: 1.75rem; background: var(--surface); }
+  .pricing-sponsor-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.5rem; overflow: hidden; border: 0; background: transparent; }
+  .pricing-sponsor-tier { overflow-wrap: anywhere; display: flex; flex-direction: column; min-width: 0; min-height: 280px; padding: 2rem; border-radius: 20px; background: var(--surface); }
   .pricing-sponsor-button { margin-top: auto; width: fit-content; }
   .pricing-sponsor-allocation { max-width: 880px; margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
   .pricing-public-sponsors { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
@@ -215,19 +215,19 @@ const hero = { eyebrow: pricing.eyebrow, title: pricing.title, description: pric
   .pricing-public-sponsor span { overflow-wrap: anywhere; min-width: 0; }
   .pricing-public-sponsor svg { flex-shrink: 0; }
   .pricing-public-sponsor img, .pricing-public-sponsor-fallback { width: 2rem; height: 2rem; border-radius: 999px; object-fit: cover; background: color-mix(in srgb, var(--accent) 30%, transparent); display: grid; place-items: center; font: 650 .8rem/1 var(--font-mono); }
-  .pricing-template-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--border); background: var(--border); }
+  .pricing-template-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; overflow: hidden; border: 0; background: transparent; }
   .pricing-template { display: grid; grid-template-columns: 2rem 1fr; gap: 1rem; min-height: 170px; padding: 1.5rem; background: var(--surface); }
   .pricing-template-index, .pricing-service-index { color: var(--accent); font: 650 .7rem/1 var(--font-mono); }
   .pricing-build-path { border-top: 1px solid var(--border); }
   .pricing-build-path li { display: grid; grid-template-columns: 3rem 1fr; gap: 1rem; align-items: center; min-height: 82px; border-bottom: 1px solid var(--border); font-size: 1.1rem; font-weight: 620; }
   .pricing-build-number { color: var(--accent); font: 650 .7rem/1 var(--font-mono); }
   .pricing-service-list { border-top: 1px solid var(--border); }
-  .pricing-service-list article { display: grid; grid-template-columns: 2rem 1fr auto; gap: 1rem; align-items: center; min-height: 104px; border-bottom: 1px solid var(--border); }
+  .pricing-service-list article { display: grid; grid-template-columns: 2rem 1fr auto; gap: 1rem; align-items: center; min-height: 132px; border-bottom: 1px solid var(--border); }
   .pricing-sla-table th, .pricing-sla-table td { padding: 1rem .75rem 1rem 0; border-bottom: 1px solid var(--border); vertical-align: top; }
   .pricing-sla-table thead { color: var(--muted); font: 650 .68rem/1.2 var(--font-mono); text-transform: uppercase; }
   .pricing-sla-table tbody th { font-weight: 650; }
-  .pricing-boundary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--border); background: var(--border); }
-  .pricing-boundary-grid article { min-height: 210px; padding: 1.75rem; background: var(--surface); }
+  .pricing-boundary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; overflow: hidden; border: 0; background: transparent; }
+  .pricing-boundary-grid article { min-height: 210px; padding: 2rem; border-radius: 20px; background: var(--surface); }
   .pricing-boundary-mark { display: grid; place-items: center; width: 2rem; height: 2rem; margin-bottom: 2.3rem; border: 1px solid var(--accent); color: var(--accent); font: 650 1rem/1 var(--font-mono); }
   .pricing-cta .button-primary { background: var(--accent); color: var(--accent-contrast); }
   @media (max-width: 1100px) { .pricing-sponsor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
