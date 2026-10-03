@@ -35,13 +35,13 @@ export const bookingCopy = {
       { title: '复制服务与活动草稿', body: '在同一门店，将服务或活动复制为未发布草稿，复用介绍、图片、表单和业务配置。复制活动时需重新填写开始、结束及报名截止时间，并一并复制全部票种配置；检查草稿并发布后才向顾客开放。' },
       { title: '新实例配置模板', body: '所有者和管理员可将已保存的品牌、业务规则及所选目录导出为配置模板，复用于新的独立实例。图片在目标实例补充，活动时间按目标时区重设；导入前核对配置变化，导入后门店与资源停用、服务与活动为草稿。客户交易、员工账号和渠道密钥不随模板迁移，公开联系信息与文案需在分发前检查。' },
       { title: '服务端与数据', body: '预约容量、临时占位、幂等下单、支付与退款状态、后台任务、审计记录和持久化数据。金额与权限由服务端校验。' },
-      { title: '品牌与表单配置', body: '调整品牌名称、主题色、介绍、联系方式、服务与活动内容，以及报名字段。基础会员能力以客户资料和订单记录为主。' },
+      { title: '品牌与表单配置', body: '调整品牌名称、主题色、介绍、联系方式、服务与活动内容，以及报名字段。多人编辑设置时，过期保存会被拒绝并保留本地草稿，可核对服务器设置后明确重新载入。基础会员能力以客户资料和订单记录为主。' },
     ],
     deliveryTitle: '按你的团队，约定交付方式',
     delivery: [
       { title: '源码授权', body: '适合有开发能力的团队。沟通交付模块、源码范围、二次开发权利和版本维护方式，按照书面授权使用。' },
       { title: '私有部署', body: '适合需要独立运行环境的业务。评估服务器、域名、数据库、备份和外部服务配置，约定部署、联调与交接范围。' },
-      { title: '品牌与业务定制', body: '在现有预约和报名流程上评估品牌、表单、业务规则及系统对接。新增能力单独确认范围、费用与验收标准。' },
+      { title: '品牌与业务定制', body: '在现有预约和报名流程上评估品牌、表单、业务规则及系统对接。普通设置保存可保留已有品牌顶层扩展字段，以及标识不变的表单字段扩展；无法安全合并的定制结构会明确拒绝。具体扩展与升级边界见交付文档，新增能力单独确认范围、费用与验收标准。' },
     ],
     deploymentTitle: '部署之前，先准备好业务环境',
     deployment: [
@@ -50,7 +50,7 @@ export const bookingCopy = {
       { title: '共同完成外部验收', body: '在客户环境验证真实登录、支付取消与查单、退款到账、二维码核销和消息投递，再按约定清单确认上线。' },
     ],
     acceptanceTitle: '当前已验证什么',
-    acceptanceBody: '已完成构建、类型检查、消费者 API 联调，以及分页、筛选导出、人工改期、临时停约、复制草稿和配置模板的真实数据库业务测试；模板验证覆盖实例与图片隔离、过期预览和重复导入请求。后台关键流程通过桌面与移动浏览器验证。生产账号与供应商链路的外部验收仍待完成，小程序真机验收单独跟踪，开发模拟支付不代表真实扣款验证。',
+    acceptanceBody: '已完成构建、类型检查、消费者 API 联调，以及分页、筛选导出、人工改期、临时停约、复制草稿、配置模板和设置并发保存的真实数据库业务测试；包含既有扩展字段保留，以及模板的实例与图片隔离、过期预览和重复导入请求。后台关键流程通过桌面与移动浏览器验证，包含设置冲突后的草稿保留、核对与明确重新载入。生产账号与供应商链路的外部验收仍待完成，小程序真机验收单独跟踪，开发模拟支付不代表真实扣款验证。',
     licenseTitle: '授权和服务范围，提前说清楚',
     license: [
       { title: '独立商业产品', body: 'weapp-booking 的产品源码在独立私有仓库维护。官网展示产品说明；源码和部署材料的交付以书面约定为准。' },
@@ -91,13 +91,13 @@ export const bookingCopy = {
       { title: 'Copy services and events as drafts', body: 'Within the same location, copy a service or event into an unpublished draft, reusing its description, image, form, and business settings. For events, enter new start, end, and registration deadline times; all ticket configurations are copied too. Review and publish the draft before customers can book.' },
       { title: 'Configuration templates for new instances', body: 'Owners and administrators can export saved branding, business rules, and selected catalog entries for a new independent instance. Add images in the target instance and set new event times in its timezone. Review changes before importing; locations and resources remain disabled, and services and events remain drafts. Customer transactions, staff accounts, and provider secrets are excluded. Review retained public contact details and text before sharing.' },
       { title: 'API and persistent data', body: 'Capacity, temporary holds, idempotent orders, payment and refund states, background jobs, audit records, and persistent storage. The server validates amounts and permissions.' },
-      { title: 'Brand and form settings', body: 'Configure the brand name, color, introduction, contact details, services, events, and registration fields. Basic membership covers customer profiles and order history.' },
+      { title: 'Brand and form settings', body: 'Configure the brand name, color, introduction, contact details, services, events, and registration fields. When settings are edited concurrently, stale saves are rejected and the local draft is kept for review before an explicit reload. Basic membership covers customer profiles and order history.' },
     ],
     deliveryTitle: 'Agree the delivery model with your team',
     delivery: [
       { title: 'Source licensing', body: 'For teams with development capacity. Agree the modules, source scope, modification rights, and version maintenance, then use the product under the written license.' },
       { title: 'Private deployment', body: 'For businesses that need an independent environment. Review the server, domain, database, backups, and provider configuration, then agree deployment, integration, and handover.' },
-      { title: 'Brand and workflow customization', body: 'Assess branding, forms, business rules, and integrations against the existing booking and registration flow. Additional capabilities need their own scope, cost, and acceptance criteria.' },
+      { title: 'Brand and workflow customization', body: 'Assess branding, forms, business rules, and integrations against the existing booking and registration flow. Ordinary settings saves preserve existing top-level brand extension fields and extensions on form fields whose identifiers stay unchanged. Custom structures that cannot be merged safely are rejected. Delivery documentation defines extension and upgrade boundaries; additional capabilities need their own scope, cost, and acceptance criteria.' },
     ],
     deploymentTitle: 'Prepare the environment before deployment',
     deployment: [
@@ -106,7 +106,7 @@ export const bookingCopy = {
       { title: 'Joint integration acceptance', body: 'Verify real sign-in, payment cancellation and reconciliation, refund settlement, QR check-in, and message delivery in the customer environment before accepting the launch checklist.' },
     ],
     acceptanceTitle: 'What has been verified',
-    acceptanceBody: 'Builds, type checks, consumer API integration, and real database tests for pagination, filtered exports, staff rescheduling, temporary unavailability, copying drafts, and configuration templates have passed. Template checks cover instance and image isolation, stale previews, and repeated import requests. Key admin workflows have also passed desktop and mobile browser checks. Production accounts and provider integrations still need external acceptance, and mini-program device acceptance is tracked separately. Simulated development payments do not verify real charges.',
+    acceptanceBody: 'Builds, type checks, consumer API integration, and real database tests for pagination, filtered exports, staff rescheduling, temporary unavailability, copying drafts, configuration templates, and concurrent settings saves have passed. Checks include preserving existing extension fields, plus instance and image isolation, stale previews, and repeated template imports. Key admin workflows have passed desktop and mobile browser checks, including keeping a draft after a settings conflict, reviewing server values, and explicitly reloading. Production accounts and provider integrations still need external acceptance, and mini-program device acceptance is tracked separately. Simulated development payments do not verify real charges.',
     licenseTitle: 'Clarify licensing and service scope first',
     license: [
       { title: 'An independent commercial product', body: 'The weapp-booking source is maintained in a separate private repository. This website describes the product; source and deployment materials are delivered under a written agreement.' },
