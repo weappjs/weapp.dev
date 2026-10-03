@@ -32,6 +32,7 @@ export const bookingCopy = {
       { title: '客户小程序与 H5', body: '服务与活动展示、登录、动态报名表单、预约与多人报名、订单详情、改期、退款申请和到店凭证。微信消费者端采用 Wevu、weapp-vite 与 weapp-tailwindcss。' },
       { title: '门店经营后台', body: '门店、资源、服务、活动和票种管理，订单、退款及核销，员工角色与门店权限。可完整翻阅客户、审计与通知记录，导出当前筛选下的全部订单；所有者、管理员及授权店长可为未开始的预约人工改期，并记录原因。' },
       { title: '临时停约与跟进', body: '员工请假或场地维修时，可为单个人员或场地设置指定日期内的停约时段。所有者、管理员及授权店长按门店权限创建和撤销；已确认和待付款预约保持原状，可查看重叠预约并人工跟进。' },
+      { title: '复制服务与活动草稿', body: '在同一门店，将服务或活动复制为未发布草稿，复用介绍、图片、表单和业务配置。复制活动时需重新填写开始、结束及报名截止时间，并一并复制全部票种配置；检查草稿并发布后才向顾客开放。' },
       { title: '服务端与数据', body: '预约容量、临时占位、幂等下单、支付与退款状态、后台任务、审计记录和持久化数据。金额与权限由服务端校验。' },
       { title: '品牌与表单配置', body: '调整品牌名称、主题色、介绍、联系方式、服务与活动内容，以及报名字段。基础会员能力以客户资料和订单记录为主。' },
     ],
@@ -48,7 +49,7 @@ export const bookingCopy = {
       { title: '共同完成外部验收', body: '在客户环境验证真实登录、支付取消与查单、退款到账、二维码核销和消息投递，再按约定清单确认上线。' },
     ],
     acceptanceTitle: '当前已验证什么',
-    acceptanceBody: '已完成构建、类型检查、消费者 API 联调，以及分页、筛选导出、人工改期和临时停约的真实数据库业务测试；后台关键流程通过桌面与移动浏览器验证。生产账号与供应商链路的外部验收仍待完成，小程序真机验收单独跟踪，开发模拟支付不代表真实扣款验证。',
+    acceptanceBody: '已完成构建、类型检查、消费者 API 联调，以及分页、筛选导出、人工改期、临时停约和复制草稿的真实数据库业务测试；后台关键流程通过桌面与移动浏览器验证。生产账号与供应商链路的外部验收仍待完成，小程序真机验收单独跟踪，开发模拟支付不代表真实扣款验证。',
     licenseTitle: '授权和服务范围，提前说清楚',
     license: [
       { title: '独立商业产品', body: 'weapp-booking 的产品源码在独立私有仓库维护。官网展示产品说明；源码和部署材料的交付以书面约定为准。' },
@@ -86,6 +87,7 @@ export const bookingCopy = {
       { title: 'Customer mini-program and H5', body: 'Services and events, sign-in, configurable forms, bookings and group registration, order details, rescheduling, refund requests, and check-in credentials. The WeChat app uses Wevu, weapp-vite, and weapp-tailwindcss.' },
       { title: 'Business management', body: 'Manage locations, resources, services, events, tickets, orders, refunds, check-in, staff roles, and location permissions. Browse all customer, audit, and notification records and export every order matching the current filters. Owners, administrators, and authorized managers can reschedule appointments that have not started, with a recorded reason.' },
       { title: 'Temporary unavailability', body: 'Set a period of unavailability within a day for one staff member or venue when someone is away or a space needs maintenance. Owners, administrators, and authorized managers create or revoke these periods within their location permissions. Existing confirmed and unpaid bookings stay in place and can be reviewed for manual follow-up.' },
+      { title: 'Copy services and events as drafts', body: 'Within the same location, copy a service or event into an unpublished draft, reusing its description, image, form, and business settings. For events, enter new start, end, and registration deadline times; all ticket configurations are copied too. Review and publish the draft before customers can book.' },
       { title: 'API and persistent data', body: 'Capacity, temporary holds, idempotent orders, payment and refund states, background jobs, audit records, and persistent storage. The server validates amounts and permissions.' },
       { title: 'Brand and form settings', body: 'Configure the brand name, color, introduction, contact details, services, events, and registration fields. Basic membership covers customer profiles and order history.' },
     ],
@@ -102,7 +104,7 @@ export const bookingCopy = {
       { title: 'Joint integration acceptance', body: 'Verify real sign-in, payment cancellation and reconciliation, refund settlement, QR check-in, and message delivery in the customer environment before accepting the launch checklist.' },
     ],
     acceptanceTitle: 'What has been verified',
-    acceptanceBody: 'Builds, type checks, consumer API integration, and real database tests for pagination, filtered exports, staff rescheduling, and temporary unavailability have passed. Key admin workflows have also passed desktop and mobile browser checks. Production accounts and provider integrations still need external acceptance, and mini-program device acceptance is tracked separately. Simulated development payments do not verify real charges.',
+    acceptanceBody: 'Builds, type checks, consumer API integration, and real database tests for pagination, filtered exports, staff rescheduling, temporary unavailability, and copying drafts have passed. Key admin workflows have also passed desktop and mobile browser checks. Production accounts and provider integrations still need external acceptance, and mini-program device acceptance is tracked separately. Simulated development payments do not verify real charges.',
     licenseTitle: 'Clarify licensing and service scope first',
     license: [
       { title: 'An independent commercial product', body: 'The weapp-booking source is maintained in a separate private repository. This website describes the product; source and deployment materials are delivered under a written agreement.' },
