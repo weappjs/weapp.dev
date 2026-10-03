@@ -4,6 +4,7 @@ import { ArrowRight } from '@lucide/astro'
 import { getSiteCopy, localizePath } from '../i18n/ui'
 import { section, shell, sectionTitle } from '../styles/classes'
 import ContactMethods from './ContactMethods.astro'
+import BookingProductEntry from './BookingProductEntry.astro'
 interface Props { locale: Locale }
 const { locale } = Astro.props
 const zh = locale === 'zh-CN'
@@ -25,6 +26,7 @@ const steps = zh ? [
     <div class:list={[section, shell]}>
       <h2 class={sectionTitle}>{zh ? '当前可以一起完成的事' : 'Work we can deliver today'}</h2>
       <div class="service-list mt-10">{pricing.services.map(service => <article><h3>{service.name}</h3><p>{service.body}</p><strong>{service.price}</strong></article>)}</div>
+      <BookingProductEntry locale={locale} />
       <a class="mt-7 inline-flex min-h-11 items-center gap-2 font-semibold text-brand" href={pricingPath + '#services'}>{zh ? '查看服务与报价' : 'Explore services and pricing'}<ArrowRight size={17} aria-hidden="true" /></a>
     </div>
   </section>
@@ -34,7 +36,7 @@ const steps = zh ? [
   </section>
   <section class:list={[section, shell]} id="roadmap">
     <h2 class={sectionTitle}>{zh ? '正在建设，尚未开放' : 'In development, not yet available'}</h2>
-    <p class="mt-6 max-w-[680px] text-lg text-copy-muted">{zh ? '云构建、官方模板与私有组件仓库仍在规划或建设中。当前不提供订阅、购买入口或上线时间承诺。' : 'Cloud builds, official templates, and private component registries remain planned or in development. Subscriptions, purchases, and launch dates are not offered yet.'}</p>
+    <p class="mt-6 max-w-[680px] text-lg text-copy-muted">{zh ? '云构建、更多业务模板与私有组件仓库仍在规划或建设中。当前不提供订阅、购买入口或上线时间承诺。预约与报名产品的当前进展见 weapp-booking 产品页。' : 'Cloud builds, additional business templates, and private component registries remain planned or in development. Subscriptions, purchases, and launch dates are not offered yet. The weapp-booking product page describes the current appointment and registration product.'}</p>
   </section>
   <section class="bg-panel" id="contact">
     <div class:list={[section, shell, 'service-contact']}><div><h2 class={sectionTitle}>{zh ? '聊聊你的项目' : 'Tell us about your project'}</h2>

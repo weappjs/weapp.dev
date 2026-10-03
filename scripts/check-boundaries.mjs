@@ -15,6 +15,9 @@ export function boundaryViolations(source, filename, unit, repositoryRoot = root
     ? [source.match(/^---[ \t]*\n([\s\S]*?)\n---/)?.[1] ?? '', ...[...source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(match => match[1])]
     : [source]
   function check(value) {
+    if (unit !== 'apps/web' && /[/\\]src[/\\]/.test(filename) && /weapp-booking/i.test(value)) {
+      errors.push('The booking commercial product belongs only to apps/web')
+    }
     for (const other of units) {
       if (other !== unit && (value === other || value.startsWith(`${other}/`))) {
         errors.push(`Cross-unit filesystem reference: ${value}`)

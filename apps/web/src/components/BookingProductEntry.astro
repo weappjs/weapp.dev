@@ -1,0 +1,19 @@
+---
+import { ArrowRight } from '@lucide/astro'
+import type { Locale } from '../types/project'
+import { bookingPage } from '../lib/booking'
+import { buttonSecondary } from '../styles/classes'
+interface Props { locale: Locale }
+const copy = bookingPage(Astro.props.locale)
+---
+<article class="booking-entry" data-booking-entry>
+  <div><h3>{copy.entryTitle}</h3><p>{copy.entryBody}</p><p class="booking-entry-status">{copy.status}</p></div>
+  <a class={buttonSecondary} href={copy.path} data-analytics-event="navigate_page" data-analytics-page="weapp_booking">{copy.entryAction}<ArrowRight size={18} aria-hidden="true" /></a>
+</article>
+<style>
+  .booking-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2rem; align-items: center; padding: 2rem; margin-top: 3rem; border-radius: 20px; background: var(--surface-soft); }
+  .booking-entry h3 { margin-bottom: .75rem; font-size: 1.5rem; font-weight: 650; }
+  .booking-entry p { margin-bottom: 0; max-width: 65ch; color: var(--muted); }
+  .booking-entry .booking-entry-status { margin-top: .75rem; font-size: .875rem; }
+  @media (max-width: 850px) { .booking-entry { grid-template-columns: 1fr; gap: 1.5rem; padding: 1.5rem; } .booking-entry a { justify-self: start; } }
+</style>
