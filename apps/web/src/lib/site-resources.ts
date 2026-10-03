@@ -1,6 +1,7 @@
 import type { ProjectDefinition } from '../types/project'
 import type { SiteProfile } from './deployment'
 import { donationCopy } from '../i18n/donation'
+import { bookingProductPath } from './booking'
 import { projectService } from './services'
 
 export interface ResourceProject {
@@ -16,6 +17,8 @@ export function createSiteResources(site: SiteProfile, projects: ResourceProject
     ['English homepage', '/en/'],
     ['Chinese project index', '/projects/'],
     ['English project index', '/en/projects/'],
+    ['weapp-booking product', bookingProductPath],
+    ['weapp-booking product in English', `/en${bookingProductPath}`],
     ['Chinese privacy notice', '/privacy/'],
     ['English privacy notice', '/en/privacy/'],
     ['Release feed', '/releases.xml'],
@@ -29,6 +32,7 @@ export function createSiteResources(site: SiteProfile, projects: ResourceProject
     ...(data.status !== 'planned' && data.npmUrl ? [`- [${data.packageName} on npm](${data.npmUrl})`] : []),
   ])
   const serviceNotes = '\n## Engineering services\n\nMigration, training, and implementation are scoped per project. See the services page for currently available work and planned capabilities. Open-source tools remain independently available from their repositories.\n'
+  const bookingNotes = '\n## weapp-booking\n\nAn independent commercial product for appointments, event registration, orders, check-in, and basic customer management. Implementation exists; external integration acceptance is pending, and the product is not yet commercially released. Guided demos, private deployment, customization, and source licensing can be discussed through the existing contact page. There is no public standard price, self-service purchase, hosted SaaS subscription, or public live demo. Source and delivery materials remain in a separate private repository; licensing and service scope require a written agreement.\n'
   const sponsorshipNotes = `\n## Open-source sponsorship\n\nOne-time recognition tiers are ¥20 supporter, ¥200 Bronze, and ¥1,000 Silver. Public recognition requires identity confirmation, maintainer review, and authorization. ${donationCopy.en.allocation} ${donationCopy.en.instruction} Sponsorship does not purchase technical support or software access. Business partnerships and service work are described separately on the website.\n`
   const canonicalPages = `## Canonical pages\n\n${pages.map(([label, path]) => `- [${label}](${url(path)})`).join('\n')}\n`
   const sources = `## Official sources\n\n- [GitHub organization](${site.organizationUrl})\n- [Website source](${site.repositoryUrl})\n${sourceLinks.join('\n')}\n`
@@ -38,6 +42,7 @@ export function createSiteResources(site: SiteProfile, projects: ResourceProject
     sources,
     canonicalPages,
     serviceNotes,
+    bookingNotes,
     sponsorshipNotes,
     'For maintained facts, prefer the project pages and linked official repositories and documentation. Repository ownership follows the linked sources; planned organization moves are not represented as completed.\n',
   ].filter(Boolean).join('\n')
@@ -61,6 +66,6 @@ export function createSiteResources(site: SiteProfile, projects: ResourceProject
   return {
     'robots.txt': `User-agent: *\nAllow: /\n\nSitemap: ${url('/sitemap-index.xml')}\n`,
     'llms.txt': summary,
-    'llms-full.txt': `# ${site.name} reference\n\n${introduction}\n\n${sources}\n${projectReferences}\n\n${canonicalPages}${serviceNotes}${sponsorshipNotes}`,
+    'llms-full.txt': `# ${site.name} reference\n\n${introduction}\n\n${sources}\n${projectReferences}\n\n${canonicalPages}${serviceNotes}${bookingNotes}${sponsorshipNotes}`,
   }
 }

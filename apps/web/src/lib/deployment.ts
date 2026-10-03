@@ -7,6 +7,14 @@ const site = {
   outputDir: 'dist',
   navigation: [
     {
+      id: 'booking',
+      path: '/products/weapp-booking/',
+      label: {
+        'zh-CN': '预约产品',
+        'en': 'Booking',
+      },
+    },
+    {
       id: 'services',
       path: '/#services',
       label: {

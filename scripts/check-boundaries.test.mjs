@@ -1,4 +1,5 @@
 import { strict as assert } from 'node:assert'
+import { existsSync } from 'node:fs'
 import { it } from 'vitest'
 import { boundaryViolations } from './check-boundaries.mjs'
 
@@ -32,4 +33,17 @@ it('checks Astro client scripts and CSS resources as well as frontmatter', () =>
 it('rejects app dependencies in shared UI including filesystem reads', () => {
   assert.ok(boundaryViolations('readFile(new URL(\'../../../apps/web/src/lib/services.ts\', import.meta.url))', '/repo/packages/site-ui/src/x.ts', 'packages/site-ui', '/repo').length)
   assert.ok(boundaryViolations('import contact from \'./contact\'', '/repo/packages/site-ui/src/x.ts', 'packages/site-ui', '/repo').length)
+})
+
+it('keeps booking routes and references out of the open-source app and shared packages', () => {
+  for (const unit of ['apps/open-source', 'packages/project-catalog', 'packages/site-ui']) {
+    for (const source of ['const label = "weapp-booking"', 'const path = "/en/products/weapp-booking/"']) {
+      assert.ok(boundaryViolations(source, `/repo/${unit}/src/product.ts`, unit, '/repo').length)
+    }
+  }
+  assert.deepEqual(boundaryViolations('const path = "/products/weapp-booking/"', '/repo/apps/web/src/product.ts', 'apps/web', '/repo'), [])
+  for (const prefix of ['', 'en/']) {
+    assert.equal(existsSync(new URL(`../apps/web/src/pages/${prefix}products/weapp-booking.astro`, import.meta.url)), true)
+    assert.equal(existsSync(new URL(`../apps/open-source/src/pages/${prefix}products/weapp-booking.astro`, import.meta.url)), false)
+  }
 })

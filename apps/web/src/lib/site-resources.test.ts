@@ -33,6 +33,17 @@ describe('site resources', () => {
     expect(resources['llms-full.txt']).toContain('25% to the contributors fund')
   })
 
+  it('describes the private booking product without inventing commercial availability', () => {
+    const resources = createSiteResources(getSiteProfile(), projects)
+    for (const name of ['llms.txt', 'llms-full.txt'] as const) {
+      expect(resources[name]).toContain('https://weapp.dev/products/weapp-booking/')
+      expect(resources[name]).toContain('https://weapp.dev/en/products/weapp-booking/')
+      expect(resources[name]).toContain('external integration acceptance is pending')
+      expect(resources[name]).toContain('not yet commercially released')
+      expect(resources[name]).not.toMatch(/github\.com\/[^\s)]+\/weapp-booking/)
+    }
+  })
+
   it('marks planned projects without inventing releases or install commands', () => {
     const resources = createSiteResources(getSiteProfile(), [projects[1]])
     expect(resources['llms.txt']).toContain('(planned; not released)')

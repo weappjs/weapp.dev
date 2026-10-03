@@ -27,7 +27,7 @@ const expectedFiles = [
 ]
 const retiredDocsHosts = ['tw.icebreaker.top', 'vite.icebreaker.top']
 const errors: string[] = []
-const openSourceForbiddenCopy = /\bsponsors?(?:ship)?\b|\b(?:donations?|donate|funds?)\b|paid services?|engineering services?|migration and training|cloud[ -]build|business partnerships?|赞助|基金|分账|捐赠|打赏|付费服务|迁移与培训|服务报价|云构建|企业合作|[¥￥$€]\s*\d/i
+const openSourceForbiddenCopy = /weapp-booking|\bsponsors?(?:ship)?\b|\b(?:donations?|donate|funds?)\b|paid services?|engineering services?|migration and training|cloud[ -]build|business partnerships?|赞助|基金|分账|捐赠|打赏|付费服务|迁移与培训|服务报价|云构建|企业合作|[¥￥$€]\s*\d/i
 
 async function collectHtml(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true })
@@ -89,6 +89,11 @@ catch {
 }
 
 const htmlFiles = await collectHtml(dist)
+for (const file of htmlFiles) {
+  if (relative(dist, file).includes('weapp-booking')) {
+    errors.push('Commercial booking product routes must not be emitted by the open-source application')
+  }
+}
 for (const file of htmlFiles) {
   const label = relative(dist, file)
   if (/^baidu_verify_[^/]+\.html$/.test(label)) {
@@ -187,6 +192,9 @@ for (const file of htmlFiles) {
       continue
     }
     const targetUrl = new URL(href, `${site.origin}${pagePath}`)
+    if (targetUrl.pathname.includes('/products/weapp-booking')) {
+      errors.push(`${label}: open-source navigation links to a commercial booking product`)
+    }
     if (['https://weapp.dev', 'https://weapp.js.org'].includes(targetUrl.origin) && isRetiredOpenSourcePath(targetUrl.pathname)) {
       errors.push(`${label}: normal navigation links to retired financial page ${href}`)
     }
@@ -226,7 +234,7 @@ for (const file of [...sitemapFiles, 'robots.txt', 'llms.txt', 'llms-full.txt', 
       }
       for (const value of urls) {
         const url = new URL(value)
-        if (url.origin !== site.origin || /\/404(?:\.html|\/|$)/.test(url.pathname) || (isRetiredOpenSourcePath(url.pathname))) {
+        if (url.origin !== site.origin || /\/404(?:\.html|\/|$)/.test(url.pathname) || url.pathname.includes('/products/weapp-booking') || (isRetiredOpenSourcePath(url.pathname))) {
           errors.push(`${file}: unexpected sitemap URL ${value}`)
         }
         try {
