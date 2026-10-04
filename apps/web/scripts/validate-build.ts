@@ -12,6 +12,7 @@ const projectIds = (await readdir(projectsDirectory)).filter(file => file.endsWi
 const expectedFiles = [
   ...['', 'en/'].flatMap(prefix => [
     `${prefix}index.html`,
+    `${prefix}products/weapp-booking/index.html`,
     ...['projects', 'pricing', 'privacy', 'contributors', 'sponsors'].map(route => `${prefix}${route}/index.html`),
     ...projectIds.map(id => `${prefix}projects/${id}/index.html`),
   ]),
@@ -223,6 +224,20 @@ for (const file of [...sitemapFiles, 'robots.txt', 'llms.txt', 'llms-full.txt', 
 for (const prefix of ['', 'en/']) {
   const home = parse(await readFile(resolve(dist, `${prefix}index.html`), 'utf8'))
   const pricing = parse(await readFile(resolve(dist, `${prefix}pricing/index.html`), 'utf8'))
+  const booking = parse(await readFile(resolve(dist, `${prefix}products/weapp-booking/index.html`), 'utf8'))
+  for (const [name, page] of [['home', home], ['pricing', pricing]] as const) {
+    if (!page.querySelector(`[data-booking-entry] a[href="/${prefix}products/weapp-booking/"]`)) {
+      errors.push(`${prefix}${name}: missing booking product entry`)
+    }
+  }
+  for (const id of ['scope', 'delivery', 'deployment', 'license', 'consultation']) {
+    if (!booking.querySelector(`#${id}`)) {
+      errors.push(`${prefix}products/weapp-booking/: missing #${id}`)
+    }
+  }
+  if (!booking.querySelector(`main a[href="/${prefix}pricing/#contact"]`)) {
+    errors.push(`${prefix}products/weapp-booking/: missing manual consultation link`)
+  }
   const sponsorTiers = pricing.querySelectorAll('.pricing-sponsor-tier h3').map(node => node.text)
   const expectedTiers = prefix ? ['Supporter', 'Bronze sponsor', 'Silver sponsor'] : ['普通支持', '铜牌赞助', '银牌赞助']
   if (JSON.stringify(sponsorTiers.slice(0, 3)) !== JSON.stringify(expectedTiers) || sponsorTiers.length !== 4) {

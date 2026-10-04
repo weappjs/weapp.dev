@@ -1,5 +1,6 @@
 ---
 import ContactMethods from './ContactMethods.astro'
+import BookingProductEntry from './BookingProductEntry.astro'
 import DonationGuidance from './DonationGuidance.astro'
 import { donationCopy } from '../i18n/donation'
 import '../styles/support.css'
@@ -63,6 +64,7 @@ const hero = { eyebrow: pricing.eyebrow, title: pricing.title, description: pric
           </article>
         ))}
       </div>
+      <BookingProductEntry locale={locale} />
       <p class="mt-7 mb-0 max-w-[720px] text-xs leading-[1.7] text-copy-muted">{locale === 'zh-CN' ? '服务只围绕工具链交付，不承接与产品无关的业务外包。服务收入连续两个月超过总收入 50% 时，将停止接收新单。' : 'Services stay tied to the toolchain and do not become unrelated product outsourcing. New work pauses if services exceed 50% of total revenue for two consecutive months.'}</p>
     </div>
   </section>

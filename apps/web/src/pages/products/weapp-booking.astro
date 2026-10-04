@@ -1,0 +1,17 @@
+---
+import BookingProductPage from '../../components/BookingProductPage.astro'
+import Header from '../../components/Header.astro'
+import Footer from '../../components/Footer.astro'
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { bookingPage } from '../../lib/booking'
+import { getProjects } from '../../lib/projects'
+
+const locale = 'zh-CN' as const
+const copy = bookingPage(locale)
+const projects = await getProjects()
+---
+<BaseLayout locale={locale} title={`${copy.title} | weapp.dev`} description={copy.description}>
+  <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
+  <BookingProductPage locale={locale} />
+  <Footer locale={locale} projects={projects} currentPath={Astro.url.pathname} />
+</BaseLayout>
