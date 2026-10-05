@@ -1,58 +1,58 @@
 {
   "weapp-tailwindcss": {
-    "version": "5.3.5",
-    "releasedAt": "2026-08-25T03:07:36.077Z",
-    "stars": 1849,
-    "weeklyDownloads": 11561,
-    "fetchedAt": "2026-08-26T00:00:00.000Z"
+    "version": "5.5.11",
+    "releasedAt": "2026-09-28T17:34:38.296Z",
+    "stars": 1864,
+    "weeklyDownloads": 14122,
+    "fetchedAt": "2026-10-05T06:36:20.624Z"
   },
   "weapp-vite": {
-    "version": "6.22.0",
-    "releasedAt": "2026-08-24T15:07:11.946Z",
-    "stars": 465,
-    "weeklyDownloads": 3178,
-    "fetchedAt": "2026-08-26T00:00:00.000Z"
+    "version": "7.4.0",
+    "releasedAt": "2026-09-29T15:13:27.657Z",
+    "stars": 504,
+    "weeklyDownloads": 4273,
+    "fetchedAt": "2026-10-05T06:36:20.364Z"
   },
   "varo": {
     "version": "2.1.0",
     "releasedAt": "2026-09-13T15:45:51.579Z",
-    "stars": 2,
-    "weeklyDownloads": 195,
-    "fetchedAt": "2026-09-16T00:00:00.000Z"
+    "stars": 3,
+    "weeklyDownloads": 12,
+    "fetchedAt": "2026-10-05T06:36:20.511Z"
   },
   "vite-plugin-taro": {
-    "version": "0.7.1",
-    "releasedAt": "2026-09-07T16:45:56.067Z",
-    "stars": 50,
-    "weeklyDownloads": 934,
-    "fetchedAt": "2026-09-09T11:13:25.620Z"
+    "version": "0.7.11",
+    "releasedAt": "2026-10-01T02:18:29.357Z",
+    "stars": 56,
+    "weeklyDownloads": 911,
+    "fetchedAt": "2026-10-05T06:36:20.342Z"
   },
   "vue-mini": {
-    "version": "1.2.15",
-    "releasedAt": "2026-08-06T07:39:20.963Z",
-    "stars": 2080,
-    "weeklyDownloads": 111,
-    "fetchedAt": "2026-09-21T00:00:00.000Z"
+    "version": "1.2.16",
+    "releasedAt": "2026-09-25T13:46:25.693Z",
+    "stars": 2083,
+    "weeklyDownloads": 347,
+    "fetchedAt": "2026-10-05T06:36:20.466Z"
   },
   "rezor": {
     "version": "0.6.1",
     "releasedAt": "2026-09-03T05:22:38.014Z",
-    "stars": 31,
-    "weeklyDownloads": 44,
-    "fetchedAt": "2026-09-21T00:00:00.000Z"
+    "stars": 39,
+    "weeklyDownloads": 42,
+    "fetchedAt": "2026-10-05T06:36:20.323Z"
   },
   "uni-helper": {
     "version": "2.17.1",
     "releasedAt": "2026-09-14T02:54:35.528Z",
     "stars": 309,
-    "weeklyDownloads": 817,
-    "fetchedAt": "2026-09-16T12:00:00.000Z"
+    "weeklyDownloads": 153,
+    "fetchedAt": "2026-10-05T06:36:20.322Z"
   },
   "wot-ui": {
     "version": "1.14.0",
     "releasedAt": "2026-01-04T11:19:40.319Z",
-    "stars": 360,
-    "weeklyDownloads": 2378,
-    "fetchedAt": "2026-09-16T12:00:00.000Z"
+    "stars": 383,
+    "weeklyDownloads": 7439,
+    "fetchedAt": "2026-10-05T06:36:20.335Z"
   }
 }
