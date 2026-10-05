@@ -3,6 +3,7 @@
   "type": "module",
   "version": "0.0.1",
   "description": "A navigation CLI for the weapp.js.org JavaScript mini-program open-source ecosystem.",
+  "author": "ice breaker <1324318532@qq.com>",
   "license": "MIT",
   "homepage": "https://weapp.js.org/",
   "repository": {
@@ -16,8 +17,13 @@
   "keywords": [
     "weapp",
     "weappjs",
+    "weapp-cli",
+    "weapp.js.org",
     "mini-program",
     "mini-app",
+    "open-source",
+    "navigation",
+    "catalog",
     "javascript",
     "ecosystem",
     "vite",
