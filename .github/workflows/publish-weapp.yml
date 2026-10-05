@@ -1,0 +1,51 @@
+name: Publish weapp package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-weapp
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'weappjs/weapp.dev'
+    name: Publish weapp to npm
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Check out the release ref
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install npm with trusted publishing support
+        run: npm install --global npm@11.6.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test the package
+        run: pnpm --filter weapp test
+
+      - name: Verify the package contents
+        working-directory: packages/weapp
+        run: npm pack --dry-run --json
+
+      - name: Publish with npm provenance
+        working-directory: packages/weapp
+        run: npm publish --access public --provenance

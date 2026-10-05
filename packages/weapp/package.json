@@ -1,0 +1,48 @@
+{
+  "name": "weapp",
+  "type": "module",
+  "version": "0.0.1",
+  "description": "A navigation CLI for the weapp.js.org JavaScript mini-program open-source ecosystem.",
+  "license": "MIT",
+  "homepage": "https://weapp.js.org/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/weappjs/weapp.dev.git",
+    "directory": "packages/weapp"
+  },
+  "bugs": {
+    "url": "https://github.com/weappjs/weapp.dev/issues"
+  },
+  "keywords": [
+    "weapp",
+    "weappjs",
+    "mini-program",
+    "mini-app",
+    "javascript",
+    "ecosystem",
+    "vite",
+    "taro",
+    "vue",
+    "react",
+    "tailwindcss"
+  ],
+  "bin": {
+    "weapp": "bin/weapp.js"
+  },
+  "files": [
+    "README.md",
+    "bin"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "vitest": "5.0.2"
+  }
+}
