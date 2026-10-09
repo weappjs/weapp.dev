@@ -1,6 +1,6 @@
 # 首屏 Logo 与 Syne 粒子字标验证
 
-2026-10-10，weapp.dev 与 weapp.js.org 同步调整首屏初始化、字标字体和轨道几何。完整约定见根目录 [首屏共享规范](../DESIGN.md#particle-wordmark-and-project-planets)。本记录汇总已完成的本地检查和无头 E2E，原始证据位于 `/tmp/weapp-logo-syne-20261010/`。
+2026-10-10，weapp.dev 与 weapp.js.org 同步调整首屏初始化、字标字体和轨道几何。完整约定见根目录 [首屏共享规范](../DESIGN.md#particle-wordmark-and-project-planets)。本记录汇总已完成的本地检查、无头 E2E、双站部署与正式域名验证，原始证据位于 `/tmp/weapp-logo-syne-20261010/`。
 
 ## 实现与资产
 
@@ -51,4 +51,15 @@ Canvas 使用 `actualBoundingBox` 测量字形墨迹，包括点号、下伸部�
 
 ## 发布验证
 
-沿用现有主分支交付流程：Commercial CI 部署已验证的商业站产物到 Cloudflare；Open source CI 部署已验证的开源站产物到 GitHub Pages。对应提交的 Actions 运行与部署记录是发布结果的来源；部署完成后另核对两个正式域名的 SSR Logo、真实 Syne 字标和静态降级，不以本地预览代替线上确认。
+代码提交 [7510b8f01d745c7a0b4435fa463de66eace16d45](https://github.com/weappjs/weapp.dev/commit/7510b8f01d745c7a0b4435fa463de66eace16d45) 已推送主分支，并沿用现有交付流程部署通过验证的构建产物。两次 Actions 均为 `success`，运行的 `headSha` 与代码提交一致。
+
+| 正式站点                              | CI 与部署记录                                                                                           | CI E2E            | 部署 job 完成时间（UTC） |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------- | ------------------------ |
+| [weapp.dev](https://weapp.dev/)       | [Commercial CI：Cloudflare 生产部署成功](https://github.com/weappjs/weapp.dev/actions/runs/37980424031) | 456 通过、40 跳过 | 2026-10-09 19:44:17      |
+| [weapp.js.org](https://weapp.js.org/) | [Open source CI：GitHub Pages 部署成功](https://github.com/weappjs/weapp.dev/actions/runs/37980423708)  | 412 通过、40 跳过 | 2026-10-09 19:41:12      |
+
+部署后使用单个无头浏览器直接访问两个正式域名，完成 12 个线上场景：两站 × 中英文 × 1440px 桌面／390px 手机的 8 个动态场景，以及两站 × 中英文的 4 个无 JavaScript 场景。桌面使用深色主题，手机使用浅色主题。
+
+动态场景暂扣首页 JavaScript，待渲染阻塞的样式表就绪后核对 SSR Logo 可见、品牌 H1 可访问且文本以 `clip-path: inset(50%)` 裁切；释放脚本后确认 Logo 原子交接、真实 Syne 700 FontFace 已加载，Canvas 实际绘制各自的完整品牌字符串。双站均保留 10 个项目入口，没有横向溢出；OFL 授权资源返回 HTTP 200。统一暂停／继续、动态减少动画及恢复均通过。无 JavaScript 场景保留可见 Logo、裁切的无障碍站名与 10 个原生项目链接。
+
+线上结果为 12 项通过、0 个页面错误。结果与截图保存于 `/tmp/weapp-logo-syne-20261010/live/`，汇总为 `live/results.json`，执行日志为 `live.log`。自建 context、page 与 browser 已关闭，结果记录 `headless: true`、`closed: true`；没有保留临时页面。
