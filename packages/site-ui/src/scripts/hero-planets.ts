@@ -1,3 +1,5 @@
+import { readHeroMotionPaused, setHeroMotionPaused, subscribeHeroMotionPaused } from './hero-motion'
+
 export interface PlanetEnvironment {
   desktop: boolean
   reducedMotion: boolean
@@ -20,12 +22,13 @@ export function createPlanetController(
   projectIds: readonly string[],
   present: (state: PlanetPresentation) => void,
   initialEnvironment: PlanetEnvironment,
+  initiallyPaused = false,
 ) {
   let environment = { ...initialEnvironment }
   let focusId: string | null = null
   let hoverId: string | null = null
   let automaticId: string | null = null
-  let userPaused = false
+  let userPaused = initiallyPaused
   let cursor = -1
   let timer: ReturnType<typeof setTimeout> | undefined
   let destroyed = false
@@ -46,7 +49,7 @@ export function createPlanetController(
       activeId,
       orbitRunning: environment.visible && !environment.pageHidden && !environment.reducedMotion
         && !userPaused && !interacting() && automaticId === null,
-      controlsVisible: environment.desktop && !environment.reducedMotion,
+      controlsVisible: !environment.reducedMotion,
       userPaused,
     })
   }
@@ -91,6 +94,19 @@ export function createPlanetController(
     render()
     wait()
   }
+  const setPaused = (paused: boolean) => {
+    if (destroyed || userPaused === paused) {
+      return
+    }
+    userPaused = paused
+    cancel()
+    if (userPaused) {
+      render()
+    }
+    else {
+      restart()
+    }
+  }
 
   render()
   wait()
@@ -120,18 +136,9 @@ export function createPlanetController(
     setHover(id: string | null) {
       setInteraction('hover', id)
     },
+    setPaused,
     togglePause() {
-      if (destroyed) {
-        return
-      }
-      userPaused = !userPaused
-      cancel()
-      if (userPaused) {
-        render()
-      }
-      else {
-        restart()
-      }
+      setPaused(!userPaused)
     },
     destroy() {
       destroyed = true
@@ -199,6 +206,7 @@ export function defineHeroPlanets() {
           playIcon?.toggleAttribute('hidden', !state.userPaused)
         },
         { desktop: desktop.matches, reducedMotion: reducedMotion.matches, visible: false, pageHidden: document.hidden },
+        readHeroMotionPaused(screen),
       )
       const focusedPlanet = (target: EventTarget | null) => {
         const planet = target instanceof Element ? target.closest<HTMLAnchorElement>('.home-hero-planet') : null
@@ -209,7 +217,8 @@ export function defineHeroPlanets() {
       const onDesktop = () => controller.setEnvironment({ desktop: desktop.matches })
       const onReducedMotion = () => controller.setEnvironment({ reducedMotion: reducedMotion.matches })
       const onVisibility = () => controller.setEnvironment({ pageHidden: document.hidden })
-      const onToggle = () => controller.togglePause()
+      const onToggle = () => setHeroMotionPaused(screen, !readHeroMotionPaused(screen))
+      const unsubscribeMotion = subscribeHeroMotionPaused(screen, paused => controller.setPaused(paused))
       const intersection = new IntersectionObserver((entries) => {
         controller.setEnvironment({ visible: entries.some(entry => entry.isIntersecting && entry.intersectionRatio >= 0.08) })
       }, { threshold: [0, 0.08] })
@@ -238,6 +247,7 @@ export function defineHeroPlanets() {
       this.setAttribute('data-planets-ready', '')
       this.#cleanup = () => {
         controller.destroy()
+        unsubscribeMotion()
         intersection.disconnect()
         for (const unbind of pointerBindings) {
           unbind()

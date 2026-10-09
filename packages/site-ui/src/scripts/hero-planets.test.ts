@@ -4,12 +4,12 @@ import { createPlanetController } from './hero-planets'
 
 const desktop: PlanetEnvironment = { desktop: true, reducedMotion: false, visible: true, pageHidden: false }
 
-function setup(environment = desktop) {
+function setup(environment = desktop, initiallyPaused = false) {
   let state: PlanetPresentation
   const present = vi.fn((next: PlanetPresentation) => {
     state = next
   })
-  const controller = createPlanetController(['vite', 'panda', 'rezor'], present, environment)
+  const controller = createPlanetController(['vite', 'panda', 'rezor'], present, environment, initiallyPaused)
   return { controller, present, current: () => state! }
 }
 
@@ -108,7 +108,7 @@ describe('hero planet attention lifecycle', () => {
 
   it('keeps mobile interaction stationary and reduced-motion desktop captions available', () => {
     const { controller, current } = setup({ ...desktop, desktop: false })
-    expect(current()).toMatchObject({ activeId: null, orbitRunning: true, controlsVisible: false })
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true, controlsVisible: true })
     controller.setFocus('rezor')
     expect(current()).toMatchObject({ activeId: null, orbitRunning: false })
     controller.setEnvironment({ desktop: true, reducedMotion: true })
@@ -123,6 +123,38 @@ describe('hero planet attention lifecycle', () => {
     controller.setEnvironment({ visible: true })
     vi.advanceTimersByTime(1000)
     expect(current().activeId).toBe('vite')
+    controller.destroy()
+  })
+
+  it('starts paused from shared intent and waits a complete delay after resuming', () => {
+    const { controller, current } = setup(desktop, true)
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false, userPaused: true })
+    expect(vi.getTimerCount()).toBe(0)
+    vi.advanceTimersByTime(60000)
+    controller.setPaused(false)
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true, userPaused: false })
+    vi.advanceTimersByTime(2999)
+    expect(current().activeId).toBeNull()
+    vi.advanceTimersByTime(1)
+    expect(current().activeId).toBe('vite')
+    controller.destroy()
+  })
+
+  it('does not restart timers when receiving the same shared pause value', () => {
+    const { controller, current } = setup()
+    vi.advanceTimersByTime(2000)
+    controller.setPaused(false)
+    vi.advanceTimersByTime(1000)
+    expect(current().activeId).toBe('vite')
+    controller.setPaused(true)
+    controller.setPaused(true)
+    expect(current()).toMatchObject({ activeId: 'vite', orbitRunning: false, userPaused: true })
+    expect(vi.getTimerCount()).toBe(0)
+    controller.setPaused(false)
+    vi.advanceTimersByTime(2000)
+    controller.setPaused(false)
+    vi.advanceTimersByTime(1000)
+    expect(current().activeId).toBe('panda')
     controller.destroy()
   })
 
@@ -168,6 +200,7 @@ describe('hero planet attention lifecycle', () => {
     controller.setFocus('rezor')
     controller.setEnvironment(desktop)
     controller.togglePause()
+    controller.setPaused(false)
     vi.advanceTimersByTime(60000)
     expect(present).toHaveBeenCalledTimes(calls)
   })

@@ -33,9 +33,6 @@ const { locale, railGroups, constellation, wordmark, overviewLabel, railLabel } 
   <div class="home-hero-screen">
     <script is:inline>
       document.documentElement.setAttribute('data-hero-cosmos', '')
-      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        document.currentScript.parentElement.setAttribute('data-particles-active', '')
-      }
     </script>
     <HeroParticles wordmark={wordmark} />
     <hero-planets class="home-hero-constellation">
@@ -83,13 +80,13 @@ const { locale, railGroups, constellation, wordmark, overviewLabel, railLabel } 
       class="home-hero-motion"
       type="button"
       data-planet-toggle
-      data-pause-label={locale === 'zh-CN' ? '暂停星球动画' : 'Pause planet animation'}
-      data-resume-label={locale === 'zh-CN' ? '继续星球动画' : 'Resume planet animation'}
+      data-pause-label={locale === 'zh-CN' ? '暂停首屏动画' : 'Pause hero animation'}
+      data-resume-label={locale === 'zh-CN' ? '继续首屏动画' : 'Resume hero animation'}
       hidden
     >
       <span data-planet-pause-icon aria-hidden="true"><Pause size={16} stroke-width={1.8} /></span>
       <span data-planet-play-icon aria-hidden="true" hidden><Play size={16} stroke-width={1.8} /></span>
-      <span data-planet-toggle-label>{locale === 'zh-CN' ? '暂停星球动画' : 'Pause planet animation'}</span>
+      <span data-planet-toggle-label>{locale === 'zh-CN' ? '暂停首屏动画' : 'Pause hero animation'}</span>
     </button>
   </div>
 

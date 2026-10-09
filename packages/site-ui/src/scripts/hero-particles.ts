@@ -1,3 +1,6 @@
+import { subscribeHeroMotionPaused } from './hero-motion'
+import { createActiveClock, glyphSafeRadii, particleFrameInterval, smoothValue } from './hero-particle-motion'
+
 export interface GlyphPoint {
   x: number
   y: number
@@ -32,11 +35,16 @@ in float a_seed;
 in float a_kind;
 in float a_orbit;
 in float a_twinkle;
+in float a_radius;
+in float a_flow;
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_progress;
 uniform vec2 u_pointer;
 uniform float u_pointerStrength;
+uniform float u_pointerRadius;
+uniform float u_flowAmplitude;
+uniform vec3 u_trails[4];
 out float v_brightness;
 out float v_accent;
 out float v_kind;
@@ -52,26 +60,44 @@ void main() {
     smoothstep(0.55, 1.0, u_progress)
   );
   float glyph = step(0.0, a_delay);
+  float fieldTime = min(u_time, 2.2) + max(0.0, u_time - 2.2) * 0.12;
+  float wanderTime = mix(fieldTime, u_time, glyph);
   float speed = mix(0.06, 0.38, glyph) * (0.55 + a_seed);
-  float ang = u_time * speed + a_seed * 6.2832;
-  pos += vec2(cos(ang), sin(ang * 0.87)) * a_orbit * idle;
-  pos += vec2(
-    sin(u_time * 0.042 + a_seed * 5.1),
-    cos(u_time * 0.031 + a_depth * 2.7)
-  ) * mix(a_orbit * 2.4, 0.35, glyph) * idle;
-  vec2 away = pos - u_pointer;
+  float ang = wanderTime * speed + a_seed * 6.2832;
+  vec2 wander = vec2(cos(ang), sin(ang * 0.87)) * a_orbit;
+  wander += vec2(
+    sin(wanderTime * 0.042 + a_seed * 5.1),
+    cos(wanderTime * 0.031 + a_depth * 2.7)
+  ) * mix(a_orbit * 2.4, 0.35, glyph);
+  // Quiet anchors preserve the silhouette; one third carry a nine-second flow.
+  float phase = u_time * 0.6981 + a_seed * 6.2832;
+  vec2 flow = vec2(sin(phase + a_target.y * 0.009), cos(phase + a_target.x * 0.006)) * 0.7071;
+  vec2 offset = flow * min(u_flowAmplitude, a_radius) * a_flow;
+  vec2 away = a_target - u_pointer;
   float dist = length(away);
-  pos += normalize(away + 0.0001) * u_pointerStrength * exp(-dist / 170.0);
+  float influence = 1.0 - smoothstep(0.0, u_pointerRadius, dist);
+  vec2 direction = dist > 0.001 ? away / dist : vec2(cos(a_seed * 6.2832), sin(a_seed * 6.2832));
+  offset += direction * u_pointerStrength * influence * u_pointerRadius / 15.0;
+  float offsetLength = length(offset);
+  offset *= min(1.0, a_radius / max(0.001, offsetLength));
+  pos += mix(wander * idle, offset * e, glyph * smoothstep(0.55, 1.0, u_progress));
   vec2 clip = (pos / u_resolution) * 2.0 - 1.0;
   clip.y *= -1.0;
   gl_Position = vec4(clip, 0.0, 1.0);
   gl_PointSize = min(48.0, a_size * (0.72 + a_depth * 0.85));
-  float pulse = 0.5 + 0.5 * sin(u_time * (0.65 + a_seed * 2.3) + a_seed * 12.6);
-  float flare = pow(max(0.0, sin(u_time * (0.09 + a_seed * 0.18) + a_seed * 4.2)), 12.0);
+  float pulse = 0.5 + 0.5 * sin(wanderTime * (0.65 + a_seed * 2.3) + a_seed * 12.6);
+  float flare = pow(max(0.0, sin(wanderTime * (0.09 + a_seed * 0.18) + a_seed * 4.2)), 12.0);
   v_brightness = a_brightness * (1.0 - a_twinkle * 0.45 + a_twinkle * (0.55 * pulse + 1.25 * flare));
+  float ripple = influence * u_pointerStrength * (0.5 + 0.5 * sin(dist / max(1.0, u_pointerRadius) * 18.0 - u_time * 8.0));
+  float trail = 0.0;
+  for (int i = 0; i < 4; i++) {
+    float d = length(a_target - u_trails[i].xy) / max(1.0, u_pointerRadius);
+    trail += exp(-d * d * 12.0) * u_trails[i].z * 0.10;
+  }
+  v_brightness *= 1.0 + glyph * e * (a_flow * (0.12 + 0.12 * sin(phase + a_target.x * 0.008)) + ripple * 0.32 + trail);
   v_accent = a_accent;
   v_kind = a_kind;
-  v_spin = u_time * (0.11 + a_seed * 0.32);
+  v_spin = wanderTime * (0.11 + a_seed * 0.32);
   v_seed = a_seed;
 }
 `
@@ -263,6 +289,9 @@ export function pickFieldDust(next: () => number): StarMagnitude {
   }
 }
 
+// Keep sampling's public point shape unchanged; only the renderer needs radii.
+const safeRadius = new WeakMap<GlyphPoint, number>()
+
 export function sampleWordmark(options: SampleWordmarkOptions): GlyphPoint[] {
   const canvas = document.createElement('canvas')
   const step = Math.max(1, options.step ?? 2)
@@ -298,6 +327,7 @@ export function sampleWordmark(options: SampleWordmarkOptions): GlyphPoint[] {
     cursor += (widths[index] ?? 0) + tracking
   })
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+  const radii = glyphSafeRadii(pixels, canvas.width, canvas.height)
   const points: GlyphPoint[] = []
   for (let y = 0; y < canvas.height; y += step) {
     for (let x = 0; x < canvas.width; x += step) {
@@ -308,7 +338,9 @@ export function sampleWordmark(options: SampleWordmarkOptions): GlyphPoint[] {
       if (a < 36) {
         continue
       }
-      points.push({ x, y, accent: g > 160 && r < 80 ? 1 : 0 })
+      const point = { x: x + 0.5, y: y + 0.5, accent: g > 160 && r < 80 ? 1 : 0 }
+      safeRadius.set(point, radii[y * canvas.width + x] ?? 0)
+      points.push(point)
     }
   }
   return points
@@ -406,10 +438,10 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string) {
 }
 
 interface Engine {
-  stop: () => void
+  stop: () => number
 }
 
-function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTMLElement, wordmark: string): Engine | null {
+function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTMLElement, wordmark: string, elapsed = 0): Engine | null {
   const gl = canvas.getContext('webgl2', {
     alpha: true,
     antialias: false,
@@ -424,16 +456,27 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   const vertex = compile(gl, gl.VERTEX_SHADER, VERTEX)
   const fragment = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT)
   if (!vertex || !fragment) {
+    if (vertex) {
+      gl.deleteShader(vertex)
+    }
+    if (fragment) {
+      gl.deleteShader(fragment)
+    }
     return null
   }
   const program = gl.createProgram()
   if (!program) {
+    gl.deleteShader(vertex)
+    gl.deleteShader(fragment)
     return null
   }
   gl.attachShader(program, vertex)
   gl.attachShader(program, fragment)
   gl.linkProgram(program)
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    gl.deleteProgram(program)
+    gl.deleteShader(vertex)
+    gl.deleteShader(fragment)
     return null
   }
   gl.useProgram(program)
@@ -453,11 +496,16 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     kind: gl.getAttribLocation(program, 'a_kind'),
     orbit: gl.getAttribLocation(program, 'a_orbit'),
     twinkle: gl.getAttribLocation(program, 'a_twinkle'),
+    radius: gl.getAttribLocation(program, 'a_radius'),
+    flow: gl.getAttribLocation(program, 'a_flow'),
     resolution: gl.getUniformLocation(program, 'u_resolution'),
     time: gl.getUniformLocation(program, 'u_time'),
     progress: gl.getUniformLocation(program, 'u_progress'),
     pointer: gl.getUniformLocation(program, 'u_pointer'),
     pointerStrength: gl.getUniformLocation(program, 'u_pointerStrength'),
+    pointerRadius: gl.getUniformLocation(program, 'u_pointerRadius'),
+    flowAmplitude: gl.getUniformLocation(program, 'u_flowAmplitude'),
+    trails: gl.getUniformLocation(program, 'u_trails[0]'),
   }
 
   const buffers = {
@@ -472,16 +520,34 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     kind: gl.createBuffer(),
     orbit: gl.createBuffer(),
     twinkle: gl.createBuffer(),
+    radius: gl.createBuffer(),
+    flow: gl.createBuffer(),
   }
 
   let count = 0
-  let assembled = false
-  let startedAt = 0
+  let assembled = elapsed >= 2200
+  const clock = createActiveClock(elapsed)
+  clock.setRunning(false, performance.now())
   let raf = 0
   let idleTimer = 0
   let visible = true
   let pageHidden = document.hidden
-  const pointer = { x: -9999, y: -9999, strength: 0 }
+  let paused = false
+  let stopped = false
+  let contextLost = false
+  let needsStaticDraw = true
+  let playing = false
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+  let reduced = reducedMotion.matches
+  let desktop = screen.clientWidth >= 1024
+  let dpr = 1
+  let lastDraw = -Infinity
+  let lastInput = elapsed
+  let glyphBounds = { left: 0, top: 0, right: 0, bottom: 0 }
+  let layoutKey = ''
+  const pointer = { x: -9999, y: -9999, targetX: -9999, targetY: -9999, strength: 0, targetStrength: 0 }
+  const trails: Array<{ x: number, y: number, born: number }> = []
+  const trailData = new Float32Array(12)
   const dprCap = 1.75
 
   const bindFloat = (buffer: WebGLBuffer | null, location: number, data: Float32Array, size: number) => {
@@ -497,11 +563,16 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   const rebuild = () => {
     const cssWidth = Math.max(1, screen.clientWidth)
     const cssHeight = Math.max(1, screen.clientHeight)
-    const dpr = Math.min(dprCap, window.devicePixelRatio || 1)
+    dpr = Math.min(dprCap, window.devicePixelRatio || 1)
+    desktop = cssWidth >= 1024
+    const titleStyle = getComputedStyle(title)
+    const key = `${cssWidth}:${cssHeight}:${dpr}:${titleStyle.fontSize}:${titleStyle.fontFamily}:${titleStyle.fontWeight}`
+    if (key === layoutKey) {
+      return true
+    }
     canvas.width = Math.floor(cssWidth * dpr)
     canvas.height = Math.floor(cssHeight * dpr)
     gl.viewport(0, 0, canvas.width, canvas.height)
-    const titleStyle = getComputedStyle(title)
     const cssFontSize = Number.parseFloat(titleStyle.fontSize) || Math.min(cssWidth * 0.17, 208)
     const fontSize = cssFontSize * dpr
     const mobile = cssWidth < 720
@@ -532,6 +603,12 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     if (paired.length < 40) {
       return false
     }
+    glyphBounds = {
+      left: Math.min(...word.map(point => point.x)) / dpr,
+      top: Math.min(...word.map(point => point.y)) / dpr,
+      right: Math.max(...word.map(point => point.x)) / dpr,
+      bottom: Math.max(...word.map(point => point.y)) / dpr,
+    }
     const rand = mulberry32(0x5EED ^ Math.floor(cssWidth * 13 + cssHeight))
     const maxDist = Math.hypot(canvas.width, canvas.height) * 0.28
     const total = paired.length + fieldBudget
@@ -546,6 +623,8 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const kind = new Float32Array(total)
     const orbit = new Float32Array(total)
     const twinkle = new Float32Array(total)
+    const radius = new Float32Array(total)
+    const flow = new Float32Array(total)
     paired.forEach((pair, index) => {
       start[index * 2] = pair.from.x
       start[index * 2 + 1] = pair.from.y
@@ -561,6 +640,8 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       seed[index] = rand()
       orbit[index] = (0.016 + rand() * 0.022) * fontSize
       twinkle[index] = star.twinkle
+      radius[index] = Math.min(8 * dpr, safeRadius.get(pair.to) ?? 0)
+      flow[index] = index % 3 === 0 ? 1 : 0
     })
     for (let index = 0; index < fieldBudget; index += 1) {
       const i = paired.length + index
@@ -595,127 +676,279 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     bindFloat(buffers.kind, loc.kind, kind, 1)
     bindFloat(buffers.orbit, loc.orbit, orbit, 1)
     bindFloat(buffers.twinkle, loc.twinkle, twinkle, 1)
+    bindFloat(buffers.radius, loc.radius, radius, 1)
+    bindFloat(buffers.flow, loc.flow, flow, 1)
+    layoutKey = key
     return true
   }
 
-  if (!rebuild()) {
+  const releaseGL = () => {
+    gl.useProgram(null)
+    for (const buffer of Object.values(buffers)) {
+      gl.deleteBuffer(buffer)
+    }
+    gl.deleteProgram(program)
+    gl.deleteShader(vertex)
+    gl.deleteShader(fragment)
+  }
+  if (Object.values(buffers).some(buffer => !buffer) || !rebuild()) {
+    releaseGL()
     return null
   }
-  screen.dataset.particlesActive = ''
 
-  const hold = 700
-  const assemble = 1500
-  const tick = (now: number) => {
-    raf = 0
+  const canPlay = () => !stopped && !contextLost && visible && !pageHidden && !paused && !reduced
+  const interacting = () => desktop && (pointer.targetStrength > 0 || pointer.strength > 0 || trails.length > 0)
+  const cancelScheduled = () => {
+    cancelAnimationFrame(raf)
+    window.clearTimeout(idleTimer)
     idleTimer = 0
-    if (!startedAt) {
-      startedAt = now
-    }
-    const elapsed = now - startedAt
-    const progress = assembled ? 1 : Math.min(1, Math.max(0, (elapsed - hold) / assemble))
+    raf = 0
+  }
+  const endPointer = () => {
+    pointer.targetStrength = 0
+  }
+  const clearPointer = () => {
+    endPointer()
+    pointer.strength = 0
+    trails.length = 0
+  }
+
+  const draw = (activeElapsed: number) => {
+    const progress = Math.min(1, Math.max(0, (activeElapsed - 700) / 1500))
     if (progress >= 1) {
       assembled = true
       screen.dataset.particlesReady = ''
     }
+    const delta = Math.max(0, activeElapsed - lastInput)
+    lastInput = activeElapsed
+    pointer.x = smoothValue(pointer.x, pointer.targetX, delta, 85)
+    pointer.y = smoothValue(pointer.y, pointer.targetY, delta, 85)
+    pointer.strength = smoothValue(pointer.strength, pointer.targetStrength, delta, 200)
+    if (pointer.targetStrength === 0 && pointer.strength < Math.exp(-4)) {
+      pointer.strength = 0
+    }
+    for (let index = trails.length - 1; index >= 0; index -= 1) {
+      if (activeElapsed - trails[index]!.born >= 600) {
+        trails.splice(index, 1)
+      }
+    }
+    trailData.fill(0)
+    trails.forEach((point, index) => {
+      trailData[index * 3] = point.x
+      trailData[index * 3 + 1] = point.y
+      trailData[index * 3 + 2] = Math.max(0, 1 - (activeElapsed - point.born) / 600) ** 2
+    })
     gl.viewport(0, 0, canvas.width, canvas.height)
     gl.clearColor(0, 0, 0, 0)
     gl.clear(gl.COLOR_BUFFER_BIT)
     gl.useProgram(program)
     gl.uniform2f(loc.resolution, canvas.width, canvas.height)
-    // After assembly, the field settles and updates at most 10 times per second.
-    const motionTime = Math.min(elapsed, hold + assemble) + Math.max(0, elapsed - hold - assemble) * 0.12
-    gl.uniform1f(loc.time, motionTime / 1000)
+    gl.uniform1f(loc.time, activeElapsed / 1000)
     gl.uniform1f(loc.progress, progress)
     gl.uniform2f(loc.pointer, pointer.x, pointer.y)
     gl.uniform1f(loc.pointerStrength, pointer.strength)
+    gl.uniform1f(loc.pointerRadius, 120 * dpr)
+    gl.uniform1f(loc.flowAmplitude, (desktop ? 4 : 1) * dpr)
+    gl.uniform3fv(loc.trails, trailData)
     gl.drawArrays(gl.POINTS, 0, count)
-    if (visible && !pageHidden) {
-      if (assembled) {
-        idleTimer = window.setTimeout(() => {
-          raf = requestAnimationFrame(tick)
-        }, 100)
-      }
-      else {
-        raf = requestAnimationFrame(tick)
-      }
-    }
-  }
-
-  const play = () => {
-    if (raf || idleTimer || !visible || pageHidden) {
+    // A failed first frame must never replace the readable HTML title.
+    if (!needsStaticDraw) {
       return
     }
-    delete screen.dataset.particlesPaused
-    raf = requestAnimationFrame(tick)
-  }
-  const pause = () => {
-    cancelAnimationFrame(raf)
-    window.clearTimeout(idleTimer)
-    idleTimer = 0
-    raf = 0
-    screen.dataset.particlesPaused = ''
+    if (!gl.isContextLost() && gl.getError() === gl.NO_ERROR) {
+      screen.dataset.particlesActive = ''
+      needsStaticDraw = false
+    }
+    else {
+      contextLost = true
+      delete screen.dataset.particlesActive
+      delete screen.dataset.particlesReady
+    }
   }
 
+  // Only this scheduler owns a pending timer/RAF. Pointer input can wake it,
+  // but still goes through the same frame budget before drawing.
+  const schedule = (nextFrame: FrameRequestCallback) => {
+    if (!canPlay() || raf || idleTimer) {
+      return
+    }
+    const interval = particleFrameInterval(desktop, assembled, interacting())
+    const wait = interval - (performance.now() - lastDraw)
+    if (wait > 4) {
+      idleTimer = window.setTimeout(() => {
+        idleTimer = 0
+        raf = requestAnimationFrame(nextFrame)
+      }, wait - 4)
+    }
+    else {
+      raf = requestAnimationFrame(nextFrame)
+    }
+  }
+  function tick(now: number) {
+    raf = 0
+    if (!canPlay()) {
+      return
+    }
+    const interval = particleFrameInterval(desktop, assembled, interacting())
+    if (now - lastDraw >= interval - 0.1) {
+      draw(clock.advance(now))
+      lastDraw = now
+    }
+    schedule(tick)
+  }
+  const syncPlayback = () => {
+    const running = canPlay()
+    const resumed = running && !playing
+    playing = running
+    clock.setRunning(running, performance.now())
+    screen.toggleAttribute('data-particles-paused', !running)
+    let redrawn = false
+    if (needsStaticDraw && !stopped && !contextLost && !reduced && visible && !pageHidden) {
+      draw(clock.current())
+      lastDraw = performance.now()
+      redrawn = true
+    }
+    if (!running) {
+      cancelScheduled()
+      endPointer()
+    }
+    else {
+      if (resumed && !redrawn) {
+        lastDraw = -Infinity
+      }
+      schedule(tick)
+    }
+  }
+  const wake = () => {
+    if (!canPlay()) {
+      return
+    }
+    if (idleTimer) {
+      window.clearTimeout(idleTimer)
+      idleTimer = 0
+    }
+    schedule(tick)
+  }
   const onPointer = (event: PointerEvent) => {
+    if (!desktop || event.pointerType === 'touch' || !canPlay()) {
+      return
+    }
+    const target = event.target
+    if (target instanceof Element && target.closest('a, button')) {
+      endPointer()
+      wake()
+      return
+    }
     const box = canvas.getBoundingClientRect()
-    const sx = canvas.width / Math.max(1, box.width)
-    const sy = canvas.height / Math.max(1, box.height)
-    pointer.x = (event.clientX - box.left) * sx
-    pointer.y = (event.clientY - box.top) * sy
-    pointer.strength = 20
+    const x = event.clientX - box.left
+    const y = event.clientY - box.top
+    if (x < glyphBounds.left - 24 || x > glyphBounds.right + 24
+      || y < glyphBounds.top - 24 || y > glyphBounds.bottom + 24) {
+      endPointer()
+      wake()
+      return
+    }
+    // The first contact starts locally instead of travelling from off-canvas.
+    if (pointer.strength === 0) {
+      pointer.x = x * dpr
+      pointer.y = y * dpr
+    }
+    pointer.targetX = x * dpr
+    pointer.targetY = y * dpr
+    pointer.targetStrength = 1
+    const now = clock.advance(performance.now())
+    const latest = trails.at(-1)
+    if (!latest || now - latest.born >= 75) {
+      if (trails.length === 4) {
+        trails.shift()
+      }
+      trails.push({ x: pointer.targetX, y: pointer.targetY, born: now })
+    }
+    wake()
   }
   const onPointerLeave = () => {
-    pointer.strength = 0
+    endPointer()
+    wake()
   }
   const onVisibility = () => {
     pageHidden = document.hidden
-    if (pageHidden) {
-      pause()
+    syncPlayback()
+  }
+  const onReducedMotion = () => {
+    reduced = reducedMotion.matches
+    clearPointer()
+    if (reduced) {
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      delete screen.dataset.particlesActive
+      needsStaticDraw = true
     }
-    else {
-      play()
-    }
+    syncPlayback()
+  }
+  const onContextLost = (event: Event) => {
+    event.preventDefault()
+    contextLost = true
+    delete screen.dataset.particlesActive
+    delete screen.dataset.particlesReady
+    syncPlayback()
   }
   const resizeObserver = new ResizeObserver(() => {
-    const ready = assembled
-    if (!rebuild()) {
+    if (stopped || contextLost) {
       return
     }
-    screen.dataset.particlesActive = ''
-    if (ready) {
-      assembled = true
-      screen.dataset.particlesReady = ''
+    clearPointer()
+    const previousLayout = layoutKey
+    if (!rebuild()) {
+      delete screen.dataset.particlesActive
+      return
     }
+    if (layoutKey === previousLayout) {
+      return
+    }
+    needsStaticDraw = true
+    delete screen.dataset.particlesActive
+    if (!reduced && visible && !pageHidden) {
+      // Resizing a paused hero is the one permitted static redraw.
+      draw(clock.current())
+      lastDraw = performance.now()
+    }
+    wake()
   })
   const intersection = new IntersectionObserver((entries) => {
     visible = entries.some(entry => entry.isIntersecting)
-    if (visible) {
-      play()
-    }
-    else {
-      pause()
-    }
+    syncPlayback()
   }, { threshold: 0.08 })
 
   screen.addEventListener('pointermove', onPointer)
   screen.addEventListener('pointerleave', onPointerLeave)
   document.addEventListener('visibilitychange', onVisibility)
+  reducedMotion.addEventListener('change', onReducedMotion)
+  canvas.addEventListener('webglcontextlost', onContextLost)
+  const unsubscribePause = subscribeHeroMotionPaused(screen, (value) => {
+    paused = value
+    syncPlayback()
+  })
   resizeObserver.observe(screen)
   intersection.observe(screen)
-  play()
 
   return {
     stop() {
-      pause()
+      stopped = true
+      syncPlayback()
+      unsubscribePause()
       resizeObserver.disconnect()
       intersection.disconnect()
       screen.removeEventListener('pointermove', onPointer)
       screen.removeEventListener('pointerleave', onPointerLeave)
       document.removeEventListener('visibilitychange', onVisibility)
+      reducedMotion.removeEventListener('change', onReducedMotion)
+      canvas.removeEventListener('webglcontextlost', onContextLost)
       delete screen.dataset.particlesReady
       delete screen.dataset.particlesActive
-      const ext = gl.getExtension('WEBGL_lose_context')
-      ext?.loseContext()
+      delete screen.dataset.particlesPaused
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      releaseGL()
+      // Keep the canvas context reusable after the custom element reconnects.
+      return clock.current()
     },
   }
 }
@@ -742,31 +975,32 @@ export function defineHeroParticles() {
   }
   class HeroParticles extends HTMLElement {
     #stop: (() => void) | undefined
+    #elapsed = 0
     connectedCallback() {
       if (this.#stop) {
         return
       }
       const canvas = this.querySelector('canvas')
       const screen = this.closest<HTMLElement>('.home-hero-screen')
-      const title = document.getElementById('home-hero-title')
+      const title = screen?.querySelector<HTMLElement>('#home-hero-title')
       const wordmark = this.dataset.wordmark?.trim()
       if (!screen) {
         return
       }
       const unbind = bindHeroCosmos(screen)
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !canvas || !title || !wordmark) {
+      if (!canvas || !title || !wordmark) {
         delete screen.dataset.particlesActive
         this.#stop = unbind
         return
       }
-      const engine = createEngine(canvas, screen, title, wordmark)
+      const engine = createEngine(canvas, screen, title, wordmark, this.#elapsed)
       if (!engine) {
         delete screen.dataset.particlesActive
         this.#stop = unbind
         return
       }
       this.#stop = () => {
-        engine.stop()
+        this.#elapsed = engine.stop()
         unbind()
       }
     }

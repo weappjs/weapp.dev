@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
+import { captureParticleFrames, installMotionClock, particleState, setPageHidden } from './hero-motion'
 import { heroWordmark, isOpenSourceSite } from './site-target'
 
 interface WordmarkSample {
@@ -94,6 +95,50 @@ async function expectStaticWordmark(page: Page, scriptsEnabled = true) {
   await expect(page.locator('#home-hero-title > [aria-hidden]')).toHaveCSS('visibility', 'visible')
 }
 
+async function prepareParticleMotion(page: Page, isolateGlyphs = false) {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  await captureParticleFrames(page, isolateGlyphs)
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto(resizeRoute)
+  await expect.poll(() => page.evaluate(() => Boolean(customElements.get('hero-particles')))).toBe(true)
+}
+
+async function expectAssembledParticles(page: Page) {
+  await page.clock.runFor(2500)
+  await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-particles-ready', '')
+  await expectActiveWordmark(page)
+}
+
+async function sampleDrawRate(page: Page, minimum: number, maximum: number) {
+  const initial = await particleState(page)
+  await page.clock.runFor(1000)
+  const after = await particleState(page)
+  const count = after.draws - initial.draws
+  expect(count, 'The renderer must make progress within the active frame budget').toBeGreaterThanOrEqual(minimum)
+  expect(count, 'Pointer events and scheduling must respect the frame cap').toBeLessThanOrEqual(maximum)
+  expect(after.frame!.time - initial.frame!.time, 'Motion uses active seconds rather than the previous idle slowdown').toBeGreaterThan(0.8)
+  expect(after.frame!.time - initial.frame!.time).toBeLessThanOrEqual(1.1)
+}
+
+async function expectFrozenParticles(page: Page) {
+  const paused = await particleState(page)
+  await page.clock.fastForward(60000)
+  const frozen = await particleState(page)
+  expect(frozen.draws).toBe(paused.draws)
+  expect(frozen.frame).toEqual(paused.frame)
+  return paused.frame!.time
+}
+
+async function expectContinuedPhase(page: Page, pausedTime: number) {
+  await expect(page.locator('.home-hero-screen')).not.toHaveAttribute('data-particles-paused', '')
+  await page.clock.runFor(160)
+  const after = await particleState(page)
+  expect(after.frame!.progress, 'Resuming must not replay the assembly entrance').toBe(1)
+  expect(after.frame!.time).toBeGreaterThanOrEqual(pausedTime)
+  expect(after.frame!.time - pausedTime, 'Hidden wall-clock time must not advance the particle phase').toBeLessThan(0.3)
+}
+
 for (const route of homeRoutes) {
   test(`draws the deployment wordmark in the particle canvas at ${route}`, async ({ page }) => {
     await captureWordmarkSamples(page)
@@ -183,32 +228,190 @@ for (const value of ['missing', 'blank'] as const) {
   })
 }
 
-test('settles the particle renderer and suspends drawing offscreen', async ({ page }) => {
-  await page.addInitScript(() => {
-    const draw = WebGL2RenderingContext.prototype.drawArrays
-    Object.assign(window, { particleDraws: 0 })
-    WebGL2RenderingContext.prototype.drawArrays = function (...args) {
-      const counter = window as unknown as { particleDraws: number }
-      counter.particleDraws += 1
-      return draw.apply(this, args)
-    }
+test('keeps real wordmark glyphs flowing after assembly rather than only moving background dust', async ({ page }) => {
+  await prepareParticleMotion(page, true)
+  await expectAssembledParticles(page)
+  const state = await particleState(page)
+  expect(state.glyphCount).toBeGreaterThan(40)
+  expect(state.flowCount).toBeGreaterThan(0)
+  expect(state.maxRadius).toBeGreaterThan(0)
+  expect(state.frame!.flowAmplitude).toBeCloseTo((page.viewportSize()!.width >= 1024 ? 4 : 1)
+    * await page.evaluate(() => Math.min(1.75, devicePixelRatio)))
+  await page.evaluate(() => {
+    window.__heroParticleProbe.captureGlyph = true
   })
-  await page.goto(resizeRoute)
+  await page.clock.runFor(160)
+  await page.clock.runFor(1000)
+  await page.evaluate(() => {
+    window.__heroParticleProbe.captureGlyph = true
+  })
+  await page.clock.runFor(160)
+  const movement = await page.evaluate(() => {
+    const { glyph, previousGlyph } = window.__heroParticleProbe
+    if (!glyph || !previousGlyph) {
+      throw new Error('Both real glyph framebuffer samples must be captured')
+    }
+    let visible = 0
+    let changed = 0
+    for (let index = 0; index < glyph.pixels.length; index += 4) {
+      if (glyph.pixels[index + 3]! >= 32 || previousGlyph.pixels[index + 3]! >= 32) {
+        visible += 1
+        if (Math.abs(glyph.pixels[index + 3]! - previousGlyph.pixels[index + 3]!) > 12) {
+          changed += 1
+        }
+      }
+    }
+    return { visible, changed, elapsed: glyph.time - previousGlyph.time }
+  })
+  expect(movement.visible, 'The sampled area must contain drawn glyph pixels').toBeGreaterThan(100)
+  expect(movement.changed, 'Glyph-only pixels must visibly change after assembly').toBeGreaterThan(Math.max(12, movement.visible * 0.02))
+  expect(movement.elapsed).toBeGreaterThan(1)
+})
+
+test('caps entrance, idle and interaction drawing at the desktop and mobile budgets', async ({ page }) => {
+  await prepareParticleMotion(page)
+  const desktop = page.viewportSize()!.width >= 1024
+  await page.clock.runFor(160)
+  // The fake clock delivers RAF every 16ms, so a strict 60fps cap may draw on
+  // alternate callbacks; keep the production upper bound and verify progress.
+  await sampleDrawRate(page, desktop ? 28 : 8, desktop ? 61 : 11)
+  await page.clock.runFor(1500)
+  await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-particles-ready', '')
+  await sampleDrawRate(page, desktop ? 18 : 8, desktop ? 31 : 11)
+  const title = await page.locator('#home-hero-title').boundingBox()
+  await page.mouse.move(title!.x + title!.width / 2, title!.y + title!.height / 2)
+  await sampleDrawRate(page, desktop ? 28 : 8, desktop ? 61 : 11)
+  if (desktop) {
+    const previous = (await particleState(page)).frame!
+    expect(previous.pointerStrength).toBeGreaterThan(0.9)
+    const dpr = await page.evaluate(() => Math.min(1.75, devicePixelRatio))
+    const canvas = await page.locator('.home-hero-particle-canvas').boundingBox()
+    const nextX = title!.x + title!.width / 2 + 24
+    const targetX = (nextX - canvas!.x) * dpr
+    await page.mouse.move(nextX, title!.y + title!.height / 2)
+    await page.clock.runFor(64)
+    const smoothing = (await particleState(page)).frame!
+    expect(smoothing.pointer[0], 'Pointer input must approach its target rather than jump immediately').toBeGreaterThan(previous.pointer[0])
+    expect(smoothing.pointer[0]).toBeLessThan(targetX)
+    expect(smoothing.trailCount).toBeGreaterThan(0)
+    await page.clock.runFor(250)
+    expect(Math.abs((await particleState(page)).frame!.pointer[0] - targetX)).toBeLessThan(2 * dpr)
+  }
+  else {
+    expect((await particleState(page)).frame!.pointerStrength).toBe(0)
+  }
+  await page.mouse.move(0, 0)
+  if (desktop) {
+    await page.clock.runFor(100)
+    const release = (await particleState(page)).frame!.pointerStrength
+    expect(release, 'Pointer departure must fade smoothly before returning to idle').toBeGreaterThan(0)
+    expect(release).toBeLessThan(0.9)
+  }
+  await page.clock.runFor(1000)
+  const settled = await particleState(page)
+  expect(settled.frame!.pointerStrength).toBe(0)
+  expect(settled.frame!.trailCount).toBe(0)
+  await sampleDrawRate(page, desktop ? 18 : 8, desktop ? 31 : 11)
+})
+
+test('freezes the particle phase offscreen, in the background and after a user pause', async ({ page }) => {
+  await prepareParticleMotion(page)
+  await expectAssembledParticles(page)
   const screen = page.locator('.home-hero-screen')
-  await expect(screen).toHaveAttribute('data-particles-ready', '')
-  const draws = () => page.evaluate(() => (window as unknown as { particleDraws: number }).particleDraws)
-  const initial = await draws()
-  await page.waitForTimeout(1100)
-  const idle = await draws()
-  expect(idle - initial).toBeGreaterThan(0)
-  expect(idle - initial, 'The settled hero should draw at most 10 frames per second').toBeLessThanOrEqual(12)
   await page.locator('#releases').scrollIntoViewIfNeeded()
   await expect(screen).toHaveAttribute('data-particles-paused', '')
-  const paused = await draws()
-  await page.waitForTimeout(400)
-  expect(await draws()).toBe(paused)
+  let phase = await expectFrozenParticles(page)
   await screen.scrollIntoViewIfNeeded()
-  await expect.poll(draws).toBeGreaterThan(paused)
+  await expectContinuedPhase(page, phase)
+  await setPageHidden(page, true)
+  await expect(screen).toHaveAttribute('data-particles-paused', '')
+  phase = await expectFrozenParticles(page)
+  await setPageHidden(page, false)
+  await expectContinuedPhase(page, phase)
+  const toggle = page.locator('[data-planet-toggle]')
+  await expect(toggle).toBeVisible()
+  await toggle.click()
+  await expect(screen).toHaveAttribute('data-hero-motion-paused', '')
+  await expect(screen).toHaveAttribute('data-particles-paused', '')
+  await expect(page.locator('hero-planets')).not.toHaveAttribute('data-planets-orbit-running', '')
+  phase = await expectFrozenParticles(page)
+  await toggle.click()
+  await expect(screen).not.toHaveAttribute('data-hero-motion-paused', '')
+  await expectContinuedPhase(page, phase)
+})
+
+test('honors live reduced-motion changes and reconnects without losing a user pause or replaying the entrance', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await prepareParticleMotion(page)
+  await expectAssembledParticles(page)
+  const screen = page.locator('.home-hero-screen')
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expectStaticWordmark(page)
+  await expect(screen).toHaveAttribute('data-particles-paused', '')
+  let phase = await expectFrozenParticles(page)
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await expectContinuedPhase(page, phase)
+  await expectActiveWordmark(page)
+
+  const toggle = page.locator('[data-planet-toggle]')
+  await toggle.click()
+  await expect(screen).toHaveAttribute('data-hero-motion-paused', '')
+  const element = await page.locator('hero-particles').elementHandle()
+  await element!.evaluate(node => node.remove())
+  phase = await expectFrozenParticles(page)
+  await element!.evaluate(node => document.querySelector('.home-hero-screen')!.prepend(node))
+  await expect(screen).toHaveAttribute('data-particles-paused', '')
+  await page.clock.runFor(160)
+  // A paused resize may draw one static frame; later time must remain frozen.
+  await expectFrozenParticles(page)
+  await toggle.click()
+  await expectContinuedPhase(page, phase)
+  await expectActiveWordmark(page)
+  await toggle.click()
+  await expect(screen).toHaveAttribute('data-particles-paused', '')
+  await expectFrozenParticles(page)
+  expect(errors).toEqual([])
+})
+
+test('restores a paused hero after a hidden resize and applies the new breakpoint motion budget', async ({ page }) => {
+  await prepareParticleMotion(page)
+  await expectAssembledParticles(page)
+  const screen = page.locator('.home-hero-screen')
+  const toggle = page.locator('[data-planet-toggle]')
+  await toggle.click()
+  await expect(screen).toHaveAttribute('data-hero-motion-paused', '')
+  await expect(screen).toHaveAttribute('data-particles-paused', '')
+  await setPageHidden(page, true)
+  const paused = await particleState(page)
+  const previousWidth = await page.locator('.home-hero-particle-canvas').evaluate((canvas: HTMLCanvasElement) => canvas.width)
+  const width = page.viewportSize()!.width >= 1024 ? 960 : 1024
+  await page.setViewportSize({ width, height: 900 })
+  // A different physical canvas width proves the real ResizeObserver rebuilt
+  // its drawing buffer while hidden; a generic delay would miss this failure.
+  await expect.poll(() => page.locator('.home-hero-particle-canvas').evaluate((canvas: HTMLCanvasElement, oldWidth) => {
+    const stage = canvas.closest<HTMLElement>('.home-hero-screen')!
+    return canvas.width !== oldWidth && canvas.width === Math.floor(stage.clientWidth * Math.min(1.75, devicePixelRatio))
+  }, previousWidth)).toBe(true)
+  await page.clock.runFor(160)
+  expect((await particleState(page)).draws, 'A hidden resize must not draw').toBe(paused.draws)
+
+  await setPageHidden(page, false)
+  await expect(screen).toHaveAttribute('data-hero-motion-paused', '')
+  await expect(screen).toHaveAttribute('data-particles-paused', '')
+  await expect(screen).toHaveAttribute('data-particles-active', '')
+  await expect.poll(async () => (await particleState(page)).draws).toBe(paused.draws + 1)
+  const fitted = await particleState(page)
+  expect(fitted.frame!.progress).toBe(1)
+  expect(fitted.frame!.time).toBeGreaterThanOrEqual(paused.frame!.time)
+  expect(fitted.frame!.time - paused.frame!.time).toBeLessThan(0.15)
+  const amplitude = (width >= 1024 ? 4 : 1) * await page.evaluate(() => Math.min(1.75, devicePixelRatio))
+  expect(fitted.frame!.flowAmplitude).toBeCloseTo(amplitude)
+  await expectFrozenParticles(page)
+  await toggle.click()
+  await expectContinuedPhase(page, fitted.frame!.time)
+  expect((await particleState(page)).frame!.flowAmplitude).toBeCloseTo(amplitude)
+  await sampleDrawRate(page, width >= 1024 ? 18 : 8, width >= 1024 ? 31 : 11)
 })
 
 test('keeps sections readable before reveal observers run', async ({ page }) => {

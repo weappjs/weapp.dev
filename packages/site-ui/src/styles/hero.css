@@ -248,6 +248,26 @@
   display: none;
 }
 
+@media (max-width: 1023px) {
+  .home-hero-motion {
+    right: 16px;
+    gap: 0;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+  .home-hero-motion [data-planet-toggle-label] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 .home-hero .home-project-rail {
   padding-block: 3rem 4rem;
   margin-top: 0;

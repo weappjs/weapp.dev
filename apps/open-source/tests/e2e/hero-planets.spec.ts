@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { installMotionClock, setPageHidden } from './hero-motion'
 import { expect, test } from './test'
 
 const constellation = 'hero-planets'
@@ -7,9 +8,7 @@ const activePlanet = '.home-hero-planet[data-planet-active]'
 async function prepareSpotlight(page: Page, path: string) {
   // Freeze time before navigation: the observer must arm the intro delay before
   // the test advances it, independently of resource loading and machine speed.
-  const time = new Date('2026-10-10T00:00:00Z')
-  await page.clock.install({ time })
-  await page.clock.pauseAt(new Date(time.getTime() + 1000))
+  await installMotionClock(page)
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto(path)
   await expect(page.locator(constellation)).toHaveAttribute('data-planets-ready', '')
@@ -32,15 +31,6 @@ async function expectFreshDelay(page: Page, index: number) {
   await expect(page.locator(activePlanet)).toHaveCount(0)
   await page.clock.fastForward(1)
   await expectSpotlight(page, index)
-}
-
-async function setPageHidden(page: Page, hidden: boolean) {
-  // A browser tab's visibility is outside Playwright's deterministic clock;
-  // exercise the native visibilitychange path with its observable document state.
-  await page.evaluate((value) => {
-    Object.defineProperty(document, 'hidden', { configurable: true, value })
-    document.dispatchEvent(new Event('visibilitychange'))
-  }, hidden)
 }
 
 for (const path of ['/', '/en/']) {
@@ -118,7 +108,12 @@ for (const path of ['/', '/en/']) {
     await prepareSpotlight(page, path)
     const planet = page.locator('.home-hero-planet').first()
     await expect(planet).toHaveCSS('width', '44px')
-    await expect(page.locator('[data-planet-toggle]')).toBeHidden()
+    const toggle = page.locator('[data-planet-toggle]')
+    await expect(toggle).toBeVisible()
+    await expect(toggle).toHaveAccessibleName(path === '/en/' ? 'Pause hero animation' : '暂停首屏动画')
+    const target = await toggle.boundingBox()
+    expect(target!.width).toBeGreaterThanOrEqual(44)
+    expect(target!.height).toBeGreaterThanOrEqual(44)
     await expect(planet.locator('xpath=following-sibling::*[1]')).toBeHidden()
     await page.clock.fastForward(60000)
     await expect(page.locator(activePlanet)).toHaveCount(0)
@@ -181,14 +176,15 @@ for (const path of ['/', '/en/']) {
       await expectSpotlight(page, 3)
       await page.mouse.move(0, 0)
       await expectFreshDelay(page, 1)
-      const pauseLabel = path === '/en/' ? 'Pause planet animation' : '暂停星球动画'
-      const resumeLabel = path === '/en/' ? 'Resume planet animation' : '继续星球动画'
+      const pauseLabel = path === '/en/' ? 'Pause hero animation' : '暂停首屏动画'
+      const resumeLabel = path === '/en/' ? 'Resume hero animation' : '继续首屏动画'
       await expect(toggle).toHaveAccessibleName(pauseLabel)
       await expect(toggle.locator('[data-planet-pause-icon]')).toBeVisible()
       await expect(toggle.locator('[data-planet-play-icon]')).toBeHidden()
       await toggle.click()
       await expect(toggle).toHaveAccessibleName(resumeLabel)
       await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+      await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-motion-paused', '')
       await expect(toggle.locator('[data-planet-pause-icon]')).toBeHidden()
       await expect(toggle.locator('[data-planet-play-icon]')).toBeVisible()
       await page.clock.fastForward(30000)
@@ -196,6 +192,7 @@ for (const path of ['/', '/en/']) {
       await toggle.click()
       await expect(toggle).toHaveAccessibleName(pauseLabel)
       await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+      await expect(page.locator('.home-hero-screen')).not.toHaveAttribute('data-hero-motion-paused', '')
       await expect(toggle.locator('[data-planet-pause-icon]')).toBeVisible()
       await expect(toggle.locator('[data-planet-play-icon]')).toBeHidden()
       await expectFreshDelay(page, 2)
@@ -235,7 +232,7 @@ for (const path of ['/', '/en/']) {
 
       await page.setViewportSize({ width: 390, height: 844 })
       await expect(page.locator('[data-planet-caption]')).toBeHidden()
-      await expect(page.locator('[data-planet-toggle]')).toBeHidden()
+      await expect(page.locator('[data-planet-toggle]')).toBeVisible()
       await page.clock.fastForward(60000)
       await expect(page.locator(activePlanet)).toHaveCount(0)
       await page.setViewportSize({ width: 1280, height: 900 })
@@ -247,6 +244,8 @@ for (const path of ['/', '/en/']) {
       page.on('pageerror', error => errors.push(error.message))
       await prepareSpotlight(page, path)
       await expectFreshDelay(page, 0)
+      await page.locator('[data-planet-toggle]').click()
+      await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-motion-paused', '')
       const element = await page.locator(constellation).elementHandle()
       await element!.evaluate(node => node.remove())
       await expect(page.locator('[data-planet-caption]')).toBeHidden()
@@ -259,6 +258,11 @@ for (const path of ['/', '/en/']) {
       }))).toEqual({ ready: false, running: false, active: 0 })
       await element!.evaluate(node => document.querySelector('.home-hero-screen')!.append(node))
       await expect(page.locator(constellation)).toHaveAttribute('data-planets-ready', '')
+      await expect(page.locator('[data-planet-toggle]')).toHaveAttribute('aria-pressed', 'true')
+      await page.clock.fastForward(30000)
+      await expect(page.locator(activePlanet)).toHaveCount(0)
+      await expect(page.locator(constellation)).not.toHaveAttribute('data-planets-orbit-running', '')
+      await page.locator('[data-planet-toggle]').click()
       await expectFreshDelay(page, 0)
       await page.clock.fastForward(4000)
       await expectFreshDelay(page, 1)
