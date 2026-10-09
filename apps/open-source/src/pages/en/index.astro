@@ -1,6 +1,7 @@
 ---
 import { getSiteProfile } from '../../lib/deployment'
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import HeroFont from '@weapp/site-ui/HeroFont.astro'
 import Header from '../../components/Header.astro'
 import HomePage from '../../components/HomePage.astro'
 import Footer from '../../components/Footer.astro'
@@ -25,6 +26,7 @@ const description = 'Open-source JavaScript tools for mini-program development. 
   imageAlt={`${profile.name} toolchain map for mini-app engineering`}
   schemas={[organizationSchema(), websiteSchema(locale), projectListSchema(locale, projects)]}
 >
+  <HeroFont slot="head" />
   <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
   <HomePage locale={locale} projects={projects} homeProjects={homeProjects} metrics={metrics} />
   <Footer locale={locale} projects={projects} currentPath={Astro.url.pathname} />

@@ -148,7 +148,7 @@ for (const path of ['/', '/en/']) {
       })
       await prepareSpotlight(page, path)
       await expect(page.locator('[data-planet-caption]')).toHaveAttribute('aria-hidden', 'true')
-      await expect(page.locator('#home-hero-title > [aria-hidden]')).toHaveCSS('visibility', 'visible')
+      await expect(page.locator('[data-hero-logo]')).toHaveCSS('visibility', 'visible')
       for (let index = 0; index <= 10; index += 1) {
         await expectFreshDelay(page, index % 10)
         expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true)

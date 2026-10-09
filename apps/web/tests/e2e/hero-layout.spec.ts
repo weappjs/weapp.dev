@@ -15,14 +15,24 @@ const viewports = [
   { width: 390, height: 844 },
 ]
 
-for (const viewport of viewports) {
-  test(`planet targets, names and descriptions stay clear at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+const cases = viewports.flatMap(viewport => ['logo', 'wordmark'].map(phase => ({ viewport, phase })))
+
+for (const { viewport, phase } of cases) {
+  test(`planet targets, names and descriptions stay clear around the ${phase} at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
+    await page.emulateMedia({ reducedMotion: phase === 'logo' ? 'reduce' : 'no-preference' })
     for (const path of ['/', '/en/']) {
       await page.goto(path)
       const planets = page.locator('.home-hero-planet')
       await expect(planets).toHaveCount(10)
       await expect(page.locator('hero-planets')).toHaveAttribute('data-planets-ready', '')
+      if (phase === 'wordmark') {
+        await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-particles-ready', '')
+        await expect(page.locator('[data-hero-logo]')).toBeHidden()
+      }
+      else {
+        await expect(page.locator('[data-hero-logo]')).toBeVisible()
+      }
       await planets.first().focus()
       for (let step = 0; step < 72; step += 1) {
         // Exercise the entire path, including positions between automatic stops.
@@ -34,10 +44,11 @@ for (const viewport of viewports) {
           }
         }, step / 72)
         const collisions = await page.evaluate(() => {
-          const word = document.querySelector('#home-hero-title')!.getBoundingClientRect()
-          const screen = document.querySelector('.home-hero-screen')!.getBoundingClientRect()
+          const stage = document.querySelector<HTMLElement>('.home-hero-screen')!
+          const word = document.querySelector(stage.hasAttribute('data-particles-active') ? '#home-hero-title' : '[data-hero-logo]')!.getBoundingClientRect()
+          const screen = stage.getBoundingClientRect()
           const links = [...document.querySelectorAll<HTMLElement>('.home-hero-planet')]
-          const planets = links.map(element => ({ id: element.dataset.analyticsProject, box: element.getBoundingClientRect() }))
+          const planets = links.map(element => ({ id: element.dataset.analyticsProject, element, box: element.getBoundingClientRect() }))
           const names = links.map(element => ({
             id: element.dataset.analyticsProject,
             element: element.nextElementSibling!,
@@ -45,10 +56,39 @@ for (const viewport of viewports) {
           })).filter(name => getComputedStyle(name.element).display !== 'none')
           const overlaps = (a: DOMRect, b: DOMRect) => a.right > b.left + 0.5 && a.left < b.right - 0.5 && a.bottom > b.top + 0.5 && a.top < b.bottom - 0.5
           const outside = (box: DOMRect) => box.left < screen.left - 0.5 || box.right > screen.right + 0.5 || box.top < screen.top - 0.5 || box.bottom > screen.bottom + 0.5
+          const bounds = (box: DOMRect) => [box.left, box.top, box.right, box.bottom].map(value => Number(value.toFixed(2)))
+          const clippedGeometry = (element: Element, box: DOMRect) => {
+            const style = getComputedStyle(element)
+            const constellation = stage.querySelector<HTMLElement>('hero-planets')!
+            const constellationStyle = getComputedStyle(constellation)
+            const offsetParent = element instanceof HTMLElement ? element.offsetParent : null
+            return JSON.stringify({
+              screen: bounds(screen),
+              box: bounds(box),
+              constellation: {
+                rect: bounds(constellation.getBoundingClientRect()),
+                offsetWidth: constellation.offsetWidth,
+                offsetHeight: constellation.offsetHeight,
+                display: constellationStyle.display,
+                width: constellationStyle.width,
+                height: constellationStyle.height,
+              },
+              offsetParent: offsetParent && {
+                tag: offsetParent.tagName,
+                rect: bounds(offsetParent.getBoundingClientRect()),
+              },
+              offsetPath: style.offsetPath,
+              offsetDistance: style.offsetDistance,
+              offsetAnchor: style.offsetAnchor,
+              translate: style.translate,
+              orbitTurn: style.getPropertyValue('--orbit-turn'),
+              scroll: [scrollX, scrollY],
+            })
+          }
           const collisions: string[] = []
           for (const [index, planet] of planets.entries()) {
             if (outside(planet.box)) {
-              collisions.push(`${planet.id}: clipped`)
+              collisions.push(`${planet.id}: clipped ${clippedGeometry(planet.element, planet.box)}`)
             }
             if (overlaps(planet.box, word)) {
               collisions.push(`${planet.id}: wordmark`)
@@ -61,7 +101,7 @@ for (const viewport of viewports) {
           }
           for (const [index, name] of names.entries()) {
             if (outside(name.box)) {
-              collisions.push(`${name.id} name: clipped`)
+              collisions.push(`${name.id} name: clipped ${clippedGeometry(name.element, name.box)}`)
             }
             if (overlaps(name.box, word)) {
               collisions.push(`${name.id} name: wordmark`)
@@ -81,7 +121,7 @@ for (const viewport of viewports) {
           if (!caption.hidden) {
             const box = caption.getBoundingClientRect()
             if (outside(box)) {
-              collisions.push('description: clipped')
+              collisions.push(`description: clipped ${clippedGeometry(caption, box)}`)
             }
             if (overlaps(box, word)) {
               collisions.push('description: wordmark')
@@ -97,7 +137,7 @@ for (const viewport of viewports) {
           }
           return collisions
         })
-        expect(collisions, `${path} ${viewport.width}px at step ${step}`).toEqual([])
+        expect(collisions, `${path} ${phase} ${viewport.width}px at step ${step}`).toEqual([])
       }
     }
   })

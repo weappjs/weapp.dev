@@ -1,0 +1,8 @@
+---
+import syneLicense from '@fontsource/syne/LICENSE?url'
+import syneFont from '@fontsource/syne/files/syne-latin-700-normal.woff2?url'
+---
+
+<link rel="preload" href={syneFont} as="font" type="font/woff2" crossorigin />
+<link rel="license" href={syneLicense} title="Syne font — SIL Open Font License 1.1" />
+<style is:global set:html={`@font-face { font-family: 'Syne'; font-style: normal; font-weight: 700; font-display: swap; src: url('${syneFont}') format('woff2'); }`}></style>

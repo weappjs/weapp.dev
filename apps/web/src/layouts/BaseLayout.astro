@@ -53,6 +53,7 @@ const skipLabel = locale === 'zh-CN' ? '跳到主要内容' : 'Skip to main cont
     {localeSwitch && <link data-locale-switch href={localeSwitch} />}
     <script is:inline set:html={localeRedirectScript()}></script>
     <meta name="viewport" content="width=device-width" />
+    <slot name="head" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <meta name="description" content={description} />

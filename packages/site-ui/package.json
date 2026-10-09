@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
+    "./HeroFont.astro": "./src/components/home/HeroFont.astro",
     "./HomeHero.astro": "./src/components/home/HomeHero.astro",
     "./HomeProjectRow.astro": "./src/components/home/HomeProjectRow.astro",
     "./home-projects": "./src/lib/home-projects.ts",
@@ -21,6 +22,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource/syne": "5.3.0",
     "@lucide/astro": "1.53.0",
     "@weapp/project-catalog": "workspace:*",
     "astro": "7.3.7"

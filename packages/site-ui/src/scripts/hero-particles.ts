@@ -1,5 +1,8 @@
+import { MINIPROGRAM_PATH, MINIPROGRAM_VIEWBOX } from '../lib/hero-brand'
 import { subscribeHeroMotionPaused } from './hero-motion'
+import { loadWordmarkFont } from './hero-particle-font'
 import { createActiveClock, glyphSafeRadii, particleFrameInterval, smoothValue } from './hero-particle-motion'
+import { ellipseWordmarkWidth, fitGlyphLayout, measureGlyphLayout } from './hero-wordmark-layout'
 
 export interface GlyphPoint {
   x: number
@@ -16,12 +19,15 @@ export interface SampleWordmarkOptions {
   width: number
   height: number
   step?: number
+  maxWidth?: number
+  maxWidthForHeight?: (inkHeight: number) => number
+  centerX?: number
+  centerY?: number
 }
 
 export type ParticleRole = 'glyph' | 'field' | 'giant'
 
-export const MINIPROGRAM_VIEWBOX = 1024
-export const MINIPROGRAM_PATH = 'M512 0a512 512 0 1 0 512 512A512 512 0 0 0 512 0z m256.717 460.186a151.962 151.962 0 0 1-87.347 65.74 83.251 83.251 0 0 1-24.474 4.096 29.082 29.082 0 0 1 0-58.163 15.667 15.667 0 0 0 6.451-1.229 91.443 91.443 0 0 0 55.91-40.96 75.264 75.264 0 0 0 11.06-39.628c0-45.978-42.496-83.866-94.31-83.866a105.267 105.267 0 0 0-51.2 13.414 81.92 81.92 0 0 0-43.725 70.452v244.224a138.445 138.445 0 0 1-72.704 120.422 159.642 159.642 0 0 1-79.77 20.48c-84.378 0-153.6-63.488-153.6-142.029a136.192 136.192 0 0 1 19.763-69.837 151.962 151.962 0 0 1 87.347-65.74 85.914 85.914 0 0 1 24.474-4.096 29.082 29.082 0 1 1 0 58.163 15.667 15.667 0 0 0-6.451 1.229 95.949 95.949 0 0 0-55.91 40.96 75.264 75.264 0 0 0-11.06 39.628c0 45.978 42.496 83.866 94.925 83.866a105.267 105.267 0 0 0 51.2-13.414 81.92 81.92 0 0 0 43.622-70.452V390.35a138.752 138.752 0 0 1 72.807-120.525 151.245 151.245 0 0 1 79.155-21.504c84.378 0 153.6 63.488 153.6 142.029a136.192 136.192 0 0 1-19.763 69.837z'
+export { MINIPROGRAM_PATH, MINIPROGRAM_VIEWBOX } from '../lib/hero-brand'
 
 const VERTEX = `#version 300 es
 in vec2 a_start;
@@ -291,6 +297,7 @@ export function pickFieldDust(next: () => number): StarMagnitude {
 
 // Keep sampling's public point shape unchanged; only the renderer needs radii.
 const safeRadius = new WeakMap<GlyphPoint, number>()
+const wordmarkBounds = new WeakMap<GlyphPoint[], { left: number, right: number, top: number, bottom: number }>()
 
 export function sampleWordmark(options: SampleWordmarkOptions): GlyphPoint[] {
   const canvas = document.createElement('canvas')
@@ -303,28 +310,38 @@ export function sampleWordmark(options: SampleWordmarkOptions): GlyphPoint[] {
   }
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.textAlign = 'left'
-  ctx.textBaseline = 'middle'
+  ctx.textBaseline = 'alphabetic'
   const chars = [...options.text]
   const measure = (fontSize: number) => {
     ctx.font = `${options.fontWeight} ${fontSize}px ${options.fontFamily}`
-    const tracking = options.letterSpacingEm * fontSize
-    const widths = chars.map(char => ctx.measureText(char).width)
-    const total = widths.reduce((sum, width) => sum + width, 0) + tracking * Math.max(0, chars.length - 1)
-    return { tracking, widths, total }
+    return measureGlyphLayout(chars.map(char => ctx.measureText(char)), options.letterSpacingEm * fontSize)
   }
-  let layout = measure(options.fontSize)
-  const maxWidth = canvas.width * 0.9
-  if (layout.total > maxWidth) {
-    // Keep both brands centered and leave room for particle motion at the edges.
-    layout = measure(options.fontSize * maxWidth / layout.total)
+  let fontSize = options.fontSize
+  let layout = measure(fontSize)
+  const maxWidth = Math.max(1, Math.min(canvas.width * 0.9, options.maxWidth ?? Infinity))
+  if (options.maxWidthForHeight) {
+    const fit = fitGlyphLayout(fontSize, measure, height => Math.min(maxWidth, options.maxWidthForHeight!(height)))
+    if (!fit) {
+      return []
+    }
+    fontSize = fit.fontSize
+    layout = fit.layout
   }
-  const { tracking, widths, total } = layout
-  const cy = canvas.height / 2
-  let cursor = canvas.width / 2 - total / 2
+  else {
+    for (let attempt = 0; attempt < 3 && layout.width > maxWidth; attempt += 1) {
+      // Standalone sampling retains its width fit and maximum title size.
+      fontSize *= maxWidth / layout.width * 0.999
+      layout = measure(fontSize)
+    }
+  }
+  ctx.font = `${options.fontWeight} ${fontSize}px ${options.fontFamily}`
+  const cx = options.centerX ?? canvas.width / 2
+  const cy = options.centerY ?? canvas.height / 2
+  const originX = cx - (layout.left + layout.right) / 2
+  const baseline = cy + (layout.ascent - layout.descent) / 2
   chars.forEach((char, index) => {
     ctx.fillStyle = char === '.' ? '#00ff00' : '#fff'
-    ctx.fillText(char, cursor, cy)
-    cursor += (widths[index] ?? 0) + tracking
+    ctx.fillText(char, originX + (layout.positions[index] ?? 0), baseline)
   })
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data
   const radii = glyphSafeRadii(pixels, canvas.width, canvas.height)
@@ -343,6 +360,12 @@ export function sampleWordmark(options: SampleWordmarkOptions): GlyphPoint[] {
       points.push(point)
     }
   }
+  wordmarkBounds.set(points, {
+    left: cx - layout.width / 2,
+    right: cx + layout.width / 2,
+    top: cy - layout.height / 2,
+    bottom: cy + layout.height / 2,
+  })
   return points
 }
 
@@ -353,6 +376,8 @@ export interface SamplePathOptions {
   height: number
   size: number
   step?: number
+  centerX?: number
+  centerY?: number
 }
 
 export function samplePathSilhouette(options: SamplePathOptions): GlyphPoint[] {
@@ -365,7 +390,7 @@ export function samplePathSilhouette(options: SamplePathOptions): GlyphPoint[] {
     return []
   }
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.translate(canvas.width / 2, canvas.height / 2)
+  ctx.translate(options.centerX ?? canvas.width / 2, options.centerY ?? canvas.height / 2)
   const scale = options.size / options.viewBox
   ctx.scale(scale, scale)
   ctx.translate(-options.viewBox / 2, -options.viewBox / 2)
@@ -439,9 +464,10 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string) {
 
 interface Engine {
   stop: () => number
+  readonly hasDrawn: boolean
 }
 
-function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTMLElement, wordmark: string, elapsed = 0): Engine | null {
+function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTMLElement, wordmark: string, elapsed = 0, previouslyDrawn = false): Engine | null {
   const gl = canvas.getContext('webgl2', {
     alpha: true,
     antialias: false,
@@ -536,6 +562,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   let stopped = false
   let contextLost = false
   let needsStaticDraw = true
+  let hasValidFrame = previouslyDrawn
   let playing = false
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
   let reduced = reducedMotion.matches
@@ -566,7 +593,22 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     dpr = Math.min(dprCap, window.devicePixelRatio || 1)
     desktop = cssWidth >= 1024
     const titleStyle = getComputedStyle(title)
-    const key = `${cssWidth}:${cssHeight}:${dpr}:${titleStyle.fontSize}:${titleStyle.fontFamily}:${titleStyle.fontWeight}`
+    const canvasBox = canvas.getBoundingClientRect()
+    const logo = screen.querySelector<HTMLElement>('.home-hero-logo')
+    if (!logo) {
+      return false
+    }
+    const logoBox = logo.getBoundingClientRect()
+    const centerX = (logoBox.left + logoBox.width / 2 - canvasBox.left) * dpr
+    const centerY = (logoBox.top + logoBox.height / 2 - canvasBox.top) * dpr
+    // The rendered orbit resolves CSS min()/calc() values into actual pixels.
+    const orbitElement = screen.querySelector<HTMLElement>('.home-hero-orbit')
+    const orbitBox = orbitElement?.getBoundingClientRect()
+    const orbitRx = (orbitBox?.width ?? cssWidth) / 2
+    const orbitRy = (orbitBox?.height ?? cssHeight) / 2
+    const planetSize = Math.max(0, ...[...screen.querySelectorAll<HTMLElement>('.home-hero-planet')]
+      .map(planet => Number.parseFloat(getComputedStyle(planet).width) || 0))
+    const key = `${cssWidth}:${cssHeight}:${dpr}:${titleStyle.fontSize}:${titleStyle.fontFamily}:${titleStyle.fontWeight}:${titleStyle.letterSpacing}:${centerX}:${centerY}:${logoBox.width}:${orbitRx}:${orbitRy}:${planetSize}`
     if (key === layoutKey) {
       return true
     }
@@ -575,40 +617,46 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     gl.viewport(0, 0, canvas.width, canvas.height)
     const cssFontSize = Number.parseFloat(titleStyle.fontSize) || Math.min(cssWidth * 0.17, 208)
     const fontSize = cssFontSize * dpr
+    const letterSpacing = Number.parseFloat(titleStyle.letterSpacing)
     const mobile = cssWidth < 720
     const glyphStep = Math.max(3, Math.round(3 * dpr))
     const glyphBudget = mobile ? 900 : 2400
     const fieldBudget = mobile ? 160 : 400
-    const word = downsamplePoints(sampleWordmark({
+    const sampledWord = sampleWordmark({
       text: wordmark,
-      fontFamily: titleStyle.fontFamily || 'Geist Variable, sans-serif',
-      fontWeight: titleStyle.fontWeight || '740',
+      fontFamily: titleStyle.fontFamily || 'Syne, sans-serif',
+      fontWeight: titleStyle.fontWeight || '700',
       fontSize,
-      letterSpacingEm: 0.06,
+      letterSpacingEm: Number.isFinite(letterSpacing) ? letterSpacing / cssFontSize : -0.02,
       width: canvas.width,
       height: canvas.height,
+      maxWidthForHeight: height => ellipseWordmarkWidth(height, orbitRx * dpr, orbitRy * dpr, planetSize / 2 * dpr, 21 * dpr),
+      centerX,
+      centerY,
       step: glyphStep,
-    }), glyphBudget)
+    })
+    const word = downsamplePoints(sampledWord, glyphBudget)
     const mark = downsamplePoints(samplePathSilhouette({
       d: MINIPROGRAM_PATH,
       viewBox: MINIPROGRAM_VIEWBOX,
       width: canvas.width,
       height: canvas.height,
-      size: Math.min(canvas.width, canvas.height) * (mobile ? 0.42 : 0.46),
+      size: Math.min(logoBox.width, logoBox.height) * dpr,
+      centerX,
+      centerY,
       step: glyphStep,
     }), glyphBudget)
-    const cx = canvas.width / 2
-    const cy = canvas.height / 2
+    const cx = centerX
+    const cy = centerY
     const paired = pairClouds(mark, word, cx, cy)
     if (paired.length < 40) {
       return false
     }
-    glyphBounds = {
-      left: Math.min(...word.map(point => point.x)) / dpr,
-      top: Math.min(...word.map(point => point.y)) / dpr,
-      right: Math.max(...word.map(point => point.x)) / dpr,
-      bottom: Math.max(...word.map(point => point.y)) / dpr,
-    }
+    const ink = wordmarkBounds.get(sampledWord)!
+    glyphBounds = { left: ink.left / dpr, top: ink.top / dpr, right: ink.right / dpr, bottom: ink.bottom / dpr }
+    title.style.width = `${glyphBounds.right - glyphBounds.left}px`
+    title.style.height = `${glyphBounds.bottom - glyphBounds.top}px`
+    screen.style.setProperty('--hero-wordmark-height', `${glyphBounds.bottom - glyphBounds.top}px`)
     const rand = mulberry32(0x5EED ^ Math.floor(cssWidth * 13 + cssHeight))
     const maxDist = Math.hypot(canvas.width, canvas.height) * 0.28
     const total = paired.length + fieldBudget
@@ -751,13 +799,14 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     gl.uniform1f(loc.flowAmplitude, (desktop ? 4 : 1) * dpr)
     gl.uniform3fv(loc.trails, trailData)
     gl.drawArrays(gl.POINTS, 0, count)
-    // A failed first frame must never replace the readable HTML title.
+    // A failed first frame must never replace the static inline Logo.
     if (!needsStaticDraw) {
       return
     }
     if (!gl.isContextLost() && gl.getError() === gl.NO_ERROR) {
       screen.dataset.particlesActive = ''
       needsStaticDraw = false
+      hasValidFrame = true
     }
     else {
       contextLost = true
@@ -803,7 +852,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     clock.setRunning(running, performance.now())
     screen.toggleAttribute('data-particles-paused', !running)
     let redrawn = false
-    if (needsStaticDraw && !stopped && !contextLost && !reduced && visible && !pageHidden) {
+    if (needsStaticDraw && !stopped && !contextLost && !reduced && visible && !pageHidden && (!paused || hasValidFrame)) {
       draw(clock.current())
       lastDraw = performance.now()
       redrawn = true
@@ -906,7 +955,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     }
     needsStaticDraw = true
     delete screen.dataset.particlesActive
-    if (!reduced && visible && !pageHidden) {
+    if (!reduced && visible && !pageHidden && (!paused || hasValidFrame)) {
       // Resizing a paused hero is the one permitted static redraw.
       draw(clock.current())
       lastDraw = performance.now()
@@ -931,6 +980,9 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   intersection.observe(screen)
 
   return {
+    get hasDrawn() {
+      return hasValidFrame
+    },
     stop() {
       stopped = true
       syncPlayback()
@@ -945,6 +997,9 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       delete screen.dataset.particlesReady
       delete screen.dataset.particlesActive
       delete screen.dataset.particlesPaused
+      title.style.removeProperty('width')
+      title.style.removeProperty('height')
+      screen.style.removeProperty('--hero-wordmark-height')
       gl.clear(gl.COLOR_BUFFER_BIT)
       releaseGL()
       // Keep the canvas context reusable after the custom element reconnects.
@@ -976,6 +1031,8 @@ export function defineHeroParticles() {
   class HeroParticles extends HTMLElement {
     #stop: (() => void) | undefined
     #elapsed = 0
+    #hasDrawn = false
+    #generation = 0
     connectedCallback() {
       if (this.#stop) {
         return
@@ -993,19 +1050,57 @@ export function defineHeroParticles() {
         this.#stop = unbind
         return
       }
-      const engine = createEngine(canvas, screen, title, wordmark, this.#elapsed)
-      if (!engine) {
-        delete screen.dataset.particlesActive
-        this.#stop = unbind
-        return
+      const generation = ++this.#generation
+      const abort = new AbortController()
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+      let engine: Engine | null = null
+      let fontLoading = false
+      let fontReady = false
+      let fontFailed = false
+      const prepare = async () => {
+        if (engine || fontLoading || fontFailed || reducedMotion.matches) {
+          return
+        }
+        if (!fontReady) {
+          fontLoading = true
+          const loaded = await loadWordmarkFont(document.fonts, wordmark, abort.signal)
+          if (generation !== this.#generation || !this.isConnected || abort.signal.aborted) {
+            return
+          }
+          fontLoading = false
+          if (!loaded) {
+            fontFailed = true
+            return
+          }
+          fontReady = true
+          if (reducedMotion.matches) {
+            return
+          }
+        }
+        engine = createEngine(canvas, screen, title, wordmark, this.#elapsed, this.#hasDrawn)
+        if (!engine) {
+          fontFailed = true
+          delete screen.dataset.particlesActive
+        }
       }
+      const onReducedMotion = () => {
+        void prepare()
+      }
+      reducedMotion.addEventListener('change', onReducedMotion)
       this.#stop = () => {
-        this.#elapsed = engine.stop()
+        abort.abort()
+        reducedMotion.removeEventListener('change', onReducedMotion)
+        if (engine) {
+          this.#hasDrawn = engine.hasDrawn
+          this.#elapsed = engine.stop()
+        }
         unbind()
       }
+      void prepare()
     }
 
     disconnectedCallback() {
+      this.#generation += 1
       this.#stop?.()
       this.#stop = undefined
     }

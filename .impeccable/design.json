@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-01T16:32:28.786Z",
+  "generatedAt": "2026-10-09T18:40:35.858Z",
   "title": "Design System: weapp.dev and weapp.js.org",
   "extensions": {
     "colorMeta": {
@@ -398,7 +398,7 @@
     "typographyMeta": {
       "display": {
         "displayName": "Display",
-        "purpose": "Oversized particle-stage wordmark with responsive overrides."
+        "purpose": "Homepage-only Syne 700 particle wordmark, with -0.02em tracking and actual-ink fitting; static mini-program Logo before successful startup."
       },
       "page": {
         "displayName": "Page",
@@ -555,7 +555,7 @@
     "overview": "The approved direction is an Apple product website-style presentation of real mini-program tools: large type, generous chapters, neutral surfaces, and clear green actions. The shared language supports two independent identities, weapp.dev and weapp.js.org. It borrows presentation principles, not Apple logos, proprietary fonts, product imagery, or private assets.\n\nWhite and light gray alternate with black and dark gray. The original particle wordmark and project planets remain the recognizable opening; real demos, project assets, source links, and release data carry the product explanation. Both applications default to dark when no valid saved theme exists, then honor the saved light or dark choice in `weapp-theme`. This is not system-theme selection. Core content is visible before JavaScript or entrance observers run.",
     "keyCharacteristics": [
       "Neutral light and dark surfaces with green primary actions",
-      "Geist display and body typography with Chinese system fallbacks",
+      "Syne 700 for the homepage particle wordmark; Geist for reading typography with Chinese system fallbacks",
       "Large headlines, spacious chapters, wide demos, and quiet information rows",
       "Pill actions and circular icon controls; rounded media and floating panels",
       "Independent application identities sharing neutral UI primitives",

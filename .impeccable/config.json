@@ -1,3 +1,15 @@
 {
-  "buildPath": "comp"
+  "buildPath": "comp",
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "syne",
+        "createdAt": "2026-10-09T18:38:35.952Z",
+        "reason": "User confirmed Syne 700 for the homepage particle wordmark; reading typography remains Geist."
+      }
+    ]
+  }
 }

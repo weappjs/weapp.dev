@@ -3,6 +3,7 @@ import { ArrowUpRight, Pause, Play } from '@lucide/astro'
 import type { Locale } from '@weapp/project-catalog/types'
 import type { HomeProject } from '../../lib/home-projects'
 import { shell } from '../../styles/classes'
+import { MINIPROGRAM_PATH, MINIPROGRAM_VIEWBOX } from '../../lib/hero-brand'
 import HeroParticles from './HeroParticles.astro'
 
 interface RailProject {
@@ -35,42 +36,47 @@ const { locale, railGroups, constellation, wordmark, overviewLabel, railLabel } 
       document.documentElement.setAttribute('data-hero-cosmos', '')
     </script>
     <HeroParticles wordmark={wordmark} />
+    <svg class="home-hero-logo" data-hero-logo viewBox={`0 0 ${MINIPROGRAM_VIEWBOX} ${MINIPROGRAM_VIEWBOX}`} fill="currentColor" fill-rule="evenodd" aria-hidden="true">
+      <path d={MINIPROGRAM_PATH} />
+    </svg>
     <hero-planets class="home-hero-constellation">
       <span class="home-hero-gridlines" aria-hidden="true"></span>
       <span class="home-hero-orbit" aria-hidden="true"></span>
-      {constellation.map((mark, index) => {
-        const orbitP = ((index + 0.5) / constellation.length).toFixed(4)
-        const orbitStyle = `--orbit-t: 80s; --orbit-p: ${orbitP}; --planet-accent: ${mark.accent};`
-        return (
-          <Fragment>
-            <a
-              class={`home-hero-tile home-hero-planet home-hero-planet--${mark.id}`}
-              href={mark.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={locale === 'zh-CN' ? `打开 ${mark.name} 官方站点` : `Open ${mark.name} official site`}
-              aria-describedby={mark.tagline ? `home-planet-purpose-${mark.id}` : undefined}
-              data-planet-name={mark.name}
-              data-planet-tagline={mark.tagline}
-              data-analytics-event="click_outbound"
-              data-analytics-target="project_home"
-              data-analytics-project={mark.id}
-              style={orbitStyle}
-            >
-              <span class="home-hero-planet-visual" aria-hidden="true">
-                <span class="home-hero-planet-body"></span>
-                <span class="home-hero-planet-face"></span>
-                <img src={mark.logo} width="48" height="48" alt="" decoding="async" />
-              </span>
-            </a>
-            <span class="home-hero-planet-name" style={orbitStyle} aria-hidden="true">{mark.name}</span>
-            {mark.tagline && <span class="sr-only" id={`home-planet-purpose-${mark.id}`}>{mark.tagline}</span>}
-          </Fragment>
-        )
-      })}
+      <div class="home-hero-orbit-track">
+        {constellation.map((mark, index) => {
+          const orbitP = ((index + 0.5) / constellation.length).toFixed(4)
+          const orbitStyle = `--orbit-t: 80s; --orbit-p: ${orbitP}; --planet-accent: ${mark.accent};`
+          return (
+            <Fragment>
+              <a
+                class={`home-hero-tile home-hero-planet home-hero-planet--${mark.id}`}
+                href={mark.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={locale === 'zh-CN' ? `打开 ${mark.name} 官方站点` : `Open ${mark.name} official site`}
+                aria-describedby={mark.tagline ? `home-planet-purpose-${mark.id}` : undefined}
+                data-planet-name={mark.name}
+                data-planet-tagline={mark.tagline}
+                data-analytics-event="click_outbound"
+                data-analytics-target="project_home"
+                data-analytics-project={mark.id}
+                style={orbitStyle}
+              >
+                <span class="home-hero-planet-visual" aria-hidden="true">
+                  <span class="home-hero-planet-body"></span>
+                  <span class="home-hero-planet-face"></span>
+                  <img src={mark.logo} width="48" height="48" alt="" decoding="async" />
+                </span>
+              </a>
+              <span class="home-hero-planet-name" style={orbitStyle} aria-hidden="true">{mark.name}</span>
+              {mark.tagline && <span class="sr-only" id={`home-planet-purpose-${mark.id}`}>{mark.tagline}</span>}
+            </Fragment>
+          )
+        })}
+      </div>
     </hero-planets>
     <h1 id="home-hero-title" class="home-hero-title" aria-label={wordmark}>
-      <span aria-hidden="true">{[...wordmark].map((char, index) => <span class={char === '.' ? 'home-hero-letter home-hero-dot' : 'home-hero-letter'} style={`--i:${index}`}>{char}</span>)}</span>
+      <span class="sr-only">{wordmark}</span>
     </h1>
     <div class="home-hero-spotlight" data-planet-caption aria-hidden="true" hidden>
       <strong data-planet-caption-name></strong>

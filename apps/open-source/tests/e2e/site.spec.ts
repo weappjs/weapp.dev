@@ -411,14 +411,31 @@ test('publishes only the official project destinations', async ({ page }) => {
 
 test('keeps core content and links available without JavaScript', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false })
-  const page = await context.newPage()
-  for (const locale of ['zh-CN', 'en'] as const) {
-    await page.goto(locale === 'en' ? '/en/' : '/')
-    await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: siteCopy[locale].projects.documentation }).first()).toBeVisible()
-    await expectHomeVisuals(page)
+  try {
+    const page = await context.newPage()
+    for (const locale of ['zh-CN', 'en'] as const) {
+      await page.goto(locale === 'en' ? '/en/' : '/')
+      const heading = page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })
+      await expect(heading).toBeAttached()
+      await expect(heading).toHaveText(heroWordmark)
+      const logo = page.locator('[data-hero-logo]')
+      await expect(logo).toBeVisible()
+      await expect(logo).toHaveCSS('visibility', 'visible')
+      expect(await logo.evaluate(element => element.tagName.toLowerCase())).toBe('svg')
+      const accessibleText = page.locator('#home-hero-title > .sr-only')
+      await expect(accessibleText).toHaveText(heroWordmark)
+      expect(await accessibleText.evaluate((element) => {
+        const style = getComputedStyle(element)
+        return style.clipPath !== 'none' || style.getPropertyValue('clip') !== 'auto'
+      }), 'The accessible brand name must not paint central text over the inline Logo').toBe(true)
+      await expect(page.locator('.home-hero-screen')).not.toHaveAttribute('data-particles-active', '')
+      await expect(page.getByRole('link', { name: siteCopy[locale].projects.documentation }).first()).toBeVisible()
+      await expectHomeVisuals(page)
+    }
   }
-  await context.close()
+  finally {
+    await context.close()
+  }
 })
 
 test('loads both analytics providers by default without a consent banner', async ({ page }) => {

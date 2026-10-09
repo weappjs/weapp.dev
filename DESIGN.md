@@ -30,11 +30,11 @@ colors:
   line-dark: "#38383c"
 typography:
   display:
-    fontFamily: "Geist Variable, PingFang SC, Microsoft YaHei, system-ui, sans-serif"
+    fontFamily: "Syne, sans-serif"
     fontSize: "clamp(4.25rem, 14vw, 11rem)"
-    fontWeight: 740
+    fontWeight: 700
     lineHeight: 0.9
-    letterSpacing: "-0.04em"
+    letterSpacing: "-0.02em"
   page:
     fontFamily: "Geist Variable, PingFang SC, Microsoft YaHei, system-ui, sans-serif"
     fontSize: "clamp(2.5rem, 6vw, 5rem)"
@@ -193,7 +193,7 @@ The canvas is neutral, with one green action family and quiet tonal separation.
 
 ## Typography
 
-**Display Font:** Geist Variable, with PingFang SC, Microsoft YaHei, system-ui, and sans-serif fallbacks.
+**Display Font:** Geist Variable, with PingFang SC, Microsoft YaHei, system-ui, and sans-serif fallbacks. The homepage particle wordmark alone uses self-hosted Syne 700 with -0.02em tracking; all reading typography retains Geist.
 **Body Font:** The same Geist stack.
 **Label/Mono Font:** Labels use Geist Sans; code and technical evidence use Geist Mono Variable with ui-monospace and monospace fallbacks.
 
@@ -259,7 +259,9 @@ At desktop widths of at least 1024px, planet visuals are 80px, reducing to 72px 
 
 The independent shared planet controller starts a desktop spotlight 3 seconds after the hero becomes visible, holds it for 4 seconds, then waits another 3 seconds before advancing through the existing ten-project order. Only one planet is selected at a time, and its spotlight pauses the entire orbit while particle flow continues. Keyboard focus takes priority over hover, followed by automatic selection. Ending manual interaction restarts the 3-second delay without changing the fair automatic order. The lower-right pause/resume button controls all hero animation, with a minimum 44px target, a localized action label ("Pause hero animation" / "Resume hero animation"), a pressed state, and a matching pause/play icon. On mobile it is a 44px icon control with the full accessible action name. User pause freezes particle phase and orbit, holds the current automatic selection, and survives component reconnection; resume clears automatic selection and restarts its delay. Automatic selection never moves focus or announces caption changes.
 
-Planet interaction and timing work independently of WebGL initialization and add no animation dependency. Offscreen, background, reduced-motion, and non-desktop states cancel automatic timing and clear automatic selection; eligible re-entry begins a fresh 3-second delay without catching up. Offscreen, background, reduced-motion, and user pause also stop particle scheduling and its active clock. Resume continues the same particle phase without replaying assembly or counting hidden wall-clock time; a paused resize may draw one static frame to fit the stage. Disconnect removes timers, observers, listeners, and GL resources while retaining the elapsed phase for reconnection. Live reduced-motion changes clear the canvas and immediately reveal the static HTML wordmark, retaining manual name, purpose, and selection feedback without scale or orbit animation; the animation control is hidden. Below 1024px, planets retain their existing 44px phone / 52px tablet sizes with no automatic spotlight or caption. WebGL failure exposes the static wordmark and leaves planet links and their independent controls usable. Without JavaScript, the native links and desktop names remain available on a static orbit with the animation control hidden.
+The first HTML frame displays the inline mini-program Logo, never a visible HTML brand title. The brand H1 remains accessible. Both Logo representations share one SVG path and measured geometry. The Syne Latin 700 WOFF2 from @fontsource/syne 5.3.0 is preloaded only on homepage routes and ships with its OFL license. Wait up to 3 seconds for an actual loaded Syne FontFace before sampling; failure or timeout retains the Logo for that mount, and late font completion never changes the picture. Async startup is canceled on disconnect, does not advance active time, and reads current pause and reduced-motion state. DOM and Canvas share -0.02em tracking; fit and center actual ink bounds, including dots and descenders, within the orbit with at least 16px clearance, accounting for ellipse narrowing at the glyph top and bottom. The absolute visual stage has an explicit height. A separate track owns the desktop ellipse dimensions and defines the motion-path center using its rx/ry lengths, avoiding browser caching of a zero percentage reference box during first layout, even without WebGL. Desktop reserves a permanent 64px bottom strip and centers the brand/orbit in the remaining area. Logo diameter is capped against the orbit on short screens, with extra room for the selection outline. While the Logo is visible or assembly is incomplete, project captions use that bottom strip and leave room for the animation control. Once assembled, captions sit below the measured wordmark; screens at most 700px tall retain the bottom strip to keep the orbit clear.
+
+Planet interaction and timing work independently of WebGL initialization and add no animation dependency. Offscreen, background, reduced-motion, and non-desktop states cancel automatic timing and clear automatic selection; eligible re-entry begins a fresh 3-second delay without catching up. Offscreen, background, reduced-motion, and user pause also stop particle scheduling and its active clock. Resume continues the same particle phase without replaying assembly or counting hidden wall-clock time; a paused resize may draw one static frame to fit the stage. Disconnect removes timers, observers, listeners, and GL resources while retaining the elapsed phase for reconnection. Live reduced-motion changes clear the canvas and immediately reveal the static inline mini-program Logo, retaining manual name, purpose, and selection feedback without scale or orbit animation; the animation control is hidden. Below 1024px, planets retain their existing 44px phone / 52px tablet sizes with no automatic spotlight or caption. WebGL failure exposes the static mini-program Logo and leaves planet links and their independent controls usable. Without JavaScript, the native links and desktop names remain available on a static orbit with the animation control hidden.
 
 ### Project proof and interactive demos
 

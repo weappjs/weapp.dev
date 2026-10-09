@@ -1,6 +1,7 @@
 ---
 import { getSiteProfile } from '../lib/deployment'
 import BaseLayout from '../layouts/BaseLayout.astro'
+import HeroFont from '@weapp/site-ui/HeroFont.astro'
 import Header from '../components/Header.astro'
 import HomePage from '../components/HomePage.astro'
 import Footer from '../components/Footer.astro'
@@ -25,6 +26,7 @@ const description = '面向真实仓库的小程序迁移、企业培训与模�
   imageAlt={`${profile.name} 小程序工程交付服务`}
   schemas={[organizationSchema(), websiteSchema(locale), projectListSchema(locale, projects)]}
 >
+  <HeroFont slot="head" />
   <Header locale={locale} projects={projects} currentPath={Astro.url.pathname} />
   <HomePage locale={locale} projects={projects} metrics={metrics} homeProjects={homeProjects} />
   <Footer locale={locale} projects={projects} currentPath={Astro.url.pathname} />

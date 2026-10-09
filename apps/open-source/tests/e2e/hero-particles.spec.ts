@@ -12,11 +12,21 @@ interface WordmarkSample {
   right: number
   top: number
   bottom: number
+  font: string
+  syneLoaded: boolean
+}
+
+interface HeroFontLoad {
+  font: string
+  text: string
+  resolved: boolean
+  rejected: boolean
 }
 
 declare global {
   interface Window {
     __heroWordmarkSamples: WordmarkSample[]
+    __heroFontLoads: HeroFontLoad[]
   }
 }
 
@@ -48,6 +58,9 @@ async function captureWordmarkSamples(page: Page) {
           right: -Infinity,
           top: Infinity,
           bottom: -Infinity,
+          font: this.font,
+          syneLoaded: [...document.fonts].some(face => /Syne/.test(face.family) && face.status === 'loaded')
+            && document.fonts.check(this.font, text),
         }
         samples.set(this.canvas, sample)
         window.__heroWordmarkSamples.push(sample)
@@ -72,10 +85,14 @@ async function expectActiveWordmark(page: Page) {
   await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-particles-active', '')
   await expect(page.locator('[data-hero-particles]')).toHaveAttribute('data-wordmark', heroWordmark)
   await expect(page.locator('#home-hero-title')).toHaveText(heroWordmark)
+  await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toHaveCount(1)
+  await expect(page.locator('[data-hero-logo]')).toHaveCSS('visibility', 'hidden')
   const samples = await page.evaluate(() => window.__heroWordmarkSamples)
   expect(samples.length, 'The active renderer must actually sample a canvas wordmark').toBeGreaterThan(0)
   for (const sample of samples) {
     expect(sample.text, 'Canvas text must match the deployment brand').toBe(heroWordmark)
+    expect(sample.font, 'The glyph sampler must use the real Syne face at weight 700').toMatch(/^(?:700|bold) .*Syne/)
+    expect(sample.syneLoaded, 'Sampling must wait for the actual Syne FontFace to load').toBe(true)
     expect(sample.left, `${sample.width}px canvas: left ink edge`).toBeGreaterThanOrEqual(sample.width * 0.05 - 1)
     expect(sample.right, `${sample.width}px canvas: right ink edge`).toBeLessThanOrEqual(sample.width * 0.95 + 1)
     expect(sample.top).toBeGreaterThanOrEqual(0)
@@ -83,7 +100,7 @@ async function expectActiveWordmark(page: Page) {
   }
 }
 
-async function expectStaticWordmark(page: Page, scriptsEnabled = true) {
+async function expectStaticLogo(page: Page, scriptsEnabled = true) {
   if (scriptsEnabled) {
     // Wait for component initialization so the assertion cannot pass on the
     // initial static title before a broken renderer hides it.
@@ -91,8 +108,58 @@ async function expectStaticWordmark(page: Page, scriptsEnabled = true) {
   }
   await expect(page.locator('.home-hero-screen')).not.toHaveAttribute('data-particles-active', '')
   await expect(page.locator('#home-hero-title')).toHaveText(heroWordmark)
-  await expect(page.locator('#home-hero-title > [aria-hidden]')).toBeVisible()
-  await expect(page.locator('#home-hero-title > [aria-hidden]')).toHaveCSS('visibility', 'visible')
+  await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toHaveCount(1)
+  const logo = page.locator('[data-hero-logo]')
+  await expect(logo).toBeVisible()
+  await expect(logo).toHaveCSS('visibility', 'visible')
+  expect(await logo.evaluate(node => node.tagName.toLowerCase())).toBe('svg')
+  await expect(logo.locator('path')).not.toHaveCount(0)
+  await expect(page.locator('#home-hero-title > .sr-only')).toHaveText(heroWordmark)
+  expect(await page.locator('#home-hero-title > .sr-only').evaluate((node) => {
+    const style = getComputedStyle(node)
+    return style.clipPath !== 'none' || style.getPropertyValue('clip') !== 'auto'
+  }), 'The accessible brand heading must not paint a text opening').toBe(true)
+  await expect(page.locator('.home-hero-letter')).toHaveCount(0)
+}
+
+async function captureFontLoading(page: Page) {
+  await page.addInitScript(() => {
+    window.__heroFontLoads = []
+    const load = FontFaceSet.prototype.load
+    FontFaceSet.prototype.load = function (font, text = ' ') {
+      if (!font.includes('Syne')) {
+        return load.call(this, font, text)
+      }
+      const record: HeroFontLoad = { font, text, resolved: false, rejected: false }
+      window.__heroFontLoads.push(record)
+      return load.call(this, font, text).then((faces) => {
+        record.resolved = true
+        return faces
+      }, (error) => {
+        record.rejected = true
+        throw error
+      })
+    }
+  })
+}
+
+async function holdSyneResponse(page: Page) {
+  let release!: () => void
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let requested!: () => void
+  const started = new Promise<void>((resolve) => {
+    requested = resolve
+  })
+  await page.route(/\/syne-latin-700-normal[^/]*\.woff2(?:\?.*)?$/, async (route) => {
+    const response = await route.fetch()
+    expect(response.ok(), 'The delayed font fixture must use a real successful WOFF2 response').toBe(true)
+    requested()
+    await held
+    await route.fulfill({ response })
+  })
+  return { started, release }
 }
 
 async function prepareParticleMotion(page: Page, isolateGlyphs = false) {
@@ -102,6 +169,11 @@ async function prepareParticleMotion(page: Page, isolateGlyphs = false) {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto(resizeRoute)
   await expect.poll(() => page.evaluate(() => Boolean(customElements.get('hero-particles')))).toBe(true)
+  // The real font response is asynchronous even with a frozen browser clock.
+  // Start advancing entrance time only after sampling the loaded Syne face.
+  await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.some(sample => sample.syneLoaded))).toBe(true)
+  await page.clock.runFor(160)
+  await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-particles-active', '')
 }
 
 async function expectAssembledParticles(page: Page) {
@@ -176,23 +248,23 @@ test('fits the particle wordmark after desktop and mobile viewport changes', asy
 test.describe('static particle fallback without JavaScript', () => {
   test.use({ javaScriptEnabled: false })
 
-  test('keeps the deployment wordmark visible in both languages', async ({ page }) => {
+  test('keeps the inline Logo visible and the brand heading accessible in both languages', async ({ page }) => {
     for (const route of homeRoutes) {
       await page.goto(route)
-      await expectStaticWordmark(page, false)
+      await expectStaticLogo(page, false)
     }
   })
 })
 
-test('keeps the static wordmark visible with reduced motion', async ({ page }) => {
+test('keeps the inline Logo visible with reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   for (const route of homeRoutes) {
     await page.goto(route)
-    await expectStaticWordmark(page)
+    await expectStaticLogo(page)
   }
 })
 
-test('keeps the static wordmark visible when WebGL is unavailable', async ({ page }) => {
+test('keeps the inline Logo visible when WebGL is unavailable', async ({ page }) => {
   await page.addInitScript(() => {
     const getContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, contextId, options) {
@@ -204,12 +276,12 @@ test('keeps the static wordmark visible when WebGL is unavailable', async ({ pag
   })
   for (const route of homeRoutes) {
     await page.goto(route)
-    await expectStaticWordmark(page)
+    await expectStaticLogo(page)
   }
 })
 
 for (const value of ['missing', 'blank'] as const) {
-  test(`keeps the static wordmark visible with a ${value} particle brand`, async ({ page }) => {
+  test(`keeps the inline Logo visible with a ${value} particle brand`, async ({ page }) => {
     await page.route('**/*', async (route) => {
       if (route.request().resourceType() !== 'document') {
         await route.continue()
@@ -223,10 +295,284 @@ for (const value of ['missing', 'blank'] as const) {
     })
     for (const route of homeRoutes) {
       await page.goto(route)
-      await expectStaticWordmark(page)
+      await expectStaticLogo(page)
     }
   })
 }
+
+test('paints only the inline Logo while the application scripts are delayed', async ({ page }) => {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  let release!: () => void
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route(/\/_astro\/[^/]+\.js(?:\?.*)?$/, async (route) => {
+    await held
+    await route.continue()
+  })
+  try {
+    await page.goto(resizeRoute, { waitUntil: 'commit' })
+    await expectStaticLogo(page, false)
+    expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
+    await page.clock.runFor(1000)
+    await expectStaticLogo(page, false)
+    release()
+    await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
+    await page.clock.runFor(160)
+    await expectActiveWordmark(page)
+  }
+  finally {
+    release()
+  }
+})
+
+test('waits for the real Syne font before sampling without counting the font wait as entrance time', async ({ page }) => {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  await captureFontLoading(page)
+  await captureParticleFrames(page)
+  const font = await holdSyneResponse(page)
+  try {
+    await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
+    await font.started
+    await expectStaticLogo(page)
+    await expect.poll(() => page.evaluate(() => window.__heroFontLoads.length)).toBeGreaterThan(0)
+    await page.clock.runFor(2000)
+    expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
+    expect((await particleState(page)).draws).toBe(0)
+    await expectStaticLogo(page)
+    font.release()
+    await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.resolved))).toBe(true)
+    await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
+    await page.clock.runFor(160)
+    await expectActiveWordmark(page)
+    const frame = (await particleState(page)).frame!
+    expect(frame.time, 'Font waiting must not consume the opening hold').toBeLessThan(0.2)
+    expect(frame.progress).toBe(0)
+    await expectAssembledParticles(page)
+  }
+  finally {
+    font.release()
+  }
+})
+
+test('keeps the Logo after a font failure', async ({ page }) => {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  await captureFontLoading(page)
+  await page.route(/\/syne-latin-700-normal[^/]*\.woff2(?:\?.*)?$/, route => route.abort('failed'))
+  await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
+  await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.rejected))).toBe(true)
+  await page.clock.runFor(3500)
+  await expectStaticLogo(page)
+  expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
+})
+
+test('ignores a real font response arriving after the three-second deadline', async ({ page }) => {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  await captureFontLoading(page)
+  await captureParticleFrames(page)
+  const font = await holdSyneResponse(page)
+  try {
+    await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
+    await font.started
+    await expect.poll(() => page.evaluate(() => window.__heroFontLoads.length)).toBeGreaterThan(0)
+    await page.clock.fastForward(3000)
+    await expectStaticLogo(page)
+    expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
+    font.release()
+    await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.resolved))).toBe(true)
+    await page.clock.runFor(2500)
+    await expectStaticLogo(page)
+    expect((await particleState(page)).draws).toBe(0)
+    expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
+  }
+  finally {
+    font.release()
+  }
+})
+
+test('keeps the Logo when a font finishes during a user pause and starts from the opening on resume', async ({ page }) => {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  await captureFontLoading(page)
+  await captureParticleFrames(page)
+  const font = await holdSyneResponse(page)
+  try {
+    await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
+    await font.started
+    const toggle = page.locator('[data-planet-toggle]')
+    await expect(toggle).toBeVisible()
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    font.release()
+    await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.resolved))).toBe(true)
+    await page.clock.runFor(1000)
+    await expectStaticLogo(page)
+    expect((await particleState(page)).draws).toBe(0)
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
+    await page.clock.runFor(160)
+    await expectActiveWordmark(page)
+    expect((await particleState(page)).frame!.progress).toBe(0)
+    await expectAssembledParticles(page)
+  }
+  finally {
+    font.release()
+  }
+})
+
+test('cancels font-wait initialization on disconnect and samples only the reconnected generation', async ({ page }) => {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  await captureFontLoading(page)
+  await captureParticleFrames(page)
+  const font = await holdSyneResponse(page)
+  try {
+    await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
+    await font.started
+    const element = await page.locator('hero-particles').elementHandle()
+    await element!.evaluate(node => node.remove())
+    await page.clock.fastForward(4000)
+    expect((await particleState(page)).draws).toBe(0)
+    expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
+    await element!.evaluate(node => document.querySelector('.home-hero-screen')!.prepend(node))
+    await expectStaticLogo(page)
+    font.release()
+    await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(1)
+    await page.clock.runFor(160)
+    await expectActiveWordmark(page)
+    expect((await particleState(page)).frame!.progress).toBe(0)
+    await expectAssembledParticles(page)
+    expect(await page.evaluate(() => window.__heroWordmarkSamples.length), 'A cancelled generation must never create a second renderer').toBe(1)
+  }
+  finally {
+    font.release()
+  }
+})
+
+test('starts its first font request after leaving an initial reduced-motion state', async ({ page }) => {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  await captureFontLoading(page)
+  await captureParticleFrames(page)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const font = await holdSyneResponse(page)
+  try {
+    await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
+    await expectStaticLogo(page)
+    await page.clock.runFor(4000)
+    expect(await page.evaluate(() => window.__heroFontLoads.length)).toBe(0)
+    expect((await particleState(page)).draws).toBe(0)
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await font.started
+    await expect.poll(() => page.evaluate(() => window.__heroFontLoads.length)).toBe(1)
+    await expectStaticLogo(page)
+    font.release()
+    await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
+    await page.clock.runFor(160)
+    await expectActiveWordmark(page)
+    expect((await particleState(page)).frame!.progress).toBe(0)
+    await expectAssembledParticles(page)
+  }
+  finally {
+    font.release()
+  }
+})
+
+test('defers sampling when reduced motion begins during a pending font request', async ({ page }) => {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  await captureFontLoading(page)
+  await captureParticleFrames(page)
+  const font = await holdSyneResponse(page)
+  try {
+    await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
+    await font.started
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    font.release()
+    await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.resolved))).toBe(true)
+    await page.clock.runFor(1000)
+    await expectStaticLogo(page)
+    expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
+    expect((await particleState(page)).draws).toBe(0)
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
+    await page.clock.runFor(160)
+    await expectActiveWordmark(page)
+    expect((await particleState(page)).frame!.progress).toBe(0)
+    await expectAssembledParticles(page)
+  }
+  finally {
+    font.release()
+  }
+})
+
+test('keeps the Logo when the first real GL frame fails', async ({ page }) => {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  await captureParticleFrames(page)
+  await page.addInitScript(() => {
+    WebGL2RenderingContext.prototype.getError = function () {
+      return this.INVALID_OPERATION
+    }
+  })
+  await page.goto(resizeRoute)
+  await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
+  await page.clock.runFor(2500)
+  expect((await particleState(page)).draws, 'The fixture must fail after drawing an actual first frame').toBe(1)
+  await expectStaticLogo(page)
+})
+
+test('keeps the Logo after a failed first frame reconnects during a user pause, then activates on resume', async ({ page }) => {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  await captureFontLoading(page)
+  await captureParticleFrames(page)
+  await page.addInitScript(() => {
+    const getError = WebGL2RenderingContext.prototype.getError
+    let failFirstFrame = true
+    WebGL2RenderingContext.prototype.getError = function () {
+      if (failFirstFrame && this.canvas instanceof HTMLCanvasElement
+        && this.canvas.classList.contains('home-hero-particle-canvas')) {
+        failFirstFrame = false
+        return this.INVALID_OPERATION
+      }
+      return getError.call(this)
+    }
+  })
+  await page.goto(resizeRoute)
+  await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.some(sample => sample.syneLoaded))).toBe(true)
+  await page.clock.runFor(2500)
+  const failed = await particleState(page)
+  expect(failed.draws, 'The recovery scenario must begin with an actual failed GL draw').toBe(1)
+  await expectStaticLogo(page)
+
+  const element = await page.locator('hero-particles').elementHandle()
+  await element!.evaluate(node => node.remove())
+  const toggle = page.locator('[data-planet-toggle]')
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  const completedLoads = await page.evaluate(() => window.__heroFontLoads.filter(load => load.resolved).length)
+  await element!.evaluate(node => document.querySelector('.home-hero-screen')!.prepend(node))
+  await expect.poll(() => page.evaluate(() => window.__heroFontLoads.filter(load => load.resolved).length)).toBeGreaterThan(completedLoads)
+  await page.clock.runFor(1000)
+  await expectStaticLogo(page)
+  expect((await particleState(page)).draws, 'A paused reconnect must not draw over the Logo even after GL recovers').toBe(failed.draws)
+
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  await page.clock.runFor(160)
+  await expectActiveWordmark(page)
+  const resumed = await particleState(page)
+  expect(resumed.draws, 'Resuming must render with the recovered real GL context').toBeGreaterThan(failed.draws)
+  expect(resumed.frame!.progress, 'A failed opening must resume before assembly begins').toBe(0)
+  expect(resumed.frame!.time, 'Paused reconnect time must not advance the opening').toBeLessThan(0.3)
+  await expectAssembledParticles(page)
+})
 
 test('keeps real wordmark glyphs flowing after assembly rather than only moving background dust', async ({ page }) => {
   await prepareParticleMotion(page, true)
@@ -347,7 +693,7 @@ test('honors live reduced-motion changes and reconnects without losing a user pa
   await expectAssembledParticles(page)
   const screen = page.locator('.home-hero-screen')
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await expectStaticWordmark(page)
+  await expectStaticLogo(page)
   await expect(screen).toHaveAttribute('data-particles-paused', '')
   let phase = await expectFrozenParticles(page)
   await page.emulateMedia({ reducedMotion: 'no-preference' })
