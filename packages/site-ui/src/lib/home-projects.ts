@@ -4,7 +4,7 @@ export type HomeDemoKind = 'style' | 'build' | 'registry' | 'sqlite' | 'migratio
 
 export interface HomeProjectPlacement {
   id: string
-  demo: HomeDemoKind
+  demo?: HomeDemoKind
   reversed: boolean
   stage: Record<Locale, string>
 }
@@ -32,6 +32,9 @@ export function assembleHomeProjects(
     const data = catalog.get(placement.id)
     if (!data) {
       throw new Error(`Home placement references unknown project: ${placement.id}`)
+    }
+    if (!placement.demo && !data.proof?.length) {
+      throw new Error(`Home project without a demo requires integration proof: ${placement.id}`)
     }
     return { ...placement, data }
   })

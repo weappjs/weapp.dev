@@ -3,6 +3,8 @@ import type { HomeProjectPlacement } from '../lib/home-projects'
 export const weappHomePlacements = [
   { id: 'weapp-vite', demo: 'build', reversed: false, stage: { 'zh-CN': '工程', 'en': 'BUILD' } },
   { id: 'weapp-tailwindcss', demo: 'style', reversed: true, stage: { 'zh-CN': '样式', 'en': 'STYLE' } },
+  { id: 'weapp-pandacss', reversed: false, stage: { 'zh-CN': '样式生成', 'en': 'GENERATE' } },
+  { id: 'weapp-stylex', reversed: true, stage: { 'zh-CN': '样式编译', 'en': 'COMPILE' } },
   { id: 'varo', demo: 'registry', reversed: false, stage: { 'zh-CN': '组件', 'en': 'COMPOSE' } },
   { id: 'weapp-sqlite', demo: 'sqlite', reversed: true, stage: { 'zh-CN': '数据', 'en': 'DATA' } },
 ] satisfies HomeProjectPlacement[]

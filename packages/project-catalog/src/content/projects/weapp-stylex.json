@@ -1,0 +1,116 @@
+{
+  "order": 4,
+  "status": "beta",
+  "packageName": "weapp-stylex",
+  "github": "weapp-stylex/weapp-stylex",
+  "docsUrl": "https://stylex.weapp.dev/",
+  "npmUrl": "https://www.npmjs.com/package/weapp-stylex",
+  "license": "https://opensource.org/license/mit",
+  "maintainer": "sonofmagic and contributors",
+  "keywords": [
+    "StyleX",
+    "mini-program",
+    "WeChat Mini Program",
+    "Taro",
+    "uni-app",
+    "Wevu"
+  ],
+  "installCommand": "pnpm add weapp-stylex",
+  "futureDocsPath": "/docs/weapp-stylex/",
+  "logo": "/brands/weapp-stylex.svg",
+  "accent": "#a855f7",
+  "role": "Styling",
+  "ecosystem": "weapp",
+  "maturity": "beta",
+  "runtime": [
+    "StyleX",
+    "WXSS"
+  ],
+  "relatedProjects": [
+    "weapp-vite",
+    "weapp-pandacss"
+  ],
+  "dataCompleteness": "complete",
+  "platforms": [
+    "WeChat",
+    "Taro",
+    "uni-app"
+  ],
+  "quickStart": {
+    "command": "pnpm add weapp-stylex",
+    "note": {
+      "zh-CN": "当前面向微信小程序；安装后按框架配置构建适配器。",
+      "en": "Currently targets WeChat mini-apps; configure the build adapter for your framework after installation."
+    }
+  },
+  "proof": [
+    {
+      "zh-CN": "运行时：从 weapp-stylex 导入官方 create、attrs / props 与主题 API。",
+      "en": "Runtime: import official create, attrs / props, and theme APIs from weapp-stylex."
+    },
+    {
+      "zh-CN": "构建：按宿主选择 /weapp-vite、/taro 或 /uni-app 适配器，输出 stylex.wxss。",
+      "en": "Build: choose the /weapp-vite, /taro, or /uni-app adapter to emit stylex.wxss."
+    },
+    {
+      "zh-CN": "平台边界：微信主包与普通分包；watch 保证完整重建，不提供 stateful HMR。",
+      "en": "Scope: WeChat main packages and ordinary subpackages; watch supports complete rebuilds, without stateful HMR."
+    }
+  ],
+  "locales": {
+    "zh-CN": {
+      "name": "weapp-stylex",
+      "tagline": "把官方 StyleX 编译为微信小程序 WXSS",
+      "description": "沿用官方 StyleX runtime 与样式合并 API，通过构建适配器输出 WXSS。支持原生 Page/Component、Wevu、Taro React / Vue 3 和 uni-app Vue 3；当前范围限微信小程序。",
+      "audience": "希望在微信小程序中使用 StyleX 共享样式、条件合并与主题的原生或跨端团队。",
+      "useCases": [
+        "在原生微信与 Wevu 中编译 StyleX 样式",
+        "在 Taro React / Vue 3 与 uni-app Vue 3 中输出微信 WXSS",
+        "跨模块共享样式、tokens、主题与动态值"
+      ],
+      "capabilities": [
+        "官方 attrs() / props() 样式合并",
+        "共享样式、defineVars() 与 createTheme()",
+        "原生、Wevu、Taro 与 uni-app 构建适配",
+        "WXSS 输出与 watch 完整重建"
+      ],
+      "faqs": [
+        {
+          "question": "weapp-stylex 支持哪些平台？",
+          "answer": "当前支持微信主包、页面、组件和普通分包。原生、Wevu、Taro React / Vue 3 和 uni-app Vue 3 有对应适配器；独立分包、其他平台、Vue 2 和 uni-app x 尚未覆盖。"
+        },
+        {
+          "question": "如何安装并选择构建入口？",
+          "answer": "安装 weapp-stylex 后，根入口提供官方 runtime；按框架使用 weapp-stylex/weapp-vite、weapp-stylex/taro 或 weapp-stylex/uni-app。还需配置对应宿主版本与适配器，详见官方指南。"
+        }
+      ]
+    },
+    "en": {
+      "name": "weapp-stylex",
+      "tagline": "Compile official StyleX to WeChat WXSS",
+      "description": "Keep the official StyleX runtime and style merging APIs while build adapters emit WXSS. Supports native Page/Component, Wevu, Taro React / Vue 3, and uni-app Vue 3, currently targeting WeChat mini-apps.",
+      "audience": "Native and cross-platform teams using shared StyleX styles, conditional merging, and themes in WeChat mini-apps.",
+      "useCases": [
+        "Compile StyleX in native WeChat and Wevu projects",
+        "Emit WeChat WXSS from Taro React / Vue 3 and uni-app Vue 3",
+        "Share styles, tokens, themes, and dynamic values across modules"
+      ],
+      "capabilities": [
+        "Official attrs() / props() merging",
+        "Shared styles, defineVars(), and createTheme()",
+        "Native, Wevu, Taro, and uni-app adapters",
+        "WXSS output and complete watch rebuilds"
+      ],
+      "faqs": [
+        {
+          "question": "Which platforms does weapp-stylex support?",
+          "answer": "The current scope is WeChat main packages, pages, components, and ordinary subpackages. Adapters cover native projects, Wevu, Taro React / Vue 3, and uni-app Vue 3. Independent subpackages, other platforms, Vue 2, and uni-app x are not covered yet."
+        },
+        {
+          "question": "How do I install and choose an adapter?",
+          "answer": "Install weapp-stylex for the official runtime at the root entry. Select weapp-stylex/weapp-vite, weapp-stylex/taro, or weapp-stylex/uni-app for your framework, then configure the supported host version and adapter using the official guide."
+        }
+      ]
+    }
+  }
+}

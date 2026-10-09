@@ -22,7 +22,7 @@ pnpm --filter @weapp/open-source exec playwright test
 
 Each application owns its routes, localized copy, page composition, analytics host allowlist, tests, and deployment workflow. There is no environment variable that switches one application into the other. App-to-app imports are prohibited.
 
-packages/project-catalog owns the nine public project definitions, schemas, project media and metrics snapshot. Catalog inclusion is independent of commercial service coverage. Existing documentation domains and project repositories remain unchanged.
+packages/project-catalog owns the eleven public project definitions, schemas, project media and metrics snapshot. Catalog inclusion is independent of commercial service coverage. Existing documentation domains and project repositories remain unchanged.
 
 packages/site-ui provides the shared particle hero, project presentation, interactive demos and supporting styles. Site identity, navigation, commercial content and page composition remain application-owned. Shared components receive explicit props and never read an application directory.
 

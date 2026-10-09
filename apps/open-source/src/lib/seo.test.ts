@@ -1,7 +1,9 @@
 import type { ProjectDefinition } from '../types/project'
 import varo from '@weapp/project-catalog/projects/varo.json'
 import taro from '@weapp/project-catalog/projects/vite-plugin-taro.json'
+import panda from '@weapp/project-catalog/projects/weapp-pandacss.json'
 import sqlite from '@weapp/project-catalog/projects/weapp-sqlite.json'
+import stylex from '@weapp/project-catalog/projects/weapp-stylex.json'
 import tailwind from '@weapp/project-catalog/projects/weapp-tailwindcss.json'
 import vite from '@weapp/project-catalog/projects/weapp-vite.json'
 import fallbackMetrics from '@weapp/project-catalog/snapshot'
@@ -56,24 +58,26 @@ describe('SEO helpers', () => {
   })
 
   it('keeps project list schema aligned with the toolchain flow in both locales', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro'][index],
+    const projects = [vite, tailwind, panda, stylex, varo, sqlite, taro].map((data, index) => ({
+      id: ['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'varo', 'weapp-sqlite', 'vite-plugin-taro'][index],
       data: data as unknown as ProjectDefinition,
     }))
     const zh = projectListSchema('zh-CN', projects)
     const en = projectListSchema('en', projects)
     expect(zh.itemListOrder).toBe('https://schema.org/ItemListOrderAscending')
-    expect(zh.numberOfItems).toBe(5)
-    expect(en.numberOfItems).toBe(5)
-    expect(zh.itemListElement.map(item => item.name)).toEqual(['weapp-vite', 'weapp-tailwindcss', 'Varo', 'weapp-sqlite', 'VPT'])
+    expect(zh.numberOfItems).toBe(7)
+    expect(en.numberOfItems).toBe(7)
+    expect(zh.itemListElement.map(item => item.name)).toEqual(['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'Varo', 'weapp-sqlite', 'VPT'])
     expect(en.itemListElement.map(item => item.url)).toEqual([
       'https://weapp.js.org/en/projects/weapp-vite/',
       'https://weapp.js.org/en/projects/weapp-tailwindcss/',
+      'https://weapp.js.org/en/projects/weapp-pandacss/',
+      'https://weapp.js.org/en/projects/weapp-stylex/',
       'https://weapp.js.org/en/projects/varo/',
       'https://weapp.js.org/en/projects/weapp-sqlite/',
       'https://weapp.js.org/en/projects/vite-plugin-taro/',
     ])
     expect(projectsIndexSchema('zh-CN', projects)).toMatchObject({ '@type': 'CollectionPage', 'url': 'https://weapp.js.org/projects/' })
-    expect(projectsIndexSchema('en', projects).mainEntity.numberOfItems).toBe(5)
+    expect(projectsIndexSchema('en', projects).mainEntity.numberOfItems).toBe(7)
   })
 })

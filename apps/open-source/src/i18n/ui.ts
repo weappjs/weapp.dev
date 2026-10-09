@@ -53,12 +53,12 @@ export const siteCopy = {
       'weapp': {
         eyebrow: 'weapp 生态',
         title: '原生小程序工具链',
-        description: 'weapp-vite、weapp-tailwindcss、Varo 和 weapp-sqlite 分别负责工程、样式、组件和本地数据。',
+        description: 'weapp-vite 负责工程；Tailwind CSS、Panda CSS 与 StyleX 提供不同样式路线；Varo 提供组件，weapp-sqlite 规划本地数据能力。',
       },
       'taro': {
         eyebrow: 'Taro 生态',
         title: '把 Taro / React 工程接到 Vite',
-        description: 'VPT 服务已有 Taro 项目。它不在 weapp 原生四件套里。',
+        description: 'VPT 为已有 Taro 项目提供构建迁移入口。',
       },
       'vue-mini': {
         eyebrow: 'Vue Mini 生态',
@@ -79,7 +79,7 @@ export const siteCopy = {
     projects: {
       eyebrow: 'weapp 生态',
       title: '工程、样式、组件、数据',
-      description: '原生小程序工具链四件套，按需独立采用，也可以组合使用。',
+      description: '覆盖工程、样式、组件与本地数据。样式路线按现有写法选择，各工具按需采用。',
       documentation: '阅读文档',
       details: '项目详情',
       weeklyDownloads: '周下载',
@@ -254,7 +254,7 @@ export const siteCopy = {
       'weapp': {
         eyebrow: 'weapp ecosystem',
         title: 'Native mini-program toolchain',
-        description: 'weapp-vite, weapp-tailwindcss, Varo, and weapp-sqlite own engineering, styling, components, and local data.',
+        description: 'weapp-vite handles builds; Tailwind CSS, Panda CSS, and StyleX offer different styling paths; Varo provides components, and weapp-sqlite plans local data support.',
       },
       'taro': {
         eyebrow: 'Taro ecosystem',
@@ -280,7 +280,7 @@ export const siteCopy = {
     projects: {
       eyebrow: 'weapp ecosystem',
       title: 'Engineering, styling, components, data',
-      description: 'Four native mini-program tools. Adopt each independently or compose them.',
+      description: 'Builds, styling, components, and local data. Choose a styling path for your workflow and adopt each tool as needed.',
       documentation: 'Read the docs',
       details: 'Project details',
       weeklyDownloads: 'Weekly downloads',

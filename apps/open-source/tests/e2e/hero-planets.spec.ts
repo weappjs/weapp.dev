@@ -6,7 +6,12 @@ for (const path of ['/', '/en/']) {
       await page.addInitScript(value => localStorage.setItem('weapp-theme', value), theme)
       await page.goto(path)
       const planets = page.locator('.home-hero-planet')
-      await expect(planets).toHaveCount(8)
+      await expect(planets).toHaveCount(10)
+      for (const [id, docs] of [['weapp-pandacss', 'https://panda.weapp.dev/'], ['weapp-stylex', 'https://stylex.weapp.dev/']]) {
+        const planet = page.locator(`.home-hero-planet[data-analytics-project="${id}"]`)
+        await expect(planet).toHaveAttribute('href', docs)
+        await expect(planet.locator('img')).toHaveAttribute('src', new RegExp(`(?:^|/)brands/${id}\\.svg$`))
+      }
       const rezorLink = page.locator('.home-hero-planet[data-analytics-project="rezor"]')
       await expect(rezorLink).toHaveAttribute('href', 'https://github.com/rezorjs/rezor')
       await expect(rezorLink.locator('img')).toHaveAttribute('src', /(?:^|\/)brands\/rezor\.png$/)
@@ -38,7 +43,7 @@ for (const path of ['/', '/en/']) {
       const page = await context.newPage()
       await page.goto(path)
       const planets = page.locator('.home-hero-planet')
-      await expect(planets).toHaveCount(8)
+      await expect(planets).toHaveCount(10)
       for (const planet of await planets.all()) {
         await expect(planet).toBeVisible()
         await expect(planet).toHaveAttribute('aria-label', /.+/)

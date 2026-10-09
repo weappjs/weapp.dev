@@ -44,6 +44,7 @@ export const featuredTitle = 'font-display text-[clamp(1.875rem,3.5vw,3.25rem)] 
 /** Page-level display titles for pricing / policy / 404 heroes. */
 export const pageTitle = 'font-display text-[clamp(2.5rem,6vw,5rem)] font-[700] leading-[1.12]'
 
-export const projectTone = 'text-[color-mix(in_srgb,var(--project-accent)_58%,var(--text))]'
+/** Status text needs theme contrast independent of each project's brand color. */
+export const projectTone = 'text-brand'
 
 export const platformPill = 'rounded-full border border-line bg-panel px-2.5 py-1.5 font-sans text-xs text-copy-muted'

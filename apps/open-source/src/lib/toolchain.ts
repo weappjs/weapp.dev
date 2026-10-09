@@ -6,11 +6,13 @@ export type ToolchainRole = typeof toolchainRoles[number]
 export const catalogEcosystems = ['weapp', 'taro', 'vue-mini', 'rezor', 'uni-app'] as const
 export type CatalogEcosystem = typeof catalogEcosystems[number]
 
-export const toolchainProjectIds = ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite'] as const
+export const toolchainProjectIds = ['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'varo', 'weapp-sqlite'] as const
 
 const roleById: Record<string, ToolchainRole> = {
   'weapp-vite': 'engineering',
   'weapp-tailwindcss': 'styling',
+  'weapp-pandacss': 'styling',
+  'weapp-stylex': 'styling',
   'varo': 'components',
   'weapp-sqlite': 'data',
 }
@@ -18,6 +20,8 @@ const roleById: Record<string, ToolchainRole> = {
 const declaredRoleById: Record<string, string> = {
   'weapp-vite': 'Engineering',
   'weapp-tailwindcss': 'Styling',
+  'weapp-pandacss': 'Styling',
+  'weapp-stylex': 'Styling',
   'varo': 'Components',
   'weapp-sqlite': 'Local data',
   'vite-plugin-taro': 'Migration',
@@ -26,6 +30,8 @@ const declaredRoleById: Record<string, string> = {
 const declaredEcosystemById: Record<string, CatalogEcosystem> = {
   'weapp-vite': 'weapp',
   'weapp-tailwindcss': 'weapp',
+  'weapp-pandacss': 'weapp',
+  'weapp-stylex': 'weapp',
   'varo': 'weapp',
   'weapp-sqlite': 'weapp',
   'vite-plugin-taro': 'taro',
@@ -38,7 +44,7 @@ const declaredEcosystemById: Record<string, CatalogEcosystem> = {
 export function getToolchainProjects(projects: ProjectEntry[]) {
   return projects
     .filter(project => roleById[project.id])
-    .sort((a, b) => toolchainRoles.indexOf(roleById[a.id]) - toolchainRoles.indexOf(roleById[b.id]))
+    .sort((a, b) => toolchainRoles.indexOf(roleById[a.id]) - toolchainRoles.indexOf(roleById[b.id]) || a.data.order - b.data.order)
     .map(project => ({ project, role: roleById[project.id] }))
 }
 

@@ -54,5 +54,19 @@
     "stars": 360,
     "weeklyDownloads": 2378,
     "fetchedAt": "2026-09-16T12:00:00.000Z"
+  },
+  "weapp-pandacss": {
+    "version": "2.0.1",
+    "releasedAt": "2026-10-09T05:24:35.278Z",
+    "stars": 17,
+    "weeklyDownloads": 71,
+    "fetchedAt": "2026-10-09T09:24:09.413578Z"
+  },
+  "weapp-stylex": {
+    "version": "0.1.0",
+    "releasedAt": "2026-10-09T05:12:51.758Z",
+    "stars": 0,
+    "weeklyDownloads": null,
+    "fetchedAt": "2026-10-09T09:24:12.596923Z"
   }
 }

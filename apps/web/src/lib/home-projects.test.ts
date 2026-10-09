@@ -1,6 +1,8 @@
 import varo from '@weapp/project-catalog/projects/varo.json'
 import taro from '@weapp/project-catalog/projects/vite-plugin-taro.json'
+import panda from '@weapp/project-catalog/projects/weapp-pandacss.json'
 import sqlite from '@weapp/project-catalog/projects/weapp-sqlite.json'
+import stylex from '@weapp/project-catalog/projects/weapp-stylex.json'
 import tailwind from '@weapp/project-catalog/projects/weapp-tailwindcss.json'
 import vite from '@weapp/project-catalog/projects/weapp-vite.json'
 import tailwindImages from '@weapp/project-catalog/showcases/weapp-tailwindcss.json'
@@ -10,6 +12,8 @@ import { projectDefinitionSchema, showcaseSchema } from '../content/schemas'
 import { assembleHomeProjects } from './home-projects'
 
 const projects = [
+  { id: 'weapp-pandacss', data: projectDefinitionSchema.parse(panda) },
+  { id: 'weapp-stylex', data: projectDefinitionSchema.parse(stylex) },
   { id: 'weapp-tailwindcss', data: projectDefinitionSchema.parse(tailwind) },
   { id: 'weapp-vite', data: projectDefinitionSchema.parse(vite) },
   { id: 'varo', data: projectDefinitionSchema.parse(varo) },
@@ -21,9 +25,9 @@ describe('home project composition', () => {
   it('keeps editorial order when the catalog is reordered or extended', () => {
     const extended = [...projects].reverse().concat({ id: 'new-project', data: projects[0].data })
     const result = assembleHomeProjects(extended, homeProjectPlacements)
-    expect(result.map(project => project.id)).toEqual(['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro'])
-    expect(result.filter(project => project.data.ecosystem === 'weapp').map(project => project.id)).toEqual(['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite'])
-    expect(result.map(project => project.demo)).toEqual(['build', 'style', 'registry', 'sqlite', 'migration'])
+    expect(result.map(project => project.id)).toEqual(['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'varo', 'weapp-sqlite', 'vite-plugin-taro'])
+    expect(result.filter(project => project.data.ecosystem === 'weapp').map(project => project.id)).toEqual(['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'varo', 'weapp-sqlite'])
+    expect(result.map(project => project.demo)).toEqual(['build', 'style', undefined, undefined, 'registry', 'sqlite', 'migration'])
   })
 
   it('combines independent metadata and demo placements without requiring screenshots', () => {
@@ -39,8 +43,8 @@ describe('home project composition', () => {
     expect(tailwindResult.data.status).toBe('beta')
     expect(tailwindResult.reversed).toBe(true)
     expect(result[0]).not.toHaveProperty('showcase')
-    expect(changedProjects[0].data.visuals).not.toHaveProperty('showcase')
-    expect(projects[0].data.status).toBe('stable')
+    expect(changedProject.data.visuals).not.toHaveProperty('showcase')
+    expect(projects.find(project => project.id === 'weapp-tailwindcss')!.data.status).toBe('stable')
   })
 
   it('rejects stale references and duplicate placements before rendering', () => {
@@ -48,6 +52,12 @@ describe('home project composition', () => {
       .toThrow('Duplicate home project')
     expect(() => assembleHomeProjects(projects.slice(1), homeProjectPlacements))
       .toThrow('unknown project')
+  })
+
+  it('requires factual proof for projects without interactive demos', () => {
+    const changedProjects = structuredClone(projects)
+    changedProjects.find(project => project.id === 'weapp-pandacss')!.data.proof = undefined
+    expect(() => assembleHomeProjects(changedProjects, homeProjectPlacements)).toThrow('requires integration proof')
   })
 
   it('validates image metadata independently from the project definition', () => {

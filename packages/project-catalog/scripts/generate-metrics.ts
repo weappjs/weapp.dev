@@ -35,11 +35,14 @@ async function loadProjectSources(): Promise<ProjectSource[]> {
   }))
 }
 
-async function fetchJson<T>(url: string, headers: HeadersInit = {}): Promise<T> {
+async function fetchJson<T>(url: string, headers: HeadersInit = {}, onNotFound?: () => T): Promise<T> {
   const response = await fetch(url, {
     headers,
     signal: AbortSignal.timeout(8000),
   })
+  if (response.status === 404 && onNotFound) {
+    return onNotFound()
+  }
   if (!response.ok) {
     throw new Error(`${response.status} ${response.statusText}`)
   }
@@ -58,11 +61,12 @@ async function fetchMetrics(project: ProjectSource): Promise<ProjectMetrics> {
   const [repository, registry, downloads] = await Promise.all([
     fetchJson<{ stargazers_count: number }>(`https://api.github.com/repos/${project.github}`, githubHeaders),
     fetchJson<{ 'dist-tags': { latest: string }, 'time': Record<string, string> }>(`https://registry.npmjs.org/${project.packageName}`),
-    fetchJson<{ downloads: number }>(`https://api.npmjs.org/downloads/point/last-week/${project.packageName}`),
+    // Newly published packages can exist in the registry before download data is available.
+    fetchJson<{ downloads: number | null }>(`https://api.npmjs.org/downloads/point/last-week/${project.packageName}`, {}, () => ({ downloads: null })),
   ])
   const version = registry['dist-tags'].latest
   const releasedAt = registry.time[version]
-  if (!version || !releasedAt || !Number.isFinite(repository.stargazers_count) || !Number.isFinite(downloads.downloads)) {
+  if (!version || !releasedAt || !Number.isFinite(repository.stargazers_count) || (downloads.downloads !== null && (!Number.isFinite(downloads.downloads) || downloads.downloads < 0))) {
     throw new Error('The metrics response did not contain the expected fields')
   }
 

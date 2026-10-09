@@ -29,9 +29,9 @@ for (const prefix of ['', '/en']) {
     await expect(page.locator('body')).not.toContainText(fundingCopy)
   })
 
-  test(`keeps all nine projects and their real status on ${prefix || 'zh-CN'}`, async ({ page }) => {
+  test(`keeps all eleven projects and their real status on ${prefix || 'zh-CN'}`, async ({ page }) => {
     await page.goto(`${prefix}/projects/`)
-    await expect(page.locator('[data-project-card]')).toHaveCount(9)
+    await expect(page.locator('[data-project-card]')).toHaveCount(11)
     const planned = page.locator('[data-project-card][data-project-id="weapp-sqlite"]')
     await expect(planned).toContainText(prefix ? 'Planned' : '规划中')
     await expect(planned).toContainText(prefix ? 'Details pending' : '资料待确认')
@@ -107,7 +107,7 @@ test.describe('retired routes without JavaScript', () => {
       test(`opens the project catalog from ${prefix}/${route}/`, async ({ page }) => {
         await page.goto(`${prefix}/${route}/`)
         await expect(page).toHaveURL(`${prefix}/projects/`)
-        await expect(page.locator('[data-project-card]')).toHaveCount(9)
+        await expect(page.locator('[data-project-card]')).toHaveCount(11)
       })
     }
   }

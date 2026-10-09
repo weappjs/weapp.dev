@@ -3,7 +3,7 @@
 ## 所有权
 
 - apps/web（@weapp.dev/web）：项目体验、完整项目资料、工程服务、赞助与贡献者基金；固定域名 https://weapp.dev。
-- apps/open-source（@weapp/open-source）：九个项目、文档、源码、发布与贡献；固定域名 https://weapp.js.org。
+- apps/open-source（@weapp/open-source）：十一个项目、文档、源码、发布与贡献；固定域名 https://weapp.js.org。
 - packages/project-catalog（@weapp/project-catalog）：公开项目定义、类型、schema、项目素材、原始 media-source 截图和指标快照。只能通过包 exports 使用，禁止跨应用导入或直接读取另一个应用的目录。
 
 - packages/site-ui（@weapp/site-ui）：粒子与星球、项目展示基础组件、演示、样式和交互辅助函数。应用通过公共导出传入品牌、文案、数据和链接；UI 包可以依赖 catalog，catalog 不得依赖 UI，两个包都不得依赖应用。
@@ -36,7 +36,7 @@ pnpm metrics:sync
 
 ## 内容与路由
 
-商业站首页保留粒子字标、项目星球、完整项目介绍与演示，先呈现工具链与发布数据，再介绍独立开源站、服务及协作流程；/projects/ 和九个详情保留完整资料，额外说明实施范围并链接同语种开源详情。只有 services.ts 中明确列出的项目可显示实施 CTA 和 Service schema，目前为 weapp-vite、weapp-tailwindcss。第三方工具仅说明评估范围，规划中工具不承诺交付。
+商业站首页保留粒子字标、项目星球、完整项目介绍与演示，先呈现工具链与发布数据，再介绍独立开源站、服务及协作流程；/projects/ 和十一个详情保留完整资料，额外说明实施范围并链接同语种开源详情。只有 services.ts 中明确列出的项目可显示实施 CTA 和 Service schema，目前为 weapp-vite、weapp-tailwindcss。第三方工具仅说明评估范围，规划中工具不承诺交付。
 
 商业站 /pricing/、/sponsors/、/contributors/ 及英文页面保留原有报价、权益与 60/25/15 分配规则。服务费用和自愿赞助分别说明。
 

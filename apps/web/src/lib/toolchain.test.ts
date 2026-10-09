@@ -4,7 +4,9 @@ import uniHelper from '@weapp/project-catalog/projects/uni-helper.json'
 import varo from '@weapp/project-catalog/projects/varo.json'
 import taro from '@weapp/project-catalog/projects/vite-plugin-taro.json'
 import vueMini from '@weapp/project-catalog/projects/vue-mini.json'
+import panda from '@weapp/project-catalog/projects/weapp-pandacss.json'
 import sqlite from '@weapp/project-catalog/projects/weapp-sqlite.json'
+import stylex from '@weapp/project-catalog/projects/weapp-stylex.json'
 import tailwind from '@weapp/project-catalog/projects/weapp-tailwindcss.json'
 import vite from '@weapp/project-catalog/projects/weapp-vite.json'
 import wotUi from '@weapp/project-catalog/projects/wot-ui.json'
@@ -14,18 +16,23 @@ import { getCatalogEcosystemGroups, getConstellationProjects, getEcosystemProjec
 
 describe('toolchain project ordering', () => {
   it('keeps the weapp stack in build-flow order', () => {
-    const projects = ['varo', 'weapp-sqlite', 'weapp-vite', 'weapp-tailwindcss'].map(id => ({ id, data: {} })) as never
+    const projects = [stylex, panda, varo, sqlite, vite, tailwind].map(data => ({
+      id: data.packageName === '@varo-ui/cli' ? 'varo' : data.packageName,
+      data: projectDefinitionSchema.parse(data),
+    })) as ProjectEntry[]
     expect(getToolchainProjects(projects).map(item => item.project.id)).toEqual([
       'weapp-vite',
       'weapp-tailwindcss',
+      'weapp-pandacss',
+      'weapp-stylex',
       'varo',
       'weapp-sqlite',
     ])
   })
 
-  it('validates the five project catalog and related references', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro'][index],
+  it('validates the core project catalog and related references', () => {
+    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
+      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
       data: projectDefinitionSchema.parse(data),
     })) as unknown as ProjectEntry[]
     expect(() => validateToolchainCatalog(projects)).not.toThrow()
@@ -45,14 +52,14 @@ describe('toolchain project ordering', () => {
   })
 
   it('keeps two related paths for every core project', () => {
-    for (const project of [vite, tailwind, varo, sqlite, taro]) {
+    for (const project of [vite, tailwind, varo, sqlite, taro, panda, stylex]) {
       expect(projectDefinitionSchema.parse(project).relatedProjects).toHaveLength(2)
     }
   })
 
   it('rejects a planned project marked as complete', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro'][index],
+    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
+      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
       data: projectDefinitionSchema.parse(data),
     })) as unknown as ProjectEntry[]
     projects[3].data.dataCompleteness = 'complete'
@@ -64,16 +71,16 @@ describe('toolchain project ordering', () => {
     expect(parsed.status).toBe('planned')
     expect(parsed.platforms).toBeUndefined()
     expect(parsed.runtime).toBeUndefined()
-    const projects = [vite, tailwind, varo, sqlite, taro].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro'][index],
+    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
+      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
       data: projectDefinitionSchema.parse(data),
     })) as unknown as ProjectEntry[]
     expect(() => validateToolchainCatalog(projects)).not.toThrow()
   })
 
   it('requires confirmed scope for released projects', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro'][index],
+    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
+      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
       data: projectDefinitionSchema.parse(data),
     })) as unknown as ProjectEntry[]
     projects[0].data.platforms = undefined
@@ -81,8 +88,8 @@ describe('toolchain project ordering', () => {
   })
 
   it('rejects package actions that contradict project status', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro'][index],
+    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
+      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
       data: projectDefinitionSchema.parse(data),
     })) as unknown as ProjectEntry[]
     projects[3].data.installCommand = 'pnpm add weapp-sqlite'
@@ -93,8 +100,8 @@ describe('toolchain project ordering', () => {
   })
 
   it('rejects an npm URL that points to a different package', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro'][index],
+    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
+      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
       data: projectDefinitionSchema.parse(data),
     })) as unknown as ProjectEntry[]
     projects[0].data.npmUrl = 'https://www.npmjs.com/package/weapp-tailwindcss'
@@ -102,8 +109,8 @@ describe('toolchain project ordering', () => {
   })
 
   it('rejects status and maturity drift', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro'][index],
+    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
+      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
       data: projectDefinitionSchema.parse(data),
     })) as unknown as ProjectEntry[]
     projects[0].data.maturity = 'beta'
@@ -111,8 +118,8 @@ describe('toolchain project ordering', () => {
   })
 
   it('rejects a declared role that differs from the flow role', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro'][index],
+    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
+      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
       data: projectDefinitionSchema.parse(data),
     })) as unknown as ProjectEntry[]
     projects[0].data.role = 'Styling'
@@ -124,19 +131,21 @@ describe('toolchain project ordering', () => {
   })
 
   it('groups the catalog by ecosystem and keeps weapp-only in the toolchain map', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro, vueMini, rezor, uniHelper, wotUi].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'vue-mini', 'rezor', 'uni-helper', 'wot-ui'][index],
+    const projects = [vite, tailwind, varo, sqlite, taro, vueMini, rezor, uniHelper, wotUi, panda, stylex].map((data, index) => ({
+      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'vue-mini', 'rezor', 'uni-helper', 'wot-ui', 'weapp-pandacss', 'weapp-stylex'][index],
       data: projectDefinitionSchema.parse(data),
     })) as unknown as ProjectEntry[]
     expect(() => validateToolchainCatalog(projects)).not.toThrow()
     expect(getToolchainProjects(projects).map(item => item.project.id)).toEqual([
       'weapp-vite',
       'weapp-tailwindcss',
+      'weapp-pandacss',
+      'weapp-stylex',
       'varo',
       'weapp-sqlite',
     ])
     expect(getCatalogEcosystemGroups(projects).map(group => [group.id, group.projects.map(project => project.id)])).toEqual([
-      ['weapp', ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite']],
+      ['weapp', ['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'varo', 'weapp-sqlite']],
       ['taro', ['vite-plugin-taro']],
       ['vue-mini', ['vue-mini']],
       ['rezor', ['rezor']],
@@ -146,6 +155,8 @@ describe('toolchain project ordering', () => {
     expect(getConstellationProjects(projects).map(project => project.id)).toEqual([
       'weapp-vite',
       'weapp-tailwindcss',
+      'weapp-pandacss',
+      'weapp-stylex',
       'varo',
       'vite-plugin-taro',
       'vue-mini',

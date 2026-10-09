@@ -10,7 +10,8 @@ export interface ProjectMetrics {
   version: string
   releasedAt: string
   stars: number
-  weeklyDownloads: number
+  /** null means the npm downloads API has not published a count yet. */
+  weeklyDownloads: number | null
   fetchedAt: string
 }
 

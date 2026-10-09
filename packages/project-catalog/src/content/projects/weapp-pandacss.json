@@ -1,0 +1,117 @@
+{
+  "order": 3,
+  "status": "stable",
+  "packageName": "weapp-pandacss",
+  "github": "weapp-pandacss/weapp-pandacss",
+  "docsUrl": "https://panda.weapp.dev/",
+  "npmUrl": "https://www.npmjs.com/package/weapp-pandacss",
+  "license": "https://opensource.org/license/mit",
+  "maintainer": "sonofmagic and contributors",
+  "keywords": [
+    "Panda CSS",
+    "mini-program",
+    "WeChat Mini Program",
+    "Taro",
+    "uni-app",
+    "Wevu"
+  ],
+  "installCommand": "pnpm add -D @pandacss/dev@2.1.2 @pandacss/preset-base@2.1.2 @pandacss/preset-panda@2.1.2 weapp-pandacss postcss",
+  "futureDocsPath": "/docs/weapp-pandacss/",
+  "logo": "/brands/weapp-pandacss.svg",
+  "accent": "#facc15",
+  "role": "Styling",
+  "ecosystem": "weapp",
+  "maturity": "stable",
+  "runtime": [
+    "Panda CSS",
+    "PostCSS"
+  ],
+  "relatedProjects": [
+    "weapp-vite",
+    "weapp-stylex"
+  ],
+  "dataCompleteness": "complete",
+  "platforms": [
+    "WeChat",
+    "Taro",
+    "uni-app",
+    "Web"
+  ],
+  "quickStart": {
+    "command": "pnpm add -D @pandacss/dev@2.1.2 @pandacss/preset-base@2.1.2 @pandacss/preset-panda@2.1.2 weapp-pandacss postcss",
+    "note": {
+      "zh-CN": "安装后仍需按官方文档配置生成插件与 PostCSS。",
+      "en": "Configure the generation plugin and PostCSS using the official guide after installation."
+    }
+  },
+  "proof": [
+    {
+      "zh-CN": "生成期：在 panda.config.ts 中注册 weappPanda()。",
+      "en": "Generation: register weappPanda() in panda.config.ts."
+    },
+    {
+      "zh-CN": "样式构建：依次运行 Panda PostCSS、weapp-pandacss/postcss 与可选单位转换。",
+      "en": "Style build: run Panda PostCSS, weapp-pandacss/postcss, then optional unit conversion."
+    },
+    {
+      "zh-CN": "运行时：从生成目录导入 css、recipes 与 tokens；H5 和小程序各自使用独立 outdir。",
+      "en": "Runtime: import css, recipes, and tokens from generated code; use separate output directories for H5 and mini-apps."
+    }
+  ],
+  "locales": {
+    "zh-CN": {
+      "name": "weapp-pandacss",
+      "tagline": "把 Panda CSS 的生成样式带进小程序",
+      "description": "通过 Panda 生成期插件与 PostCSS 适配器，让生成的 class 与小程序 CSS 选择器保持一致。保留 Panda 的 css、recipes 和 tokens 工作流，也可用于 Web。",
+      "audience": "使用 Panda CSS，希望在 Taro、uni-app 或 weapp-vite + Wevu 中复用样式生成流程的团队。",
+      "useCases": [
+        "在 Taro React / Vue 3 小程序中使用 Panda CSS",
+        "在 uni-app Vue 3、weapp-vite + Wevu 中生成小程序样式",
+        "为 H5 与小程序分别生成目录，共享 class 编码"
+      ],
+      "capabilities": [
+        "Panda CSS 2.1.2 生成期插件",
+        "小程序 PostCSS 选择器转换",
+        "一致的 runtime class 编码",
+        "css、recipes 与 tokens"
+      ],
+      "faqs": [
+        {
+          "question": "weapp-pandacss 如何接入？",
+          "answer": "安装 Panda CSS 2.1.2、两个 preset、适配器和 PostCSS；在 Panda 配置中注册 weappPanda()，在 PostCSS 中按 Panda、adapter、可选单位转换的顺序注册插件。启动或构建前运行 panda codegen。"
+        },
+        {
+          "question": "H5 与小程序可以共用生成目录吗？",
+          "answer": "并行构建时必须使用独立 outdir，并把逻辑导入别名映射到各自目录。Web 使用 target: web，小程序默认使用 target: weapp；具体集成与限制见官方文档。"
+        }
+      ]
+    },
+    "en": {
+      "name": "weapp-pandacss",
+      "tagline": "Bring Panda CSS generation to mini-apps",
+      "description": "A Panda generation plugin and PostCSS adapter keep generated classes aligned with mini-app CSS selectors. Keep Panda’s css, recipes, and tokens workflow, with a Web target too.",
+      "audience": "Teams using Panda CSS in Taro, uni-app, or weapp-vite + Wevu projects.",
+      "useCases": [
+        "Use Panda CSS in Taro React / Vue 3 mini-apps",
+        "Generate styles for uni-app Vue 3 and weapp-vite + Wevu",
+        "Use separate H5 and mini-app output directories with shared class encoding"
+      ],
+      "capabilities": [
+        "Panda CSS 2.1.2 generation plugin",
+        "Mini-app PostCSS selector transforms",
+        "Consistent runtime class encoding",
+        "css, recipes, and tokens"
+      ],
+      "faqs": [
+        {
+          "question": "How do I integrate weapp-pandacss?",
+          "answer": "Install Panda CSS 2.1.2, both presets, the adapter, and PostCSS. Register weappPanda() in Panda config, then order PostCSS plugins as Panda, adapter, and optional unit conversion. Run panda codegen before development or builds."
+        },
+        {
+          "question": "Can H5 and mini-apps share an output directory?",
+          "answer": "Parallel builds need separate outdir values and aliases mapped to each directory. Web uses target: web; mini-apps use the default target: weapp. See the official documentation for integration details and limits."
+        }
+      ]
+    }
+  }
+}

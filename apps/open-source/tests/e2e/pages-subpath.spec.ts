@@ -75,14 +75,17 @@ test.describe('Pages without JavaScript', () => {
   test('keeps catalog links and both retired-route languages within the Pages mount', async ({ page }) => {
     for (const prefix of ['', '/en']) {
       await page.goto(`/weapp.dev${prefix}/projects/`)
-      await expect(page.locator('[data-project-card]:visible')).toHaveCount(9)
-      await page.locator('[data-project-card][data-project-id="weapp-vite"] a[data-analytics-event="select_project"]').click()
-      await expect(page).toHaveURL(`/weapp.dev${prefix}/projects/weapp-vite/`)
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText('weapp-vite')
+      await expect(page.locator('[data-project-card]:visible')).toHaveCount(11)
+      for (const id of ['weapp-vite', 'weapp-pandacss', 'weapp-stylex']) {
+        await page.locator(`[data-project-card][data-project-id="${id}"] a[data-analytics-event="select_project"]`).click()
+        await expect(page).toHaveURL(`/weapp.dev${prefix}/projects/${id}/`)
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(id)
+        await page.goto(`/weapp.dev${prefix}/projects/`)
+      }
       for (const route of ['pricing', 'sponsors', 'contributors']) {
         await page.goto(`/weapp.dev${prefix}/${route}/`)
         await expect(page).toHaveURL(`/weapp.dev${prefix}/projects/`)
-        await expect(page.locator('[data-project-card]:visible')).toHaveCount(9)
+        await expect(page.locator('[data-project-card]:visible')).toHaveCount(11)
       }
     }
   })

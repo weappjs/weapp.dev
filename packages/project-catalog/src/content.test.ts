@@ -4,16 +4,20 @@ import uniHelper from './content/projects/uni-helper.json'
 import varo from './content/projects/varo.json'
 import vpt from './content/projects/vite-plugin-taro.json'
 import vueMini from './content/projects/vue-mini.json'
+import panda from './content/projects/weapp-pandacss.json'
 import sqlite from './content/projects/weapp-sqlite.json'
+import stylex from './content/projects/weapp-stylex.json'
 import tailwind from './content/projects/weapp-tailwindcss.json'
 import vite from './content/projects/weapp-vite.json'
 import wotUi from './content/projects/wot-ui.json'
 import { projectDefinitionSchema } from './content/schemas'
 
 describe('project definitions', () => {
-  const projects = [vite, tailwind, varo, sqlite, vpt, vueMini, rezor, uniHelper, wotUi].map(project => projectDefinitionSchema.parse(project))
+  const projects = [vite, tailwind, panda, stylex, varo, sqlite, vpt, vueMini, rezor, uniHelper, wotUi].map(project => projectDefinitionSchema.parse(project))
   const officialDocsUrls: Record<string, string> = {
     'weapp-tailwindcss': 'https://tw.weapp.dev/',
+    'weapp-pandacss': 'https://panda.weapp.dev/',
+    'weapp-stylex': 'https://stylex.weapp.dev/',
     'weapp-vite': 'https://vite.weapp.dev/',
     'vite-plugin-taro': 'https://vpt.js.org/',
     'weapp-sqlite': 'https://sqlite.weapp.dev/',
@@ -97,6 +101,8 @@ describe('project definitions', () => {
     const expected: Record<string, string> = {
       'weapp-vite': 'https://www.npmjs.com/package/weapp-vite',
       'weapp-tailwindcss': 'https://www.npmjs.com/package/weapp-tailwindcss',
+      'weapp-pandacss': 'https://www.npmjs.com/package/weapp-pandacss',
+      'weapp-stylex': 'https://www.npmjs.com/package/weapp-stylex',
       'vite-plugin-taro': 'https://www.npmjs.com/package/vite-plugin-taro',
       '@varo-ui/cli': 'https://www.npmjs.com/package/@varo-ui/cli',
       '@vue-mini/core': 'https://www.npmjs.com/package/@vue-mini/core',

@@ -36,6 +36,16 @@ describe('project metrics', () => {
     expect(formatCompactNumber(11561, 'en')).toBe('11.6K')
   })
 
+  it('keeps unavailable downloads distinct from a measured zero', () => {
+    expect(parseMetricsMap({ project: { ...validMetrics, weeklyDownloads: null } })).not.toBeNull()
+    expect(isProjectMetrics({ ...validMetrics, weeklyDownloads: undefined })).toBe(false)
+    expect(isProjectMetrics({ ...validMetrics, weeklyDownloads: -1 })).toBe(false)
+    expect(formatCompactNumber(null, 'zh-CN')).toBe('暂无数据')
+    expect(formatCompactNumber(null, 'en-US')).toBe('Not available')
+    expect(formatCompactNumber(0, 'en-US')).toBe('0')
+    expect(hasSameProjectMetricValues({ ...validMetrics, weeklyDownloads: null }, { ...validMetrics, weeklyDownloads: 0 })).toBe(false)
+  })
+
   it('hides vanity metrics for planned projects only', () => {
     expect(showsPublicMetrics('planned')).toBe(false)
     expect(showsPublicMetrics('stable')).toBe(true)

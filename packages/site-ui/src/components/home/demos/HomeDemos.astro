@@ -1,21 +1,23 @@
 ---
 import type { Locale } from '@weapp/project-catalog/types'
-import type { HomeProject } from '../../../lib/home-projects'
+import type { HomeDemoKind, HomeProject } from '../../../lib/home-projects'
 import HomeDemo from './HomeDemo.astro'
 import { demoCopy } from './copy'
 
 interface Props { locale: Locale, projects: HomeProject[] }
 const { locale, projects } = Astro.props
+// Projects with factual static proof do not become interactive demo tabs.
+const demoProjects = projects.filter((project): project is HomeProject & { demo: HomeDemoKind } => Boolean(project.demo))
 const copy = demoCopy[locale]
 ---
 <home-demos class="home-lab" role="region" aria-label={copy.playground}>
   <div class="home-lab-heading">
     <div class="home-lab-tabs" role="tablist" aria-orientation="horizontal" aria-label={copy.playground} hidden>
-      {projects.map((project, index) => <button type="button" role="tab" id={`home-tab-${project.demo}`} aria-controls={`home-panel-${project.demo}`} aria-selected={index === 0 ? 'true' : 'false'} tabindex={index === 0 ? 0 : -1}>{copy.tabs[project.demo]}</button>)}
+      {demoProjects.map((project, index) => <button type="button" role="tab" id={`home-tab-${project.demo}`} aria-controls={`home-panel-${project.demo}`} aria-selected={index === 0 ? 'true' : 'false'} tabindex={index === 0 ? 0 : -1}>{copy.tabs[project.demo]}</button>)}
     </div>
-    <span class="home-lab-project" data-active-project aria-live="polite">{projects[0].data.locales[locale].name}</span>
+    <span class="home-lab-project" data-active-project aria-live="polite">{demoProjects[0].data.locales[locale].name}</span>
   </div>
-  {projects.map((project, index) => <div role="tabpanel" id={`home-panel-${project.demo}`} aria-labelledby={`home-tab-${project.demo}`} hidden={index !== 0} data-project-name={project.data.locales[locale].name} tabindex="0"><HomeDemo kind={project.demo} locale={locale} instance={`home-${project.demo}`} /></div>)}
+  {demoProjects.map((project, index) => <div role="tabpanel" id={`home-panel-${project.demo}`} aria-labelledby={`home-tab-${project.demo}`} hidden={index !== 0} data-project-name={project.data.locales[locale].name} tabindex="0"><HomeDemo kind={project.demo} locale={locale} instance={`home-${project.demo}`} /></div>)}
 </home-demos>
 <script>
   class HomeDemos extends HTMLElement {

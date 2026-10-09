@@ -7,6 +7,8 @@ const retiredVisuals = 'canvas:not(.home-hero-particle-canvas), [data-shader-can
 const constellationLinks = [
   { href: 'https://vite.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
   { href: 'https://tw.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
+  { href: 'https://panda.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
+  { href: 'https://stylex.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
   { href: 'https://varo.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
   { href: 'https://vpt.js.org/', target: '_blank', rel: 'noopener noreferrer' },
   { href: 'https://vuemini.org/', target: '_blank', rel: 'noopener noreferrer' },
@@ -17,6 +19,8 @@ const constellationLinks = [
 const railLinks = [
   'https://vite.weapp.dev/',
   'https://tw.weapp.dev/',
+  'https://panda.weapp.dev/',
+  'https://stylex.weapp.dev/',
   'https://varo.weapp.dev/',
   'https://sqlite.weapp.dev/',
   'https://vpt.js.org/',
@@ -30,7 +34,7 @@ async function expectHomeVisuals(page: import('@playwright/test').Page) {
   await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeAttached()
   await expect(page.locator('#home-hero-title')).toHaveText(heroWordmark)
   await expect(page.locator('.home-hero-screen')).toBeVisible()
-  await expect(page.locator('.home-hero-constellation .home-hero-tile')).toHaveCount(8)
+  await expect(page.locator('.home-hero-constellation .home-hero-tile')).toHaveCount(10)
   await expect(page.locator('.home-hero-orbit-inner, .home-hero-orbit-mid, .home-hero-orbit-outer, .home-hero-planet--ring')).toHaveCount(0)
   await expect(page.locator('.home-hero-constellation a.home-hero-tile').evaluateAll(links => links.map(link => ({
     href: link.getAttribute('href'),
@@ -40,9 +44,9 @@ async function expectHomeVisuals(page: import('@playwright/test').Page) {
   await expect(page.locator('.home-hero-copy')).toHaveCount(0)
   await expect(page.locator(retiredVisuals)).toHaveCount(0)
   await expect(page.locator('#projects [data-project-visual]')).toHaveCount(0)
-  await expect(page.locator('#projects [data-project-row]')).toHaveCount(4)
+  await expect(page.locator('#projects [data-project-row]')).toHaveCount(6)
   await expect(page.locator('#ecosystem-taro [data-project-row]')).toHaveCount(1)
-  await expect(page.locator('.home-project-proof')).toHaveCount(4)
+  await expect(page.locator('.home-project-proof')).toHaveCount(6)
   await expect(page.locator('.home-project-rail-group')).toHaveCount(5)
 }
 
@@ -87,10 +91,12 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
     await expect(page.locator('#about')).toContainText('weappjs')
   }
   const docsLinks = page.locator('#projects').getByRole('link', { name: '阅读文档' })
-  await expect(docsLinks).toHaveCount(4)
+  await expect(docsLinks).toHaveCount(6)
   await expect(docsLinks.evaluateAll(links => links.map(link => link.getAttribute('href')))).resolves.toEqual([
     'https://vite.weapp.dev/',
     'https://tw.weapp.dev/',
+    'https://panda.weapp.dev/',
+    'https://stylex.weapp.dev/',
     'https://varo.weapp.dev/',
     'https://sqlite.weapp.dev/',
   ])
@@ -101,6 +107,8 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
   await expect(page.locator('#projects a[data-analytics-event="select_project"]').evaluateAll(links => links.map(link => new URL((link as HTMLAnchorElement).href).pathname))).resolves.toEqual([
     '/projects/weapp-vite/',
     '/projects/weapp-tailwindcss/',
+    '/projects/weapp-pandacss/',
+    '/projects/weapp-stylex/',
     '/projects/varo/',
     '/projects/weapp-sqlite/',
   ])
@@ -118,6 +126,8 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
   await expect(page.locator('#projects a[data-analytics-event="select_project"]').evaluateAll(links => links.map(link => new URL((link as HTMLAnchorElement).href).pathname))).resolves.toEqual([
     '/en/projects/weapp-vite/',
     '/en/projects/weapp-tailwindcss/',
+    '/en/projects/weapp-pandacss/',
+    '/en/projects/weapp-stylex/',
     '/en/projects/varo/',
     '/en/projects/weapp-sqlite/',
   ])
@@ -185,7 +195,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 820, height: 1180
   test(`hero orbit stays clear at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.goto('/')
     const planets = page.locator('.home-hero-planet')
-    await expect(planets).toHaveCount(8)
+    await expect(planets).toHaveCount(10)
     await page.setViewportSize(viewport)
     for (let step = 0; step < 36; step++) {
       await planets.evaluateAll((elements, turn) => {
@@ -256,7 +266,7 @@ test('keeps project proof cards within responsive viewports', async ({ page }) =
         return { left: box.left, right: box.right, width: box.width }
       }),
     }))
-    expect(layout.cards, `${viewport}px proof card count`).toBe(4)
+    expect(layout.cards, `${viewport}px proof card count`).toBe(6)
     expect(layout.boxes.every(box => box.width > 0 && box.left >= -1 && box.right <= viewport + 1), `${viewport}px proof card bounds`).toBe(true)
   }
 })

@@ -14,8 +14,8 @@ for (const prefix of ['', '/en']) {
     await expect(page.locator('#roadmap')).toContainText(prefix ? 'not offered yet' : '不提供订阅')
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://weapp.dev${prefix}/`)
     await page.goto(`${prefix}/projects/`)
-    await expect(page.locator('[data-project-card]')).toHaveCount(9)
-    for (const slug of ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'vue-mini', 'rezor', 'uni-helper', 'wot-ui']) {
+    await expect(page.locator('[data-project-card]')).toHaveCount(11)
+    for (const slug of ['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'vue-mini', 'rezor', 'uni-helper', 'wot-ui']) {
       await page.goto(`${prefix}/projects/${slug}/`)
       await expect(page.locator(`main a[href="https://weapp.js.org${prefix}/projects/${slug}/"]`)).toHaveCount(1)
       const available = ['weapp-vite', 'weapp-tailwindcss'].includes(slug)

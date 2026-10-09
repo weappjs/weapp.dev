@@ -21,7 +21,7 @@ This monorepo contains two independent bilingual Astro applications. weapp.dev s
 
 ## Product truth
 
-The catalog retains nine projects and their actual maintainers, repositories, documentation URLs, and maturity. weapp-sqlite remains planned. Documentation domains including tw.weapp.dev, vite.weapp.dev, and varo.weapp.dev are unchanged. Only weapp-vite and weapp-tailwindcss currently have confirmed migration/training coverage; other projects need assessment.
+The catalog retains eleven projects and their actual maintainers, repositories, documentation URLs, and maturity. weapp-sqlite remains planned. Documentation domains including tw.weapp.dev, vite.weapp.dev, and varo.weapp.dev are unchanged. Only weapp-vite and weapp-tailwindcss currently have confirmed migration/training coverage; other projects need assessment.
 
 Commercial prices, sponsorship recognition, and the 60/25/15 fund allocation remain as published. Planned cloud builds, templates, and private registries are not purchasable products. Do not invent customers, metrics, partnerships, launch dates, or support promises.
 

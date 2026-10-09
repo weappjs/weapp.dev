@@ -25,7 +25,7 @@ export function isProjectMetrics(value: unknown): value is ProjectMetrics {
     && typeof metrics['releasedAt'] === 'string'
     && !Number.isNaN(Date.parse(metrics['releasedAt']))
     && isFiniteNonNegative(metrics['stars'])
-    && isFiniteNonNegative(metrics['weeklyDownloads'])
+    && (metrics['weeklyDownloads'] === null || isFiniteNonNegative(metrics['weeklyDownloads']))
     && typeof metrics['fetchedAt'] === 'string'
     && !Number.isNaN(Date.parse(metrics['fetchedAt']))
 }
@@ -52,7 +52,10 @@ export async function loadProjectMetrics(): Promise<ProjectMetricsMap> {
   return fallbackMetrics satisfies ProjectMetricsMap
 }
 
-export function formatCompactNumber(value: number, locale: string): string {
+export function formatCompactNumber(value: number | null, locale: string): string {
+  if (value === null) {
+    return locale.startsWith('zh') ? '暂无数据' : 'Not available'
+  }
   return new Intl.NumberFormat(locale, {
     notation: 'compact',
     maximumFractionDigits: value >= 1000 ? 1 : 0,
