@@ -13,15 +13,17 @@ interface Props {
   title: string
   description: string
   pack?: keyof typeof homeSectionPack
+  showRuntime?: boolean
 }
 
-const { locale, projects, id, title, description, pack } = Astro.props
+const { locale, projects, id, eyebrow, title, description, pack, showRuntime = false } = Astro.props
 const copy = getSiteCopy(locale)
 const sectionClass = pack ? homeSectionPack[pack] : homeSection
 ---
 
 {projects.length ? <section class:list={[sectionClass, shell, 'scroll-mt-20']} id={id} aria-labelledby={`${id}-title`}>
   <header data-reveal class="mb-14 max-w-[900px]">
+    <p class="mb-4 text-sm font-[600] text-brand">{eyebrow}</p>
     <h2 id={`${id}-title`} class={sectionTitle}>{title}</h2>
     <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{description}</p>
   </header>
@@ -29,10 +31,16 @@ const sectionClass = pack ? homeSectionPack[pack] : homeSection
     {projects.map((project, index) => {
       const content = project.data.locales[locale]
       return (
-        <article data-reveal data-project-id={project.id} style={`--reveal-delay: ${index * 70}ms; --project-accent: ${project.data.accent}`} class="grid gap-5 rounded-panel bg-panel-soft p-8">
-          <img class="size-12 object-contain" src={project.data.logo} width="48" height="48" alt="" loading="lazy" decoding="async" />
+        <article id={showRuntime ? `ecosystem-${project.id}` : undefined} aria-labelledby={`home-partner-title-${project.id}`} data-reveal data-project-id={project.id} style={`--reveal-delay: ${index * 70}ms; --project-accent: ${project.data.accent}`} class="grid min-w-0 scroll-mt-20 grid-rows-[auto_auto_1fr_auto] gap-5 rounded-panel bg-panel-soft p-8 max-[520px]:p-6">
+          <div class="flex flex-wrap items-center gap-4">
+            <img class="size-12 object-contain" src={project.data.logo} width="48" height="48" alt="" loading="lazy" decoding="async" />
+            {showRuntime ? <div class="grid gap-1">
+              <p class="mb-0 text-sm font-[650]" data-runtime>Runtime · {project.data.runtime?.join(' · ')}</p>
+              <span class="text-sm text-brand" data-project-status={project.data.status}>{copy.projects.status[project.data.status]}</span>
+            </div> : null}
+          </div>
           <div>
-            <h3 class="mb-2 text-2xl font-[660]">{content.name}</h3>
+            <h3 id={`home-partner-title-${project.id}`} class="mb-2 text-2xl font-[660]">{content.name}</h3>
             <p class="mb-0 text-copy-muted">{content.tagline}</p>
           </div>
           <p class="mb-0 max-w-[36rem] text-sm leading-[1.7] text-copy-muted">{content.description}</p>

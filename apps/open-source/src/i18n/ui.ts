@@ -56,6 +56,11 @@ export const siteCopy = {
       jump: '查看样式工具',
       action: '比较三个样式项目',
     },
+    runtime: {
+      eyebrow: 'Runtime',
+      title: '选择小程序运行时',
+      description: 'Vue Mini 提供 Vue 3 响应式与组合式 API，Rezor 提供 React Hooks。两条路线负责页面与状态更新，可按团队熟悉的写法和项目成熟度选择。',
+    },
     ecosystems: {
       'weapp': {
         eyebrow: 'weapp 生态',
@@ -66,16 +71,6 @@ export const siteCopy = {
         eyebrow: 'Taro 生态',
         title: '把 Taro / React 工程接到 Vite',
         description: 'VPT 为已有 Taro 项目提供构建迁移入口。',
-      },
-      'vue-mini': {
-        eyebrow: 'Vue Mini 生态',
-        title: '用 Vue 3 写小程序',
-        description: 'Vue Mini 是独立的小程序运行时框架，负责页面写法。',
-      },
-      'rezor': {
-        eyebrow: 'Rezor 生态',
-        title: '用 React 写小程序',
-        description: 'Rezor 是独立的 React 小程序运行时。资料目前以仓库为主。',
       },
       'uni-app': {
         eyebrow: 'uni-app 生态',
@@ -264,6 +259,11 @@ export const siteCopy = {
       jump: 'Explore styling tools',
       action: 'Compare the three styling projects',
     },
+    runtime: {
+      eyebrow: 'Runtime',
+      title: 'Choose a mini-program runtime',
+      description: 'Vue Mini brings Vue 3 reactivity and the Composition API; Rezor brings React Hooks. Choose the runtime for pages and state updates based on your team’s workflow and each project’s maturity.',
+    },
     ecosystems: {
       'weapp': {
         eyebrow: 'weapp ecosystem',
@@ -274,16 +274,6 @@ export const siteCopy = {
         eyebrow: 'Taro ecosystem',
         title: 'Move a Taro / React project onto Vite',
         description: 'VPT provides a build migration path for existing Taro projects.',
-      },
-      'vue-mini': {
-        eyebrow: 'Vue Mini ecosystem',
-        title: 'Write mini programs with Vue 3',
-        description: 'Vue Mini is a standalone mini-program runtime for how you write pages.',
-      },
-      'rezor': {
-        eyebrow: 'Rezor ecosystem',
-        title: 'Write mini programs with React',
-        description: 'Rezor is a standalone React mini-program runtime. The catalog currently points at the repository.',
       },
       'uni-app': {
         eyebrow: 'uni-app ecosystem',

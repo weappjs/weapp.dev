@@ -27,6 +27,7 @@ const copy = getSiteCopy(locale)
 const profile = getSiteProfile()
 const numberLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
 const ecosystemGroups = getCatalogEcosystemGroups(projects)
+const runtimeHome = projects.filter(project => project.data.role === 'Framework').sort((left, right) => left.data.order - right.data.order)
 const stylingHome = homeProjects.filter(project => project.data.role === 'Styling')
 const weappHome = homeProjects.filter(project => project.data.ecosystem === 'weapp' && project.data.role !== 'Styling')
 const taroHome = homeProjects.filter(project => project.data.ecosystem === 'taro')
@@ -99,9 +100,7 @@ const stepIcons = [Layers2, ScanLine, Package]
 
   <HomeProjects locale={locale} projects={taroHome} metrics={metrics} pack="middle" id="ecosystem-taro" eyebrow={copy.ecosystems.taro.eyebrow} title={copy.ecosystems.taro.title} description={copy.ecosystems.taro.description} />
 
-  <HomePartnerSection locale={locale} pack="middle" id="ecosystem-vue-mini" projects={ecosystemGroups.find(group => group.id === 'vue-mini')?.projects ?? []} eyebrow={copy.ecosystems['vue-mini'].eyebrow} title={copy.ecosystems['vue-mini'].title} description={copy.ecosystems['vue-mini'].description} />
-
-  <HomePartnerSection locale={locale} pack="middle" id="ecosystem-rezor" projects={ecosystemGroups.find(group => group.id === 'rezor')?.projects ?? []} eyebrow={copy.ecosystems.rezor.eyebrow} title={copy.ecosystems.rezor.title} description={copy.ecosystems.rezor.description} />
+  <HomePartnerSection locale={locale} pack="middle" id="runtime" projects={runtimeHome} eyebrow={copy.runtime.eyebrow} title={copy.runtime.title} description={copy.runtime.description} showRuntime />
 
   <HomePartnerSection locale={locale} pack="end" id="ecosystem" projects={ecosystemGroups.find(group => group.id === 'uni-app')?.projects ?? []} eyebrow={copy.ecosystems['uni-app'].eyebrow} title={copy.ecosystems['uni-app'].title} description={copy.ecosystems['uni-app'].description} />
 

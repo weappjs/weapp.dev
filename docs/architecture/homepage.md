@@ -6,6 +6,8 @@
 
 两站正文将工程、组件与数据（weapp-vite、Varo、weapp-sqlite）放在 #projects，随后以独立的 #styling 样式章节集中展示 weapp-tailwindcss、weapp-pandacss 与 weapp-stylex。样式章节使用共享的柔和背景 token，保留项目状态、事实证明、文档和详情入口；选型介绍可直接跳转到该章节，章节内可进入同语种的样式项目筛选目录。该展示分组由应用维护，不改变项目目录的生态归属或商业服务范围。交互演示的 tab 顺序独立于章节阅读顺序。
 
+Vue Mini 与 Rezor 在 #runtime 合并为运行时选型章节，按项目目录中的 Framework 角色选取并按目录顺序排列。桌面并排展示，手机纵向排列；项目卡片标出 Vue 3 / React 和真实成熟度，分别链接官方资料及站内详情。旧的 #ecosystem-vue-mini 与 #ecosystem-rezor 锚点保留在各自卡片上。目录生态归属和星球导航继续独立维护。
+
 ## 共同视觉语言
 
 两站采用已确认的苹果产品官网式展示语言：中性白/浅灰与黑/深灰、Geist 标题及正文、中文系统字体回退、大标题、宽裕章节留白、绿色主操作、胶囊按钮和真实项目演示。使用自有与项目真实素材，不使用苹果私有资产。视觉规范和实际 token 见根目录 [DESIGN.md](../../DESIGN.md)，应用职责见 [商业站设计约定](../../apps/web/DESIGN.md)与[开源站设计约定](../../apps/open-source/DESIGN.md)。
