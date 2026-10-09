@@ -1,0 +1,182 @@
+import type { PlanetEnvironment, PlanetPresentation } from './hero-planets'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPlanetController } from './hero-planets'
+
+const desktop: PlanetEnvironment = { desktop: true, reducedMotion: false, visible: true, pageHidden: false }
+
+function setup(environment = desktop) {
+  let state: PlanetPresentation
+  const present = vi.fn((next: PlanetPresentation) => {
+    state = next
+  })
+  const controller = createPlanetController(['vite', 'panda', 'rezor'], present, environment)
+  return { controller, present, current: () => state! }
+}
+
+describe('hero planet attention lifecycle', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('rotates one highlight at a time with a quiet interval between projects', () => {
+    const { controller, current } = setup()
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true })
+    vi.advanceTimersByTime(2999)
+    expect(current().activeId).toBeNull()
+    vi.advanceTimersByTime(1)
+    expect(current()).toMatchObject({ activeId: 'vite', orbitRunning: false })
+    vi.advanceTimersByTime(4000)
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true })
+    vi.advanceTimersByTime(3000)
+    expect(current().activeId).toBe('panda')
+    vi.advanceTimersByTime(14000)
+    expect(current().activeId).toBe('vite')
+    controller.destroy()
+  })
+
+  it('gives focus priority over hover and waits after all interaction ends', () => {
+    const { controller, current } = setup()
+    vi.advanceTimersByTime(3000)
+    controller.setHover('panda')
+    expect(current()).toMatchObject({ activeId: 'panda', orbitRunning: false })
+    controller.setFocus('rezor')
+    vi.advanceTimersByTime(30000)
+    expect(current().activeId).toBe('rezor')
+    controller.setHover(null)
+    expect(current().activeId).toBe('rezor')
+    controller.setFocus(null)
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true })
+    vi.advanceTimersByTime(2999)
+    expect(current().activeId).toBeNull()
+    vi.advanceTimersByTime(1)
+    expect(current().activeId).toBe('panda')
+    controller.destroy()
+  })
+
+  it.each([
+    ['offscreen', { visible: false }, { visible: true }],
+    ['background', { pageHidden: true }, { pageHidden: false }],
+    ['mobile', { desktop: false }, { desktop: true }],
+    ['reduced motion', { reducedMotion: true }, { reducedMotion: false }],
+  ] as const)('clears automatic attention while %s and resumes without catching up', (_name, paused, resumed) => {
+    const { controller, current } = setup()
+    vi.advanceTimersByTime(3000)
+    controller.setEnvironment(paused)
+    expect(current().activeId).toBeNull()
+    expect(vi.getTimerCount()).toBe(0)
+    vi.advanceTimersByTime(60000)
+    controller.setEnvironment(resumed)
+    vi.advanceTimersByTime(2999)
+    expect(current().activeId).toBeNull()
+    vi.advanceTimersByTime(1)
+    expect(current().activeId).toBe('panda')
+    controller.destroy()
+  })
+
+  it('preserves a user pause and current highlight while allowing manual inspection', () => {
+    const { controller, current } = setup()
+    vi.advanceTimersByTime(3000)
+    controller.togglePause()
+    vi.advanceTimersByTime(60000)
+    expect(current()).toMatchObject({ activeId: 'vite', orbitRunning: false, userPaused: true })
+    controller.setHover('panda')
+    controller.setFocus('rezor')
+    expect(current().activeId).toBe('rezor')
+    controller.setFocus(null)
+    controller.setHover(null)
+    expect(current().activeId).toBe('vite')
+    controller.togglePause()
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true, userPaused: false })
+    vi.advanceTimersByTime(3000)
+    expect(current().activeId).toBe('panda')
+    controller.destroy()
+  })
+
+  it('keeps user pause across mobile, hidden-page, and reduced-motion changes', () => {
+    const { controller, current } = setup()
+    vi.advanceTimersByTime(3000)
+    controller.togglePause()
+    controller.setEnvironment({ desktop: false, pageHidden: true, reducedMotion: true })
+    expect(current()).toMatchObject({ activeId: null, controlsVisible: false, userPaused: true })
+    controller.setEnvironment(desktop)
+    vi.advanceTimersByTime(60000)
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false, controlsVisible: true, userPaused: true })
+    controller.togglePause()
+    vi.advanceTimersByTime(3000)
+    expect(current().activeId).toBe('panda')
+    controller.destroy()
+  })
+
+  it('keeps mobile interaction stationary and reduced-motion desktop captions available', () => {
+    const { controller, current } = setup({ ...desktop, desktop: false })
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true, controlsVisible: false })
+    controller.setFocus('rezor')
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false })
+    controller.setEnvironment({ desktop: true, reducedMotion: true })
+    expect(current()).toMatchObject({ activeId: 'rezor', orbitRunning: false, controlsVisible: false })
+    expect(vi.getTimerCount()).toBe(0)
+    controller.destroy()
+  })
+
+  it('does not restart a pending cycle for unchanged observer notifications', () => {
+    const { controller, current } = setup()
+    vi.advanceTimersByTime(2000)
+    controller.setEnvironment({ visible: true })
+    vi.advanceTimersByTime(1000)
+    expect(current().activeId).toBe('vite')
+    controller.destroy()
+  })
+
+  it('waits for every environment blocker to clear before starting an initial cycle', () => {
+    const { controller, current } = setup({ desktop: false, visible: false, pageHidden: true, reducedMotion: true })
+    expect(vi.getTimerCount()).toBe(0)
+    controller.setEnvironment({ desktop: true, reducedMotion: false })
+    controller.setEnvironment({ visible: true })
+    vi.advanceTimersByTime(60000)
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false })
+    expect(vi.getTimerCount()).toBe(0)
+    controller.setEnvironment({ pageHidden: false })
+    expect(current().orbitRunning).toBe(true)
+    vi.advanceTimersByTime(2999)
+    expect(current().activeId).toBeNull()
+    vi.advanceTimersByTime(1)
+    expect(current().activeId).toBe('vite')
+    controller.destroy()
+  })
+
+  it('keeps the focused project stationary across background and breakpoint changes', () => {
+    const { controller, current } = setup()
+    controller.setFocus('rezor')
+    controller.setEnvironment({ pageHidden: true, desktop: false })
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false })
+    controller.setEnvironment({ pageHidden: false, desktop: true })
+    vi.advanceTimersByTime(60000)
+    expect(current()).toMatchObject({ activeId: 'rezor', orbitRunning: false })
+    expect(vi.getTimerCount()).toBe(0)
+    controller.setFocus(null)
+    vi.advanceTimersByTime(3000)
+    expect(current().activeId).toBe('vite')
+    controller.destroy()
+  })
+
+  it('releases pending work and ignores events after destruction', () => {
+    const { controller, present } = setup()
+    vi.advanceTimersByTime(3000)
+    controller.destroy()
+    const calls = present.mock.calls.length
+    expect(vi.getTimerCount()).toBe(0)
+    controller.setHover('panda')
+    controller.setFocus('rezor')
+    controller.setEnvironment(desktop)
+    controller.togglePause()
+    vi.advanceTimersByTime(60000)
+    expect(present).toHaveBeenCalledTimes(calls)
+  })
+
+  it('does not schedule a missing catalog', () => {
+    const present = vi.fn()
+    const controller = createPlanetController([], present, desktop)
+    expect(vi.getTimerCount()).toBe(0)
+    expect(present).toHaveBeenLastCalledWith({ activeId: null, orbitRunning: true, controlsVisible: true, userPaused: false })
+    controller.destroy()
+  })
+})

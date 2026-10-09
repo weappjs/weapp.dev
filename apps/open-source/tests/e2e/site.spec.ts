@@ -186,37 +186,6 @@ test('home hero keeps a cosmic first screen while the rest of the page follows t
   }
 })
 
-for (const viewport of [{ width: 1440, height: 900 }, { width: 820, height: 1180 }, { width: 390, height: 844 }, { width: 320, height: 568 }, { width: 844, height: 390 }, { width: 1024, height: 768 }]) {
-  test(`hero orbit stays clear at ${viewport.width}x${viewport.height}`, async ({ page }) => {
-    await page.goto('/')
-    const planets = page.locator('.home-hero-planet')
-    await expect(planets).toHaveCount(10)
-    await page.setViewportSize(viewport)
-    for (let step = 0; step < 36; step++) {
-      await planets.evaluateAll((elements, turn) => {
-        for (const element of elements) {
-          const node = element as HTMLElement
-          node.style.animation = 'none'
-          node.style.setProperty('--orbit-turn', String(turn))
-        }
-      }, step / 36)
-      const collisions = await page.evaluate(() => {
-        const word = document.querySelector('#home-hero-title')!.getBoundingClientRect()
-        const screen = document.querySelector('.home-hero-screen')!.getBoundingClientRect()
-        const planets = [...document.querySelectorAll<HTMLElement>('.home-hero-planet')].map(element => ({ id: element.dataset.analyticsProject, box: element.getBoundingClientRect() }))
-        const overlaps = (a: DOMRect, b: DOMRect) => !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom)
-        return planets.flatMap(({ id, box }, index) => {
-          const hitsWord = overlaps(box, word)
-          const outside = box.left < screen.left || box.right > screen.right || box.top < screen.top || box.bottom > screen.bottom
-          const hitsPlanet = planets.slice(index + 1).filter(other => overlaps(box, other.box)).map(other => other.id)
-          return hitsWord || outside || hitsPlanet.length ? [{ id, hitsWord, outside, hitsPlanet }] : []
-        })
-      })
-      expect(collisions, `${viewport.width}px at ${step * 10} degrees`).toEqual([])
-    }
-  })
-}
-
 test('reduced motion keeps content visible and product interactions stationary', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')

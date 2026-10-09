@@ -10,8 +10,13 @@
   isolation: isolate;
   display: grid;
   place-items: center;
-  min-height: max(22rem, calc(100svh - 64px));
+  min-height: var(--hero-stage-height);
 
+  --hero-stage-height: max(22rem, calc(100svh - 64px));
+  --hero-title-size: clamp(4.25rem, 14vw, 11rem);
+  --planet-size: 3.25rem;
+  --planet-scale: 1;
+  --planet-hit-size: calc(var(--planet-size) * var(--planet-scale));
   --orbit-rx: 43vw;
   --orbit-ry: 31svh;
 
@@ -75,25 +80,60 @@
   translate: -50% -50%;
 }
 
-.home-hero-tile,
-.home-hero-planet {
+.home-hero-planet,
+.home-hero-planet-name {
   position: absolute;
   top: calc(50% + sin(calc(var(--orbit-start) + var(--orbit-turn) * 360deg)) * var(--orbit-ry));
   left: calc(50% + cos(calc(var(--orbit-start) + var(--orbit-turn) * 360deg)) * var(--orbit-rx));
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 3.25rem;
-  height: 3.25rem;
+  width: var(--planet-hit-size);
+  height: var(--planet-hit-size);
   pointer-events: auto;
   border-radius: 50%;
   translate: -50% -50%;
 
   --orbit-start: calc(var(--orbit-p) * 360deg);
 }
+.home-hero-planet-visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--planet-size);
+  height: var(--planet-size);
+  border-radius: 50%;
+}
+.home-hero-planet-visual::after {
+  position: absolute;
+  inset: -4px;
+  z-index: 3;
+  content: '';
+  border: 2px solid rgb(237 245 240 / 80%);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+.home-hero-planet[data-planet-active] .home-hero-planet-visual::after {
+  opacity: 1;
+}
+.home-hero-planet-name {
+  display: none;
+  width: max-content;
+  height: auto;
+  margin: 0;
+  color: #c7cfca;
+  font: 500 13px/18px var(--font-sans);
+  white-space: nowrap;
+  pointer-events: none;
+  translate: -50% calc(var(--planet-hit-size) / 2 + 8px);
+}
+.home-hero-planet[data-planet-active] + .home-hero-planet-name {
+  color: #edf5f0;
+}
 .home-hero-tile:focus-visible {
   outline: 2px solid var(--highlight);
-  outline-offset: -3px;
+  outline-offset: 3px;
 }
 
 .home-hero-planet-body {
@@ -130,7 +170,7 @@
   z-index: 1;
   max-width: none;
   margin: 0;
-  font-size: clamp(4.25rem, 14vw, 11rem);
+  font-size: var(--hero-title-size);
   font-weight: 740;
   line-height: 0.9;
   letter-spacing: -0.04em;
@@ -155,6 +195,57 @@
 
 .home-hero-dot {
   color: #69c7a5;
+}
+
+.home-hero-spotlight {
+  position: absolute;
+  top: calc(50% + var(--hero-title-size) * 0.45 + 1.5rem);
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  gap: 4px;
+  width: min(28rem, calc(100% - 3rem));
+  text-align: center;
+  pointer-events: none;
+  translate: -50% 0;
+}
+.home-hero-spotlight strong {
+  color: #edf5f0;
+  font: 650 18px/24px var(--font-sans);
+}
+.home-hero-spotlight span {
+  color: #c7cfca;
+  font: 400 13px/20px var(--font-sans);
+}
+.home-hero-motion {
+  position: absolute;
+  right: 24px;
+  bottom: 16px;
+  z-index: 4;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  color: #c7cfca;
+  font: 500 13px/20px var(--font-sans);
+  border: 1px solid rgb(237 245 240 / 22%);
+  border-radius: 999px;
+  background: #050505;
+  cursor: pointer;
+}
+.home-hero-motion:hover,
+.home-hero-motion:focus-visible {
+  color: #edf5f0;
+  border-color: rgb(237 245 240 / 60%);
+}
+.home-hero-motion > [aria-hidden] {
+  display: inline-flex;
+}
+.home-hero-spotlight[hidden],
+.home-hero-motion[hidden],
+.home-hero-motion [hidden] {
+  display: none;
 }
 
 .home-hero .home-project-rail {
@@ -271,33 +362,23 @@
 }
 
 @media (max-width: 1100px) {
-  .home-hero-title {
-    font-size: clamp(3.75rem, 11vw, 8rem);
+  .home-hero-screen {
+    --hero-title-size: clamp(3.75rem, 11vw, 8rem);
   }
 }
 @media (max-width: 900px) {
   .home-hero-screen {
-    min-height: max(22rem, calc(100svh - 58px));
-
+    --hero-stage-height: max(22rem, calc(100svh - 58px));
     --orbit-rx: 38vw;
     --orbit-ry: 28svh;
   }
-  .home-hero-planet {
-    width: 3.25rem;
-    height: 3.25rem;
-  }
 }
 @media (max-width: 720px) {
-  .home-hero-title {
-    font-size: clamp(2.25rem, 10vw, 4.5rem);
-  }
   .home-hero-screen {
+    --hero-title-size: clamp(2.25rem, 10vw, 4.5rem);
+    --planet-size: 2.75rem;
     --orbit-rx: calc(50vw - 2rem);
     --orbit-ry: min(36svh, calc(50svh - 3.5rem));
-  }
-  .home-hero-planet {
-    width: 2.75rem;
-    height: 2.75rem;
   }
   .home-hero .home-project-rail {
     padding-block: 1.25rem 1.5rem;
@@ -306,8 +387,96 @@
 
 /* Leave room for the orbit above and below the wordmark on short screens. */
 @media (max-height: 500px) and (min-width: 721px) {
-  .home-hero-title {
-    font-size: clamp(2.5rem, 8vw, 5rem);
+  .home-hero-screen {
+    --hero-title-size: clamp(2.5rem, 8vw, 5rem);
+  }
+}
+@media (min-width: 1024px) {
+  .home-hero-screen {
+    --hero-stage-height: max(26rem, calc(100svh - 64px));
+    --hero-title-size: clamp(4.25rem, 10vw, 9rem);
+    --planet-size: 5rem;
+    --planet-scale: 1.35;
+    --planet-safe-y: 5.5rem;
+    --orbit-rx: min(43vw, calc(50vw - 6rem));
+    --orbit-ry: min(31svh, calc(var(--hero-stage-height) / 2 - var(--planet-safe-y)));
+  }
+
+  /* Equal path distances keep enlarged targets apart on a flattened ellipse. */
+  .home-hero-planet,
+  .home-hero-planet-name {
+    top: 0;
+    left: 0;
+    offset-path: ellipse(var(--orbit-rx) var(--orbit-ry) at 50% 50%);
+    offset-distance: calc((var(--orbit-p) + var(--orbit-turn)) * 100%);
+    offset-rotate: 0deg;
+    offset-anchor: center;
+    translate: none;
+  }
+  .home-hero-planet-name {
+    display: block;
+
+    --planet-label-height: 18px;
+
+    /* Names face away from the wordmark on both halves of the orbit. */
+    --planet-label-side: calc(max(0, round(up, sin(calc(var(--orbit-start) + var(--orbit-turn) * 360deg)), 1)) * 2 - 1);
+
+    translate: 0 calc(var(--planet-label-side) * (var(--planet-hit-size) / 2 + 8px + var(--planet-label-height) / 2));
+  }
+}
+@media (min-width: 1024px) and (max-width: 1279px), (min-width: 1024px) and (max-height: 719px) {
+  .home-hero-screen {
+    --planet-size: 4.5rem;
+    --planet-safe-y: 5.25rem;
+  }
+}
+@media (min-width: 1024px) and (max-width: 1100px) {
+  .home-hero-screen {
+    --hero-title-size: clamp(3.75rem, 10vw, 8rem);
+  }
+}
+@media (min-width: 1024px) and (max-height: 700px) {
+  .home-hero-screen {
+    --hero-title-size: clamp(3.75rem, min(10vw, 16svh), 8rem);
+  }
+  .home-hero-spotlight {
+    top: calc(50% + var(--hero-title-size) * 0.45 + 1rem);
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    justify-content: center;
+    width: max-content;
+    max-width: min(32rem, calc(100% - 3rem));
+  }
+  .home-hero-spotlight strong {
+    font-size: 16px;
+    line-height: 22px;
+  }
+}
+@media (min-width: 1024px) and (max-height: 500px) {
+  .home-hero-screen {
+    --hero-title-size: clamp(2.5rem, 8vw, 5rem);
+    --planet-size: 4rem;
+    --planet-scale: 1.25;
+    --planet-safe-y: 4.25rem;
+    --orbit-ry: min(max(31svh, 8.75rem), calc(var(--hero-stage-height) / 2 - var(--planet-safe-y)));
+  }
+  .home-hero-planet-name {
+    --planet-label-height: 16px;
+
+    font-size: 12px;
+    line-height: 16px;
+    translate: 0 calc(var(--planet-label-side) * (var(--planet-hit-size) / 2 + 6px + var(--planet-label-height) / 2));
+  }
+  .home-hero-spotlight {
+    top: calc(50% + var(--hero-title-size) * 0.45 + 0.75rem);
+  }
+  .home-hero-spotlight strong {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .home-hero-spotlight span {
+    font-size: 12px;
   }
 }
 @media (max-width: 350px) {
@@ -321,19 +490,28 @@
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .home-hero-planet {
+  .home-hero-constellation[data-planets-ready] .home-hero-planet,
+  .home-hero-constellation[data-planets-ready] .home-hero-planet-name {
     animation: home-hero-revolve calc(var(--orbit-t) * 3) linear infinite;
-    transition: scale 240ms cubic-bezier(0.16, 1, 0.3, 1);
+    animation-play-state: paused;
+  }
+  .home-hero-constellation[data-planets-orbit-running] .home-hero-planet,
+  .home-hero-constellation[data-planets-orbit-running] .home-hero-planet-name {
+    animation-play-state: running;
+  }
+  .home-hero-planet-visual {
+    transition: scale 450ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .home-hero-planet-visual::after {
+    transition: opacity 180ms ease;
+  }
+  .home-hero-planet[data-planet-active] .home-hero-planet-visual {
+    scale: var(--planet-scale);
   }
   .home-hero-planet:hover,
   .home-hero-planet:focus-visible {
     z-index: 6;
-    animation-play-state: paused;
-    scale: 1.06;
   }
-}
-.home-hero-screen[data-particles-paused] .home-hero-planet {
-  animation-play-state: paused;
 }
 @keyframes home-hero-revolve {
   0% {

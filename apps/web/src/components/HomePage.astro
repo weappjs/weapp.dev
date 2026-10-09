@@ -36,6 +36,7 @@ const constellation = getConstellationProjects(projects).map(project => ({
   href: project.data.docsUrl,
   logo: project.data.logo,
   name: project.data.locales[locale].name,
+  tagline: project.data.locales[locale].tagline,
   accent: project.data.accent,
 }))
 const stageById = new Map(homeProjects.map(project => [project.id, project.stage]))
