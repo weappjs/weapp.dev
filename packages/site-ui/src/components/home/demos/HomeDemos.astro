@@ -7,7 +7,11 @@ import { demoCopy } from './copy'
 interface Props { locale: Locale, projects: HomeProject[] }
 const { locale, projects } = Astro.props
 // Projects with factual static proof do not become interactive demo tabs.
-const demoProjects = projects.filter((project): project is HomeProject & { demo: HomeDemoKind } => Boolean(project.demo))
+// Keep demo navigation stable when homepage chapters change their reading order.
+const demoOrder: HomeDemoKind[] = ['build', 'style', 'registry', 'sqlite', 'migration']
+const demoProjects = projects
+  .filter((project): project is HomeProject & { demo: HomeDemoKind } => Boolean(project.demo))
+  .sort((left, right) => demoOrder.indexOf(left.demo) - demoOrder.indexOf(right.demo))
 const copy = demoCopy[locale]
 ---
 <home-demos class="home-lab" role="region" aria-label={copy.playground}>

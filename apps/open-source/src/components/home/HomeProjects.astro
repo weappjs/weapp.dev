@@ -15,9 +15,11 @@ interface Props {
   description?: string
   pack?: keyof typeof homeSectionPack
   labProjects?: HomeProject[]
+  surface?: 'soft'
+  action?: { href: string, label: string }
 }
 
-const { locale, projects, metrics, labProjects, pack } = Astro.props
+const { locale, projects, metrics, labProjects, pack, surface, action } = Astro.props
 const copy = getSiteCopy(locale)
 const sectionId = Astro.props.id ?? 'projects'
 const title = Astro.props.title ?? copy.projects.title
@@ -25,15 +27,19 @@ const description = Astro.props.description ?? copy.projects.description
 const sectionClass = pack ? homeSectionPack[pack] : homeSection
 ---
 
-<section class:list={[sectionClass, shell, 'scroll-mt-20']} id={sectionId} aria-labelledby={`${sectionId}-title`}>
-  <header data-reveal class="mb-14 max-w-[900px]">
-    <h2 id={`${sectionId}-title`} class={sectionTitle}>{title}</h2>
-    <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{description}</p>
-  </header>
+<section class:list={[sectionClass, 'scroll-mt-20', { 'bg-panel-soft': surface === 'soft' }]} id={sectionId} aria-labelledby={`${sectionId}-title`}>
+  <div class={shell}>
+    <header data-reveal class="mb-14 max-w-[900px]">
+      {Astro.props.eyebrow ? <p class="mb-4 text-sm font-[600] text-brand">{Astro.props.eyebrow}</p> : null}
+      <h2 id={`${sectionId}-title`} class={sectionTitle}>{title}</h2>
+      <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{description}</p>
+      {action ? <a class="mt-5 inline-flex min-h-11 items-center text-sm font-[650] text-brand" href={action.href}>{action.label}</a> : null}
+    </header>
 
-  <div class="home-project-list">
-    {projects.map((project, index) => (
-      <HomeProjectRow labels={copy.projects} detailsUrl={projectPath(locale, project.id)} locale={locale} project={project} index={index} metrics={metrics[project.id]} labProjects={project.id === 'weapp-vite' ? labProjects : undefined} />
-    ))}
+    <div class="home-project-list">
+      {projects.map((project, index) => (
+        <HomeProjectRow labels={copy.projects} detailsUrl={projectPath(locale, project.id)} locale={locale} project={project} index={index} metrics={metrics[project.id]} labProjects={project.id === 'weapp-vite' ? labProjects : undefined} />
+      ))}
+    </div>
   </div>
 </section>

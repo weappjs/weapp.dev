@@ -27,7 +27,8 @@ const copy = getSiteCopy(locale)
 const profile = getSiteProfile()
 const numberLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
 const ecosystemGroups = getCatalogEcosystemGroups(projects)
-const weappHome = homeProjects.filter(project => project.data.ecosystem === 'weapp')
+const stylingHome = homeProjects.filter(project => project.data.role === 'Styling')
+const weappHome = homeProjects.filter(project => project.data.ecosystem === 'weapp' && project.data.role !== 'Styling')
 const taroHome = homeProjects.filter(project => project.data.ecosystem === 'taro')
 const constellation = getConstellationProjects(projects).map(project => ({
   id: project.id,
@@ -83,13 +84,18 @@ const stepIcons = [Layers2, ScanLine, Package]
         <div class="min-w-0">
           <p class="mb-3 max-w-[70ch] text-copy-muted">{locale === 'zh-CN' ? '原生小程序需要改进工程构建，可以先看 weapp-vite；样式可以按现有写法选择 weapp-tailwindcss、weapp-pandacss 或 weapp-stylex；需要可编辑的组件源码，先看 Varo。已有 Taro 项目可以了解 VPT，uni-app 项目可以从 Uni Helper 与 Wot UI 开始。' : 'For native mini-program builds, start with weapp-vite; for styling, choose weapp-tailwindcss, weapp-pandacss, or weapp-stylex to match your workflow; for editable component source, explore Varo. Existing Taro projects can explore VPT, while uni-app teams can start with Uni Helper and Wot UI.'}</p>
           <p class="mb-3 max-w-[70ch] text-sm text-copy-muted">{locale === 'zh-CN' ? '先查看项目状态与适配边界，再按官方文档在一个页面或组件中试用，验证后逐步扩展。每个项目的详情页都保留文档和源码入口。' : 'Check project status and compatibility, then follow the official docs to try one page or component before expanding. Each project page links to its documentation and source.'}</p>
-          <a class="inline-flex min-h-11 items-center gap-2 text-sm font-[650] text-brand" href={localizePath(locale, '/projects/')}>{locale === 'zh-CN' ? '按需求浏览项目' : 'Browse projects by need'}<ArrowRight size={17} aria-hidden="true" /></a>
+          <div class="flex flex-wrap gap-x-6 gap-y-2">
+            <a class="inline-flex min-h-11 items-center gap-2 text-sm font-[650] text-brand" href={localizePath(locale, '/projects/')}>{locale === 'zh-CN' ? '按需求浏览项目' : 'Browse projects by need'}<ArrowRight size={17} aria-hidden="true" /></a>
+            <a class="inline-flex min-h-11 items-center gap-2 text-sm font-[650] text-brand" href="#styling" data-analytics-event="navigate_section" data-analytics-section="styling">{copy.styling.jump}<ArrowRight size={17} aria-hidden="true" /></a>
+          </div>
         </div>
       </aside>
     </div>
   </section>
 
   <HomeProjects locale={locale} projects={weappHome} metrics={metrics} labProjects={homeProjects} pack="start" id="projects" eyebrow={copy.ecosystems.weapp.eyebrow} title={copy.ecosystems.weapp.title} description={copy.ecosystems.weapp.description} />
+
+  <HomeProjects locale={locale} projects={stylingHome} metrics={metrics} pack="middle" surface="soft" id="styling" eyebrow={copy.styling.eyebrow} title={copy.styling.title} description={copy.styling.description} action={{ href: localizePath(locale, '/projects/?role=styling'), label: copy.styling.action }} />
 
   <HomeProjects locale={locale} projects={taroHome} metrics={metrics} pack="middle" id="ecosystem-taro" eyebrow={copy.ecosystems.taro.eyebrow} title={copy.ecosystems.taro.title} description={copy.ecosystems.taro.description} />
 

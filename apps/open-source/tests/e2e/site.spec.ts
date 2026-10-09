@@ -44,7 +44,8 @@ async function expectHomeVisuals(page: import('@playwright/test').Page) {
   await expect(page.locator('.home-hero-copy')).toHaveCount(0)
   await expect(page.locator(retiredVisuals)).toHaveCount(0)
   await expect(page.locator('#projects [data-project-visual]')).toHaveCount(0)
-  await expect(page.locator('#projects [data-project-row]')).toHaveCount(6)
+  await expect(page.locator('#projects [data-project-row]')).toHaveCount(3)
+  await expect(page.locator('#styling [data-project-row]')).toHaveCount(3)
   await expect(page.locator('#ecosystem-taro [data-project-row]')).toHaveCount(1)
   await expect(page.locator('.home-project-proof')).toHaveCount(6)
   await expect(page.locator('.home-project-rail-group')).toHaveCount(5)
@@ -78,7 +79,7 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
   await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeVisible()
   await expectHomeVisuals(page)
   await expect(page.getByRole('heading', { name: 'Uni Helper 和 Wot UI' })).toBeVisible()
-  await expect(page.locator('#projects').getByRole('heading', { name: 'weapp-tailwindcss' })).toBeVisible()
+  await expect(page.locator('#styling').getByRole('heading', { name: 'weapp-tailwindcss' })).toBeVisible()
   await expect(page.locator('#projects').getByRole('heading', { name: 'weapp-vite' })).toBeVisible()
   await expect(page.locator('#projects').getByRole('heading', { name: 'Varo' })).toBeVisible()
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `${siteOrigin}/`)
@@ -90,15 +91,15 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
   if (isOpenSourceSite) {
     await expect(page.locator('#about')).toContainText('weappjs')
   }
-  const docsLinks = page.locator('#projects').getByRole('link', { name: '阅读文档' })
+  const docsLinks = page.locator('#projects, #styling').getByRole('link', { name: '阅读文档' })
   await expect(docsLinks).toHaveCount(6)
   await expect(docsLinks.evaluateAll(links => links.map(link => link.getAttribute('href')))).resolves.toEqual([
     'https://vite.weapp.dev/',
+    'https://varo.weapp.dev/',
+    'https://sqlite.weapp.dev/',
     'https://tw.weapp.dev/',
     'https://panda.weapp.dev/',
     'https://stylex.weapp.dev/',
-    'https://varo.weapp.dev/',
-    'https://sqlite.weapp.dev/',
   ])
   const projectHomeLinks = page.locator('.home-project-rail a')
   await expect(projectHomeLinks.evaluateAll(links => links.map(link => ({ href: link.getAttribute('href'), target: link.getAttribute('target'), rel: link.getAttribute('rel') })))).resolves.toEqual(
@@ -106,9 +107,6 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
   )
   await expect(page.locator('#projects a[data-analytics-event="select_project"]').evaluateAll(links => links.map(link => new URL((link as HTMLAnchorElement).href).pathname))).resolves.toEqual([
     '/projects/weapp-vite/',
-    '/projects/weapp-tailwindcss/',
-    '/projects/weapp-pandacss/',
-    '/projects/weapp-stylex/',
     '/projects/varo/',
     '/projects/weapp-sqlite/',
   ])
@@ -125,9 +123,6 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
   await expect(page.locator('link[hreflang="zh-CN"]')).toHaveAttribute('href', `${siteOrigin}/`)
   await expect(page.locator('#projects a[data-analytics-event="select_project"]').evaluateAll(links => links.map(link => new URL((link as HTMLAnchorElement).href).pathname))).resolves.toEqual([
     '/en/projects/weapp-vite/',
-    '/en/projects/weapp-tailwindcss/',
-    '/en/projects/weapp-pandacss/',
-    '/en/projects/weapp-stylex/',
     '/en/projects/varo/',
     '/en/projects/weapp-sqlite/',
   ])
@@ -230,7 +225,7 @@ test('reduced motion keeps content visible and product interactions stationary',
     return style.opacity !== '1' || style.transform !== 'none' || style.animationName !== 'none' || style.transitionDuration !== '0s'
   }).map(element => element.tagName))
   expect(await movingOrHidden()).toEqual([])
-  for (const row of await page.locator('#projects [data-project-row]').all()) {
+  for (const row of await page.locator('#projects [data-project-row], #styling [data-project-row]').all()) {
     await row.hover()
     expect(await movingOrHidden()).toEqual([])
     await row.locator('a').first().focus()

@@ -25,9 +25,9 @@ describe('home project composition', () => {
   it('keeps editorial order when the catalog is reordered or extended', () => {
     const extended = [...projects].reverse().concat({ id: 'new-project', data: projects[0].data })
     const result = assembleHomeProjects(extended, homeProjectPlacements)
-    expect(result.map(project => project.id)).toEqual(['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'varo', 'weapp-sqlite', 'vite-plugin-taro'])
-    expect(result.filter(project => project.data.ecosystem === 'weapp').map(project => project.id)).toEqual(['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'varo', 'weapp-sqlite'])
-    expect(result.map(project => project.demo)).toEqual(['build', 'style', undefined, undefined, 'registry', 'sqlite', 'migration'])
+    expect(result.map(project => project.id)).toEqual(['weapp-vite', 'varo', 'weapp-sqlite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'vite-plugin-taro'])
+    expect(result.filter(project => project.data.ecosystem === 'weapp').map(project => project.id)).toEqual(['weapp-vite', 'varo', 'weapp-sqlite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex'])
+    expect(result.map(project => project.demo)).toEqual(['build', 'registry', 'sqlite', 'style', undefined, undefined, 'migration'])
   })
 
   it('combines independent metadata and demo placements without requiring screenshots', () => {
@@ -36,7 +36,7 @@ describe('home project composition', () => {
     changedProject.data.docsUrl = 'https://example.com/new-docs/'
     changedProject.data.status = 'beta'
     const changedPlacements = structuredClone(homeProjectPlacements)
-    changedPlacements[0].reversed = true
+    changedPlacements.find(placement => placement.id === 'weapp-tailwindcss')!.reversed = true
     const result = assembleHomeProjects(changedProjects, changedPlacements)
     const tailwindResult = result.find(project => project.id === 'weapp-tailwindcss')!
     expect(tailwindResult.data.docsUrl).toBe('https://example.com/new-docs/')

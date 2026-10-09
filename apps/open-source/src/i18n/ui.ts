@@ -49,11 +49,18 @@ export const siteCopy = {
       'rezor': 'Rezor',
       'uni-app': 'uni-app',
     },
+    styling: {
+      eyebrow: '样式工具',
+      title: '选择适合你的样式写法',
+      description: '用 Tailwind CSS 写原子类，用 Panda CSS 生成样式，或用 StyleX 编译样式。先看框架与平台适配范围，再选择适合现有项目的路线。',
+      jump: '查看样式工具',
+      action: '比较三个样式项目',
+    },
     ecosystems: {
       'weapp': {
         eyebrow: 'weapp 生态',
-        title: '原生小程序工具链',
-        description: 'weapp-vite 负责工程；Tailwind CSS、Panda CSS 与 StyleX 提供不同样式路线；Varo 提供组件，weapp-sqlite 规划本地数据能力。',
+        title: '工程、组件与数据',
+        description: 'weapp-vite 负责工程构建，Varo 提供可编辑组件源码，weapp-sqlite 规划本地数据能力。',
       },
       'taro': {
         eyebrow: 'Taro 生态',
@@ -250,16 +257,23 @@ export const siteCopy = {
       'rezor': 'Rezor',
       'uni-app': 'uni-app',
     },
+    styling: {
+      eyebrow: 'Styling tools',
+      title: 'Choose how you write styles',
+      description: 'Write utility classes with Tailwind CSS, generate styles with Panda CSS, or compile styles with StyleX. Check framework and platform support before choosing a path for your project.',
+      jump: 'Explore styling tools',
+      action: 'Compare the three styling projects',
+    },
     ecosystems: {
       'weapp': {
         eyebrow: 'weapp ecosystem',
-        title: 'Native mini-program toolchain',
-        description: 'weapp-vite handles builds; Tailwind CSS, Panda CSS, and StyleX offer different styling paths; Varo provides components, and weapp-sqlite plans local data support.',
+        title: 'Builds, components, and data',
+        description: 'weapp-vite handles builds, Varo provides editable component source, and weapp-sqlite plans local data support.',
       },
       'taro': {
         eyebrow: 'Taro ecosystem',
         title: 'Move a Taro / React project onto Vite',
-        description: 'VPT serves existing Taro apps. It is not a fifth piece of the weapp native stack.',
+        description: 'VPT provides a build migration path for existing Taro projects.',
       },
       'vue-mini': {
         eyebrow: 'Vue Mini ecosystem',
