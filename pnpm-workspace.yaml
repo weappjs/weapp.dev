@@ -6,6 +6,11 @@ allowBuilds:
   esbuild: true
   msgpackr-extract: true
   workerd: true
+overrides:
+  # Remove when oxfmt no longer pins the vulnerable tinypool 2.1.0.
+  tinypool@2.1.0: 2.1.2
+  # Remove when Wrangler's Miniflare pins sharp >=0.35.5 (GHSA-wq5f-xc86-pv6w).
+  miniflare@5.20261006.0-alpha>sharp: 0.35.5
 minimumReleaseAgeExclude:
   - '@eslint-react/ast@5.23.0'
   - '@eslint-react/core@5.23.0'

@@ -30,21 +30,21 @@
     "@astrojs/sitemap": "3.7.4",
     "@fontsource-variable/geist": "5.3.0",
     "@fontsource-variable/geist-mono": "5.3.0",
-    "@lucide/astro": "1.52.0",
+    "@lucide/astro": "1.53.0",
     "@weapp/project-catalog": "workspace:*",
     "@weapp/site-ui": "workspace:*",
-    "astro": "7.3.5"
+    "astro": "7.3.7"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
     "@axe-core/playwright": "4.13.0",
-    "@playwright/test": "1.63.0",
+    "@playwright/test": "1.64.0",
     "node-html-parser": "9.0.4",
     "sharp": "0.35.5",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vitest": "5.0.3",
-    "weapp-tailwindcss": "5.5.11"
+    "weapp-tailwindcss": "5.5.12"
   }
 }
