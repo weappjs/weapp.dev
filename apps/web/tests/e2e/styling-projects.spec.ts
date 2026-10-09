@@ -28,7 +28,11 @@ for (const prefix of ['', '/en']) {
     expect(await page.locator('#projects [data-project-row]').evaluateAll(rows => rows.map(row => row.getAttribute('data-project-id'))))
       .toEqual(['weapp-vite', 'varo', 'weapp-sqlite'])
     const jump = page.getByRole('link', { name: prefix ? 'Explore styling tools' : '查看样式工具', exact: true })
+    // Bring the link into view before focus so its scroll cannot compete with
+    // the native fragment navigation triggered by Enter.
+    await jump.scrollIntoViewIfNeeded()
     await jump.focus()
+    await expect(jump).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(new RegExp(`${prefix}/#styling$`))
     await expect(section.getByRole('heading', { level: 2 })).toBeInViewport()
