@@ -33,6 +33,17 @@ for (const { viewport, phase } of cases) {
         await expect(page.locator('hero-planets')).toHaveJSProperty('inert', false)
         await expect(page.locator('[data-hero-logo]')).toHaveCount(0)
         await expect(page.locator('[data-hero-particle-logo]')).toBeHidden()
+        const screen = page.locator('.home-hero-screen')
+        await expect.poll(() => screen.evaluate(element => Number.parseFloat(getComputedStyle(element).getPropertyValue('--hero-planet-reveal')))).toBe(1)
+        // Animation has dedicated regressions. Freeze its public settled state
+        // before checking every orbital position so large mobile-DPR canvases
+        // do not keep rendering while the geometry traversal forces layout.
+        const pause = page.locator('[data-planet-toggle]')
+        await expect(pause).toHaveAttribute('aria-pressed', 'false')
+        await pause.click()
+        await expect(pause).toHaveAttribute('aria-pressed', 'true')
+        await expect(screen).toHaveAttribute('data-hero-motion-paused', '')
+        await expect(screen).toHaveAttribute('data-particles-paused', '')
       }
       else {
         await expectStaticStarfield(page)
