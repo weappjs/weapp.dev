@@ -534,7 +534,11 @@
 }
 @media (max-width: 720px) {
   .home-hero-screen {
-    --orbit-ry: min(36svh, calc(50svh - 3.5rem), calc(var(--hero-brand-height) / 2 - var(--planet-hit-size) / 2 - 10px));
+    --orbit-ry: min(
+      36svh,
+      calc(50svh - 3.5rem),
+      calc(var(--hero-brand-height) / 2 - var(--planet-hit-size) / 2 - 10px)
+    );
   }
 }
 
