@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
-import { expectGatedPlanets, expectStaticStarfield } from './hero-fallback'
-import { captureParticleFrames, captureParticleSurface, installMotionClock, particleState, particleSurfaceDifference, setPageHidden } from './hero-motion'
+import { expectGatedPlanets, expectStaticStarfield, particleLogoAppearance } from './hero-fallback'
+import { captureParticleFrames, captureParticleSurface, installMotionClock, particleState, particleSurfaceDifference, particleSurfacePalette, setPageHidden } from './hero-motion'
 import { heroWordmark, isOpenSourceSite } from './site-target'
 
 interface WordmarkSample {
@@ -313,6 +313,46 @@ test('paints the static particle Logo and starfield while the application script
   }
   finally {
     release()
+  }
+})
+
+test('hands the four-color independent Logo stars to WebGL without a white flash during the hold', async ({ page }) => {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  await captureParticleFrames(page, 'source-color', true)
+  const font = await holdSyneResponse(page)
+  try {
+    await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
+    await font.started
+    await expectStaticStarfield(page)
+    const ssr = await particleLogoAppearance(page)
+    expect((await particleState(page)).draws).toBe(0)
+    font.release()
+    await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.some(sample => sample.syneLoaded))).toBe(true)
+    await page.clock.runFor(16)
+    await expectActiveWordmark(page)
+
+    const state = await particleState(page)
+    expect(state.sourcePalettePoints, 'The source buffer must preserve every responsive SSR color assignment').toEqual(ssr.palette.map(color => color.points))
+    expect(state.sourceSparkles, 'The first frame must retain the exact SSR fine-star assignment').toBe(ssr.sparkles)
+    const opening = await particleSurfacePalette(page, ssr.palette)
+    expect(opening.time, 'Read the actual first drawing frame, before the Logo hold advances').toBeLessThan(0.08)
+    expect(opening.visible, 'The first GL frame must paint the independent Logo stars').toBeGreaterThan(40)
+    expect(opening.unmatched, 'All first-frame colored pixels must match their premultiplied SSR tint').toBe(0)
+    expect(opening.pixelsPerColor.every(count => count > 0), 'All four tints must actually appear in the framebuffer').toBe(true)
+
+    await page.clock.runFor(500)
+    await captureParticleSurface(page)
+    const hold = await particleSurfacePalette(page, ssr.palette)
+    expect(hold.time).toBeGreaterThan(0.45)
+    expect(hold.time).toBeLessThan(0.7)
+    expect(hold.unmatched, 'The real source twinkle must retain its colored palette throughout the Logo hold').toBe(0)
+    expect(hold.pixelsPerColor, 'Holding must preserve the same independent colored points without replacing them with white light').toEqual(opening.pixelsPerColor)
+    await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'logo')
+    await expectGatedPlanets(page)
+  }
+  finally {
+    font.release()
   }
 })
 

@@ -264,7 +264,6 @@
   z-index: 0;
   width: var(--hero-logo-size);
   height: var(--hero-logo-size);
-  fill: #fff;
   pointer-events: none;
   translate: -50% -50%;
 }

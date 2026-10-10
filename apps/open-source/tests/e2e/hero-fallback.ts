@@ -27,14 +27,8 @@ export async function expectGatedPlanets(page: Page) {
   }), 'An unrevealed planet must not receive pointer hits').toBe(false)
 }
 
-export async function expectParticleLogo(page: Page) {
-  const logo = page.locator('[data-hero-particle-logo]')
-  await expect(logo).toHaveCount(1)
-  await expect(logo).toBeVisible()
-  await expect(logo).toHaveAttribute('aria-hidden', 'true')
-  await expect(logo).toHaveAttribute('data-logo-count', '2400')
-  await expect(logo).toHaveAttribute('data-logo-mobile-count', '900')
-  const geometry = await logo.evaluate((element: SVGSVGElement) => {
+export async function particleLogoAppearance(page: Page) {
+  return page.locator('[data-hero-particle-logo]').evaluate((element: SVGSVGElement) => {
     const screen = element.closest('.home-hero-screen')!.getBoundingClientRect()
     const box = element.getBoundingClientRect()
     const pointPaths = [...element.querySelectorAll<SVGPathElement>('path[data-logo-points]')]
@@ -46,22 +40,64 @@ export async function expectParticleLogo(page: Page) {
       }
       return true
     })
+    const palette = new Map<number, { rgb: number[], points: number }>()
+    for (const path of visible) {
+      const index = Number(path.dataset.logoColor)
+      const fill = getComputedStyle(path).fill
+      const match = fill.match(/^rgb\(\s*([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)\s*\)$/)
+      if (!match) {
+        throw new Error(`A particle Logo tint must resolve to sRGB, received ${fill}`)
+      }
+      const rgb = match.slice(1).map(Number)
+      const previous = palette.get(index)
+      if (previous && previous.rgb.some((value, channel) => value !== rgb[channel])) {
+        throw new Error('Each shared Logo palette index must paint a single color')
+      }
+      palette.set(index, { rgb, points: (previous?.points ?? 0) + Number(path.dataset.logoPoints) })
+    }
     return {
       points: visible.reduce((total, path) => total + Number(path.dataset.logoPoints), 0),
+      expectedPoints: screen.width < 720 ? 900 : 2400,
       pointShapes: pointPaths.every((path) => {
         const count = Number(path.dataset.logoPoints)
         const data = path.getAttribute('d') ?? ''
-        return count > 0 && (data.match(/M/gi)?.length ?? 0) === count
-          && /a/i.test(data)
+        const shapes = data.match(/M[^Mz]+z/g) ?? []
+        const sparkle = path.dataset.logoSparkle === '1'
+        return count > 0 && shapes.length === count && shapes.join('') === data
+          && shapes.every(shape => sparkle
+            ? (shape.match(/L/g)?.length ?? 0) === 7 && !/a/i.test(shape)
+            : (shape.match(/a/g)?.length ?? 0) === 2 && !/L/i.test(shape))
       }),
+      sparkles: visible.filter(path => path.dataset.logoSparkle === '1')
+        .reduce((total, path) => total + Number(path.dataset.logoPoints), 0),
+      palette: [...palette].sort(([left], [right]) => left - right).map(([index, color]) => ({ index, ...color })),
       solidPaths: element.querySelectorAll('path:not([data-logo-points])').length,
       centered: Math.abs((box.left + box.right) / 2 - (screen.left + screen.right) / 2) <= 1,
       clipped: box.left < screen.left - 0.5 || box.right > screen.right + 0.5
         || box.top < screen.top - 0.5 || box.bottom > screen.bottom + 0.5,
     }
   })
-  expect(geometry.points, 'SSR must display the real responsive Logo point budget').toBe((page.viewportSize()?.width ?? 0) < 720 ? 900 : 2400)
-  expect(geometry.pointShapes, 'Each SSR Logo mark must be a separate tiny circular point').toBe(true)
+}
+
+export async function expectParticleLogo(page: Page) {
+  const logo = page.locator('[data-hero-particle-logo]')
+  await expect(logo).toHaveCount(1)
+  await expect(logo).toBeVisible()
+  await expect(logo).toHaveAttribute('aria-hidden', 'true')
+  await expect(logo).toHaveAttribute('data-logo-count', '2400')
+  await expect(logo).toHaveAttribute('data-logo-mobile-count', '900')
+  const geometry = await particleLogoAppearance(page)
+  expect(geometry.points, 'SSR must display the real responsive Logo point budget').toBe(geometry.expectedPoints)
+  expect(geometry.pointShapes, 'Each SSR Logo star must remain one separate circle or an eight-vertex fine sparkle').toBe(true)
+  expect(geometry.sparkles, 'The opening should include a few independent fine star rays').toBeGreaterThan(0)
+  expect(geometry.sparkles / geometry.points, 'Fine star rays must remain rare within the stable point cloud').toBeLessThanOrEqual(0.07)
+  expect(geometry.palette.map(color => color.index), 'Both responsive clouds must use all four shared stellar tints').toEqual([0, 1, 2, 3])
+  expect(new Set(geometry.palette.map(color => color.rgb.join(','))).size).toBe(4)
+  for (const color of geometry.palette) {
+    expect(color.rgb.every(channel => channel >= 0 && channel <= 255)).toBe(true)
+    expect(new Set(color.rgb).size, 'The opening Logo must have real colored points rather than neutral white tiers').toBeGreaterThan(1)
+    expect(color.points).toBeGreaterThan(0)
+  }
   expect(geometry.solidPaths, 'The opening must not paint a filled mini-program outline').toBe(0)
   expect(geometry.centered, 'The Logo must stay horizontally centered in the hero').toBe(true)
   expect(geometry.clipped, 'The static Logo must fit within the hero').toBe(false)

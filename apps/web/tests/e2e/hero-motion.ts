@@ -16,7 +16,7 @@ interface GlyphSnapshot {
   pixels: Uint8Array
 }
 
-export type ParticleLayer = boolean | 'field-position' | 'field-brightness'
+export type ParticleLayer = boolean | 'source-color' | 'field-position' | 'field-brightness'
 
 interface ParticleBounds {
   left: number
@@ -29,6 +29,8 @@ interface ParticleProbe {
   draws: number
   frames: ParticleFrame[]
   glyphCount: number
+  sourcePalettePoints: number[]
+  sourceSparkles: number
   flowCount: number
   maxRadius: number
   contexts: number
@@ -63,19 +65,21 @@ export async function setPageHidden(page: Page, hidden: boolean) {
   }, hidden)
 }
 
-export async function captureParticleFrames(page: Page, layer: ParticleLayer = false) {
-  await page.addInitScript((selectedLayer) => {
+export async function captureParticleFrames(page: Page, layer: ParticleLayer = false, captureOpening = false) {
+  await page.addInitScript(({ selectedLayer, opening }) => {
     const probe: ParticleProbe = {
       draws: 0,
       frames: [],
       glyphCount: 0,
+      sourcePalettePoints: [],
+      sourceSparkles: 0,
       flowCount: 0,
       maxRadius: 0,
       contexts: 0,
       captureGlyph: false,
       glyph: null,
       previousGlyph: null,
-      captureSurface: false,
+      captureSurface: opening,
       surface: null,
       previousSurface: null,
       sourceBounds: null,
@@ -91,7 +95,7 @@ export async function captureParticleFrames(page: Page, layer: ParticleLayer = f
     const prototype = WebGL2RenderingContext.prototype
     const shaderSource = prototype.shaderSource
     prototype.shaderSource = function (shader, source) {
-      if (selectedLayer && source.includes('gl_Position') && source.includes('a_flow')) {
+      if (selectedLayer && selectedLayer !== 'source-color' && source.includes('gl_Position') && source.includes('a_flow')) {
         // Isolate one physical effect while retaining its production shader.
         // A moving background cannot satisfy a foreground assertion, and
         // brightness cannot make a stationary field pass the position check.
@@ -181,6 +185,20 @@ export async function captureParticleFrames(page: Page, layer: ParticleLayer = f
       const dustStart = delay?.findIndex(value => value < 0) ?? -1
       const glyphCount = dustStart < 0 ? count : dustStart
       probe.glyphCount = glyphCount
+      const sourceStyle = attribute('a_sourceStyle')
+      const sourcePalettePoints = [0, 0, 0, 0]
+      let sourceSparkles = 0
+      if (sourceStyle) {
+        for (let index = 0; index < glyphCount; index++) {
+          const color = sourceStyle[index * 4 + 2]!
+          if (Number.isInteger(color) && color >= 0 && color < sourcePalettePoints.length) {
+            sourcePalettePoints[color]! += 1
+          }
+          sourceSparkles += sourceStyle[index * 4 + 3]! >= 0.5 ? 1 : 0
+        }
+      }
+      probe.sourcePalettePoints = sourcePalettePoints
+      probe.sourceSparkles = sourceSparkles
       probe.flowCount = attribute('a_flow')?.slice(0, glyphCount).filter(value => value > 0).length ?? 0
       probe.maxRadius = Math.max(0, ...(attribute('a_radius')?.slice(0, glyphCount) ?? []))
       const positionBounds = (positions?: Float32Array): ParticleBounds | null => {
@@ -201,7 +219,9 @@ export async function captureParticleFrames(page: Page, layer: ParticleLayer = f
       }
       probe.sourceBounds = positionBounds(attribute('a_start'))
       probe.targetBounds = positionBounds(attribute('a_target'))
-      const fieldOnly = typeof selectedLayer === 'string'
+      // Source-color samples exclude the background but retain the actual
+      // source twinkle; an isolated white field cannot satisfy a Logo check.
+      const fieldOnly = selectedLayer === 'field-position' || selectedLayer === 'field-brightness'
       drawArrays.call(this, mode, fieldOnly ? first + glyphCount : first, fieldOnly ? count - glyphCount : selectedLayer ? glyphCount : count)
       const current = uniforms.get(this)
       const frame: ParticleFrame = {
@@ -241,7 +261,7 @@ export async function captureParticleFrames(page: Page, layer: ParticleLayer = f
         probe.captureSurface = false
       }
     }
-  }, layer)
+  }, { selectedLayer: layer, opening: captureOpening })
 }
 
 export async function particleState(page: Page) {
@@ -249,6 +269,8 @@ export async function particleState(page: Page) {
     draws: window.__heroParticleProbe.draws,
     frame: window.__heroParticleProbe.frames.at(-1),
     glyphCount: window.__heroParticleProbe.glyphCount,
+    sourcePalettePoints: window.__heroParticleProbe.sourcePalettePoints,
+    sourceSparkles: window.__heroParticleProbe.sourceSparkles,
     flowCount: window.__heroParticleProbe.flowCount,
     maxRadius: window.__heroParticleProbe.maxRadius,
     contexts: window.__heroParticleProbe.contexts,
@@ -314,4 +336,34 @@ export async function particleSurfaceDifference(page: Page) {
     }
     return { visible, changed, absoluteAlphaChange, elapsed: surface.time - previousSurface.time }
   })
+}
+
+export async function particleSurfacePalette(page: Page, palette: ReadonlyArray<{ rgb: number[] }>) {
+  return page.evaluate((colors) => {
+    const sample = window.__heroParticleProbe.surface
+    if (!sample) {
+      throw new Error('A real particle framebuffer must be captured before checking its palette')
+    }
+    const pixelsPerColor = colors.map(() => 0)
+    let visible = 0
+    let unmatched = 0
+    for (let offset = 0; offset < sample.pixels.length; offset += 4) {
+      const alpha = sample.pixels[offset + 3]!
+      // Skip faint edge coverage so one 8-bit rounding step cannot dominate
+      // the hue. Source discs retain alpha >= 0.52 away from their edges.
+      if (alpha < 64) {
+        continue
+      }
+      visible += 1
+      const match = colors.findIndex(color => color.rgb.every((value, channel) =>
+        Math.abs(sample.pixels[offset + channel]! - value * alpha / 255) <= 3))
+      if (match >= 0) {
+        pixelsPerColor[match]! += 1
+      }
+      else {
+        unmatched += 1
+      }
+    }
+    return { time: sample.time, visible, unmatched, pixelsPerColor }
+  }, palette)
 }

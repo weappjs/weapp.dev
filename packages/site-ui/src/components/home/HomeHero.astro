@@ -45,8 +45,8 @@ const logoPaths = createHeroLogoPaths()
       ))}
     </svg>
     <svg class="home-hero-particle-logo" data-hero-particle-logo data-logo-count="2400" data-logo-mobile-count="900" viewBox={`0 0 ${HERO_LOGO_VIEWBOX} ${HERO_LOGO_VIEWBOX}`} aria-hidden="true">
-      {logoPaths.mobile.map(group => <path d={group.d} opacity={group.brightness} data-logo-points={group.count} />)}
-      {logoPaths.desktop.map(group => <path d={group.d} opacity={group.brightness} data-logo-points={group.count} class="home-hero-logo--desktop" />)}
+      {logoPaths.mobile.map(group => <path d={group.d} fill={group.color} opacity={group.brightness} data-logo-points={group.count} data-logo-color={group.colorIndex} data-logo-sparkle={group.sparkle} />)}
+      {logoPaths.desktop.map(group => <path d={group.d} fill={group.color} opacity={group.brightness} data-logo-points={group.count} data-logo-color={group.colorIndex} data-logo-sparkle={group.sparkle} class="home-hero-logo--desktop" />)}
     </svg>
     <span class="home-hero-brand-anchor" aria-hidden="true"></span>
     <hero-planets class="home-hero-constellation" inert aria-hidden="true">

@@ -1,4 +1,5 @@
-import { createHeroLogo } from './hero-logo'
+import type { HeroLogoPoint } from './hero-logo'
+import { createHeroLogo, HERO_LOGO_PALETTE } from './hero-logo'
 import { subscribeHeroMotionPaused } from './hero-motion'
 import { loadWordmarkFont } from './hero-particle-font'
 import { createActiveClock, glyphSafeRadii, particleFrameInterval, smoothValue } from './hero-particle-motion'
@@ -45,7 +46,7 @@ in float a_orbit;
 in float a_twinkle;
 in float a_radius;
 in float a_flow;
-in vec3 a_sourceStyle;
+in vec4 a_sourceStyle;
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_progress;
@@ -62,7 +63,12 @@ out float v_seed;
 out float v_field;
 out float v_morph;
 out float v_sourceLight;
+out vec3 v_sourceColor;
+out float v_sourceSparkle;
 out float v_sparkle;
+const vec3 sourcePalette[4] = vec3[4](
+  ${HERO_LOGO_PALETTE.map(color => `vec3(${color.rgb.map(channel => channel.toFixed(6)).join(', ')})`).join(',\n  ')}
+);
 void main() {
   float span = max(0.18, 1.0 - max(a_delay, 0.0));
   float t = clamp((u_progress - a_delay) / span, 0.0, 1.0);
@@ -116,6 +122,8 @@ void main() {
   v_morph = e;
   float logoWave = sin(u_time * 6.2831853 / (7.0 + a_seed * 3.0) + fieldPhase) - sin(fieldPhase);
   v_sourceLight = a_sourceStyle.y * (1.0 + logoWave * 0.025);
+  v_sourceColor = sourcePalette[int(clamp(a_sourceStyle.z, 0.0, 3.0))];
+  v_sourceSparkle = a_sourceStyle.w;
   float pulse = 0.5 + 0.5 * sin(wanderTime * (0.65 + a_seed * 2.3) + a_seed * 12.6);
   float flare = pow(max(0.0, sin(wanderTime * (0.09 + a_seed * 0.18) + a_seed * 4.2)), 12.0);
   float initialPulse = 0.5 + 0.5 * sin(a_seed * 12.6);
@@ -148,6 +156,8 @@ in float v_seed;
 in float v_field;
 in float v_morph;
 in float v_sourceLight;
+in vec3 v_sourceColor;
+in float v_sourceSparkle;
 in float v_sparkle;
 out vec4 fragColor;
 vec4 glyphColor(vec2 uv) {
@@ -227,9 +237,12 @@ void main() {
     fragColor = vec4(vec3(light), light);
     return;
   }
-  // The source disc scales with its interpolated quad, so shrinking toward
-  // a smaller wordmark star cannot clip a circle into a square.
-  vec4 source = dot(uv, uv) <= 1.0 ? vec4(vec3(v_sourceLight), v_sourceLight) : vec4(0.0);
+  // Both source shapes fit inside the original disc. The four-point star's
+  // edge matches the SSR polygon, and both scale with the interpolated quad.
+  vec2 distance = abs(uv);
+  float starEdge = max(distance.x, distance.y) + 5.25 * min(distance.x, distance.y);
+  bool sourceInside = v_sourceSparkle > 0.5 ? starEdge <= 1.0 : dot(uv, uv) <= 1.0;
+  vec4 source = sourceInside ? vec4(v_sourceColor * v_sourceLight, v_sourceLight) : vec4(0.0);
   fragColor = mix(source, glyphColor(uv), v_morph);
   if (fragColor.a < 0.001) {
     discard;
@@ -701,10 +714,10 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       step: glyphStep,
     })
     const word = downsamplePoints(sampledWord, glyphBudget)
-    const sourceStyles = new WeakMap<GlyphPoint, { size: number, brightness: number }>()
+    const sourceStyles = new WeakMap<GlyphPoint, Pick<HeroLogoPoint, 'size' | 'brightness' | 'colorIndex' | 'sparkle'>>()
     const mark = createHeroLogo(mobile).map((star) => {
       const point = { x: centerX + (star.x - 0.5) * logoSize, y: centerY + (star.y - 0.5) * logoSize, accent: 0 }
-      sourceStyles.set(point, { size: star.size * logoSize, brightness: star.brightness })
+      sourceStyles.set(point, { size: star.size * logoSize, brightness: star.brightness, colorIndex: star.colorIndex, sparkle: star.sparkle })
       return point
     })
     const cx = centerX
@@ -734,11 +747,13 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const twinkle = new Float32Array(total)
     const radius = new Float32Array(total)
     const flow = new Float32Array(total)
-    const sourceStyle = new Float32Array(total * 3)
+    const sourceStyle = new Float32Array(total * 4)
     paired.forEach((pair, index) => {
       const source = sourceStyles.get(pair.from)!
-      sourceStyle[index * 3] = source.size
-      sourceStyle[index * 3 + 1] = source.brightness
+      sourceStyle[index * 4] = source.size
+      sourceStyle[index * 4 + 1] = source.brightness
+      sourceStyle[index * 4 + 2] = source.colorIndex
+      sourceStyle[index * 4 + 3] = source.sparkle
       start[index * 2] = pair.from.x
       start[index * 2 + 1] = pair.from.y
       target[index * 2] = pair.to.x
@@ -794,7 +809,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     bindFloat(buffers.twinkle, loc.twinkle, twinkle, 1)
     bindFloat(buffers.radius, loc.radius, radius, 1)
     bindFloat(buffers.flow, loc.flow, flow, 1)
-    bindFloat(buffers.sourceStyle, loc.sourceStyle, sourceStyle, 3)
+    bindFloat(buffers.sourceStyle, loc.sourceStyle, sourceStyle, 4)
     layoutKey = key
     return true
   }
