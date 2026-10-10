@@ -278,7 +278,8 @@ test('keeps the other provider working when GA4 fails to load', async ({ page })
 
   await page.goto('/')
   await expect(page.locator('#weapp-baidu-tongji')).toHaveCount(1)
-  await expect(page.getByRole('heading', { level: 1, name: 'weapp.dev', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'weapp.dev', exact: true })).toBeAttached()
+  await expect(page.locator('#home-hero-title')).toHaveText('weapp.dev')
 })
 
 test('retries a failed GA4 script without duplicating its configuration', async ({ page }) => {

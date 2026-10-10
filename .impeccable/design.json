@@ -398,7 +398,7 @@
     "typographyMeta": {
       "display": {
         "displayName": "Display",
-        "purpose": "Homepage-only Syne 700 particle wordmark, with -0.02em tracking and actual-ink fitting; static mini-program Logo before successful startup."
+        "purpose": "Homepage-only Syne 700 particle wordmark, with -0.02em tracking and actual-ink fitting; static starfield before successful startup; planets reveal only after assembly."
       },
       "page": {
         "displayName": "Page",
@@ -460,9 +460,9 @@
         "purpose": "Optional 8px translation; content stays visible."
       },
       {
-        "name": "particle-hold",
-        "value": "700ms",
-        "purpose": "Initial wordmark particle hold."
+        "name": "planet-reveal",
+        "value": "320ms",
+        "purpose": "Project planets enter only after wordmark assembly, using the shared active clock."
       },
       {
         "name": "particle-assembly",
@@ -470,9 +470,9 @@
         "purpose": "Wordmark assembly."
       },
       {
-        "name": "settled-particle-interval",
-        "value": "100ms",
-        "purpose": "At most 10 draws per second after assembly; pauses offscreen and in hidden documents."
+        "name": "particle-draw-budget",
+        "value": "60/30/10fps",
+        "purpose": "Desktop entrance, planet reveal and interaction use at most 60fps, desktop idle 30fps, and widths below 1024px 10fps; pauses offscreen and in hidden documents."
       }
     ],
     "breakpoints": [

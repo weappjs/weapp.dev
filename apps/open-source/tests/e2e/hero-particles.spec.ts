@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
+import { expectGatedPlanets, expectStaticStarfield } from './hero-fallback'
 import { captureParticleFrames, installMotionClock, particleState, setPageHidden } from './hero-motion'
 import { heroWordmark, isOpenSourceSite } from './site-target'
 
@@ -86,7 +87,8 @@ async function expectActiveWordmark(page: Page) {
   await expect(page.locator('[data-hero-particles]')).toHaveAttribute('data-wordmark', heroWordmark)
   await expect(page.locator('#home-hero-title')).toHaveText(heroWordmark)
   await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toHaveCount(1)
-  await expect(page.locator('[data-hero-logo]')).toHaveCSS('visibility', 'hidden')
+  await expect(page.locator('[data-hero-logo]')).toHaveCount(0)
+  await expect(page.locator('[data-hero-starfield]')).toBeHidden()
   const samples = await page.evaluate(() => window.__heroWordmarkSamples)
   expect(samples.length, 'The active renderer must actually sample a canvas wordmark').toBeGreaterThan(0)
   for (const sample of samples) {
@@ -98,28 +100,6 @@ async function expectActiveWordmark(page: Page) {
     expect(sample.top).toBeGreaterThanOrEqual(0)
     expect(sample.bottom).toBeLessThanOrEqual(sample.height)
   }
-}
-
-async function expectStaticLogo(page: Page, scriptsEnabled = true) {
-  if (scriptsEnabled) {
-    // Wait for component initialization so the assertion cannot pass on the
-    // initial static title before a broken renderer hides it.
-    await expect.poll(() => page.evaluate(() => Boolean(customElements.get('hero-particles')))).toBe(true)
-  }
-  await expect(page.locator('.home-hero-screen')).not.toHaveAttribute('data-particles-active', '')
-  await expect(page.locator('#home-hero-title')).toHaveText(heroWordmark)
-  await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toHaveCount(1)
-  const logo = page.locator('[data-hero-logo]')
-  await expect(logo).toBeVisible()
-  await expect(logo).toHaveCSS('visibility', 'visible')
-  expect(await logo.evaluate(node => node.tagName.toLowerCase())).toBe('svg')
-  await expect(logo.locator('path')).not.toHaveCount(0)
-  await expect(page.locator('#home-hero-title > .sr-only')).toHaveText(heroWordmark)
-  expect(await page.locator('#home-hero-title > .sr-only').evaluate((node) => {
-    const style = getComputedStyle(node)
-    return style.clipPath !== 'none' || style.getPropertyValue('clip') !== 'auto'
-  }), 'The accessible brand heading must not paint a text opening').toBe(true)
-  await expect(page.locator('.home-hero-letter')).toHaveCount(0)
 }
 
 async function captureFontLoading(page: Page) {
@@ -177,8 +157,11 @@ async function prepareParticleMotion(page: Page, isolateGlyphs = false) {
 }
 
 async function expectAssembledParticles(page: Page) {
-  await page.clock.runFor(2500)
+  await page.clock.runFor(2000)
   await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-particles-ready', '')
+  await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
+  await expect(page.locator('hero-planets')).toHaveJSProperty('inert', false)
+  await expect(page.locator('hero-planets')).not.toHaveAttribute('aria-hidden', 'true')
   await expectActiveWordmark(page)
 }
 
@@ -248,23 +231,25 @@ test('fits the particle wordmark after desktop and mobile viewport changes', asy
 test.describe('static particle fallback without JavaScript', () => {
   test.use({ javaScriptEnabled: false })
 
-  test('keeps the inline Logo visible and the brand heading accessible in both languages', async ({ page }) => {
+  test('keeps the static starfield visible and the brand heading accessible in both languages', async ({ page }) => {
     for (const route of homeRoutes) {
       await page.goto(route)
-      await expectStaticLogo(page, false)
+      await expectStaticStarfield(page, false)
     }
   })
 })
 
-test('keeps the inline Logo visible with reduced motion', async ({ page }) => {
+test('keeps the static starfield visible with reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   for (const route of homeRoutes) {
     await page.goto(route)
-    await expectStaticLogo(page)
+    await expectStaticStarfield(page)
   }
 })
 
-test('keeps the inline Logo visible when WebGL is unavailable', async ({ page }) => {
+test('keeps the static starfield visible when WebGL is unavailable', async ({ page }) => {
+  await captureWordmarkSamples(page)
+  await captureFontLoading(page)
   await page.addInitScript(() => {
     const getContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, contextId, options) {
@@ -276,12 +261,14 @@ test('keeps the inline Logo visible when WebGL is unavailable', async ({ page })
   })
   for (const route of homeRoutes) {
     await page.goto(route)
-    await expectStaticLogo(page)
+    await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.resolved))).toBe(true)
+    await expectStaticStarfield(page)
+    expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
   }
 })
 
 for (const value of ['missing', 'blank'] as const) {
-  test(`keeps the inline Logo visible with a ${value} particle brand`, async ({ page }) => {
+  test(`keeps the static starfield visible with a ${value} particle brand`, async ({ page }) => {
     await page.route('**/*', async (route) => {
       if (route.request().resourceType() !== 'document') {
         await route.continue()
@@ -295,12 +282,12 @@ for (const value of ['missing', 'blank'] as const) {
     })
     for (const route of homeRoutes) {
       await page.goto(route)
-      await expectStaticLogo(page)
+      await expectStaticStarfield(page)
     }
   })
 }
 
-test('paints only the inline Logo while the application scripts are delayed', async ({ page }) => {
+test('paints only the static starfield while the application scripts are delayed', async ({ page }) => {
   await installMotionClock(page)
   await captureWordmarkSamples(page)
   let release!: () => void
@@ -313,17 +300,84 @@ test('paints only the inline Logo while the application scripts are delayed', as
   })
   try {
     await page.goto(resizeRoute, { waitUntil: 'commit' })
-    await expectStaticLogo(page, false)
+    await expectStaticStarfield(page, false)
     expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
     await page.clock.runFor(1000)
-    await expectStaticLogo(page, false)
+    await expectStaticStarfield(page, false)
     release()
     await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
     await page.clock.runFor(160)
     await expectActiveWordmark(page)
+    await expectGatedPlanets(page)
   }
   finally {
     release()
+  }
+})
+
+test('gates planets until a cold-cache wordmark assembles, then fades them in over active time', async ({ page }) => {
+  await installMotionClock(page)
+  await captureWordmarkSamples(page)
+  await captureFontLoading(page)
+  await captureParticleFrames(page)
+  const font = await holdSyneResponse(page)
+  try {
+    await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
+    await font.started
+    await expectStaticStarfield(page)
+    expect((await particleState(page)).draws).toBe(0)
+    font.release()
+    await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.some(sample => sample.syneLoaded))).toBe(true)
+    await page.clock.runFor(16)
+    await expectActiveWordmark(page)
+    const opening = await particleState(page)
+    expect(opening.frame!.time, 'The first valid frame must begin at the scatter phase').toBeLessThan(0.08)
+    expect(opening.frame!.progress).toBeLessThan(0.06)
+    await expectGatedPlanets(page)
+
+    await page.clock.runFor(1380)
+    const assembling = await particleState(page)
+    expect(assembling.frame!.time).toBeLessThan(1.5)
+    expect(assembling.frame!.progress).toBeGreaterThan(0.8)
+    expect(assembling.frame!.progress).toBeLessThan(1)
+    await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'assembling')
+    await expect(page.locator('.home-hero-screen')).not.toHaveAttribute('data-particles-ready', '')
+    await expectGatedPlanets(page)
+
+    await page.clock.runFor(200)
+    const ready = await particleState(page)
+    expect(ready.frame!.time).toBeGreaterThanOrEqual(1.5)
+    expect(ready.frame!.time).toBeLessThan(1.82)
+    expect(ready.frame!.progress).toBe(1)
+    const screen = page.locator('.home-hero-screen')
+    await expect(screen).toHaveAttribute('data-hero-phase', 'ready')
+    await expect(screen).toHaveAttribute('data-particles-ready', '')
+    await expect(page.locator('hero-planets')).toHaveJSProperty('inert', false)
+    await expect(page.locator('hero-planets')).not.toHaveAttribute('aria-hidden', 'true')
+    const reveal = () => screen.evaluate(element => Number.parseFloat(getComputedStyle(element).getPropertyValue('--hero-planet-reveal')))
+    const fading = await reveal()
+    expect(fading, 'Planets must fade in after assembly rather than appear fully opaque').toBeGreaterThan(0)
+    expect(fading).toBeLessThan(1)
+    expect(await page.locator('hero-planets').evaluate(element => Number.parseFloat(getComputedStyle(element).opacity)), 'The visible orbital layer must use the active reveal fraction').toBeCloseTo(fading, 4)
+    const toggle = page.locator('[data-planet-toggle]')
+    await toggle.click()
+    const paused = await particleState(page)
+    const pausedReveal = await reveal()
+    await page.clock.fastForward(5000)
+    expect((await particleState(page)).draws).toBe(paused.draws)
+    expect(await reveal(), 'User pause must freeze the fade as well as the canvas').toBe(pausedReveal)
+    expect(await page.locator('hero-planets').evaluate(element => Number.parseFloat(getComputedStyle(element).opacity))).toBeCloseTo(pausedReveal, 4)
+    await toggle.click()
+    await page.clock.runFor(400)
+    expect(await reveal()).toBe(1)
+    const planet = page.locator('.home-hero-planet').first()
+    await expect(planet).toBeVisible()
+    await planet.focus()
+    await expect(planet).toBeFocused()
+    await expect(planet).toHaveAttribute('target', '_blank')
+  }
+  finally {
+    font.release()
   }
 })
 
@@ -336,20 +390,22 @@ test('waits for the real Syne font before sampling without counting the font wai
   try {
     await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
     await font.started
-    await expectStaticLogo(page)
+    await expectStaticStarfield(page)
     await expect.poll(() => page.evaluate(() => window.__heroFontLoads.length)).toBeGreaterThan(0)
     await page.clock.runFor(2000)
     expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
     expect((await particleState(page)).draws).toBe(0)
-    await expectStaticLogo(page)
+    await expectStaticStarfield(page)
     font.release()
     await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.resolved))).toBe(true)
     await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
     await page.clock.runFor(160)
     await expectActiveWordmark(page)
     const frame = (await particleState(page)).frame!
-    expect(frame.time, 'Font waiting must not consume the opening hold').toBeLessThan(0.2)
-    expect(frame.progress).toBe(0)
+    expect(frame.time, 'Font waiting must not advance the assembly phase').toBeLessThan(0.2)
+    expect(frame.progress).toBeLessThan(0.15)
+    await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'assembling')
+    await expectGatedPlanets(page)
     await expectAssembledParticles(page)
   }
   finally {
@@ -357,16 +413,18 @@ test('waits for the real Syne font before sampling without counting the font wai
   }
 })
 
-test('keeps the Logo after a font failure', async ({ page }) => {
+test('keeps the static starfield after a font failure', async ({ page }) => {
   await installMotionClock(page)
   await captureWordmarkSamples(page)
   await captureFontLoading(page)
+  await captureParticleFrames(page)
   await page.route(/\/syne-latin-700-normal[^/]*\.woff2(?:\?.*)?$/, route => route.abort('failed'))
   await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
   await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.rejected))).toBe(true)
   await page.clock.runFor(3500)
-  await expectStaticLogo(page)
+  await expectStaticStarfield(page)
   expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
+  expect((await particleState(page)).draws).toBe(0)
 })
 
 test('ignores a real font response arriving after the three-second deadline', async ({ page }) => {
@@ -380,12 +438,12 @@ test('ignores a real font response arriving after the three-second deadline', as
     await font.started
     await expect.poll(() => page.evaluate(() => window.__heroFontLoads.length)).toBeGreaterThan(0)
     await page.clock.fastForward(3000)
-    await expectStaticLogo(page)
+    await expectStaticStarfield(page)
     expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
     font.release()
     await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.resolved))).toBe(true)
     await page.clock.runFor(2500)
-    await expectStaticLogo(page)
+    await expectStaticStarfield(page)
     expect((await particleState(page)).draws).toBe(0)
     expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
   }
@@ -394,7 +452,7 @@ test('ignores a real font response arriving after the three-second deadline', as
   }
 })
 
-test('keeps the Logo when a font finishes during a user pause and starts from the opening on resume', async ({ page }) => {
+test('keeps the static starfield when a font finishes during a user pause and starts from the opening on resume', async ({ page }) => {
   await installMotionClock(page)
   await captureWordmarkSamples(page)
   await captureFontLoading(page)
@@ -410,14 +468,15 @@ test('keeps the Logo when a font finishes during a user pause and starts from th
     font.release()
     await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.resolved))).toBe(true)
     await page.clock.runFor(1000)
-    await expectStaticLogo(page)
+    await expectStaticStarfield(page)
     expect((await particleState(page)).draws).toBe(0)
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-pressed', 'false')
     await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
     await page.clock.runFor(160)
     await expectActiveWordmark(page)
-    expect((await particleState(page)).frame!.progress).toBe(0)
+    expect((await particleState(page)).frame!.progress).toBeLessThan(0.15)
+    await expectGatedPlanets(page)
     await expectAssembledParticles(page)
   }
   finally {
@@ -440,12 +499,13 @@ test('cancels font-wait initialization on disconnect and samples only the reconn
     expect((await particleState(page)).draws).toBe(0)
     expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
     await element!.evaluate(node => document.querySelector('.home-hero-screen')!.prepend(node))
-    await expectStaticLogo(page)
+    await expectStaticStarfield(page)
     font.release()
     await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(1)
     await page.clock.runFor(160)
     await expectActiveWordmark(page)
-    expect((await particleState(page)).frame!.progress).toBe(0)
+    expect((await particleState(page)).frame!.progress).toBeLessThan(0.15)
+    await expectGatedPlanets(page)
     await expectAssembledParticles(page)
     expect(await page.evaluate(() => window.__heroWordmarkSamples.length), 'A cancelled generation must never create a second renderer').toBe(1)
   }
@@ -463,19 +523,20 @@ test('starts its first font request after leaving an initial reduced-motion stat
   const font = await holdSyneResponse(page)
   try {
     await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
-    await expectStaticLogo(page)
+    await expectStaticStarfield(page)
     await page.clock.runFor(4000)
     expect(await page.evaluate(() => window.__heroFontLoads.length)).toBe(0)
     expect((await particleState(page)).draws).toBe(0)
     await page.emulateMedia({ reducedMotion: 'no-preference' })
     await font.started
     await expect.poll(() => page.evaluate(() => window.__heroFontLoads.length)).toBe(1)
-    await expectStaticLogo(page)
+    await expectStaticStarfield(page)
     font.release()
     await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
     await page.clock.runFor(160)
     await expectActiveWordmark(page)
-    expect((await particleState(page)).frame!.progress).toBe(0)
+    expect((await particleState(page)).frame!.progress).toBeLessThan(0.15)
+    await expectGatedPlanets(page)
     await expectAssembledParticles(page)
   }
   finally {
@@ -496,14 +557,15 @@ test('defers sampling when reduced motion begins during a pending font request',
     font.release()
     await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.resolved))).toBe(true)
     await page.clock.runFor(1000)
-    await expectStaticLogo(page)
+    await expectStaticStarfield(page)
     expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
     expect((await particleState(page)).draws).toBe(0)
     await page.emulateMedia({ reducedMotion: 'no-preference' })
     await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
     await page.clock.runFor(160)
     await expectActiveWordmark(page)
-    expect((await particleState(page)).frame!.progress).toBe(0)
+    expect((await particleState(page)).frame!.progress).toBeLessThan(0.15)
+    await expectGatedPlanets(page)
     await expectAssembledParticles(page)
   }
   finally {
@@ -511,7 +573,7 @@ test('defers sampling when reduced motion begins during a pending font request',
   }
 })
 
-test('keeps the Logo when the first real GL frame fails', async ({ page }) => {
+test('keeps the static starfield when the first real GL frame fails', async ({ page }) => {
   await installMotionClock(page)
   await captureWordmarkSamples(page)
   await captureParticleFrames(page)
@@ -524,10 +586,10 @@ test('keeps the Logo when the first real GL frame fails', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
   await page.clock.runFor(2500)
   expect((await particleState(page)).draws, 'The fixture must fail after drawing an actual first frame').toBe(1)
-  await expectStaticLogo(page)
+  await expectStaticStarfield(page)
 })
 
-test('keeps the Logo after a failed first frame reconnects during a user pause, then activates on resume', async ({ page }) => {
+test('keeps the static starfield after a failed first frame reconnects during a user pause, then activates on resume', async ({ page }) => {
   await installMotionClock(page)
   await captureWordmarkSamples(page)
   await captureFontLoading(page)
@@ -549,7 +611,7 @@ test('keeps the Logo after a failed first frame reconnects during a user pause, 
   await page.clock.runFor(2500)
   const failed = await particleState(page)
   expect(failed.draws, 'The recovery scenario must begin with an actual failed GL draw').toBe(1)
-  await expectStaticLogo(page)
+  await expectStaticStarfield(page)
 
   const element = await page.locator('hero-particles').elementHandle()
   await element!.evaluate(node => node.remove())
@@ -560,8 +622,8 @@ test('keeps the Logo after a failed first frame reconnects during a user pause, 
   await element!.evaluate(node => document.querySelector('.home-hero-screen')!.prepend(node))
   await expect.poll(() => page.evaluate(() => window.__heroFontLoads.filter(load => load.resolved).length)).toBeGreaterThan(completedLoads)
   await page.clock.runFor(1000)
-  await expectStaticLogo(page)
-  expect((await particleState(page)).draws, 'A paused reconnect must not draw over the Logo even after GL recovers').toBe(failed.draws)
+  await expectStaticStarfield(page)
+  expect((await particleState(page)).draws, 'A paused reconnect must not draw over the static starfield even after GL recovers').toBe(failed.draws)
 
   await toggle.click()
   await expect(toggle).toHaveAttribute('aria-pressed', 'false')
@@ -569,7 +631,8 @@ test('keeps the Logo after a failed first frame reconnects during a user pause, 
   await expectActiveWordmark(page)
   const resumed = await particleState(page)
   expect(resumed.draws, 'Resuming must render with the recovered real GL context').toBeGreaterThan(failed.draws)
-  expect(resumed.frame!.progress, 'A failed opening must resume before assembly begins').toBe(0)
+  expect(resumed.frame!.progress, 'A failed opening must resume near the beginning of assembly').toBeLessThan(0.2)
+  await expectGatedPlanets(page)
   expect(resumed.frame!.time, 'Paused reconnect time must not advance the opening').toBeLessThan(0.3)
   await expectAssembledParticles(page)
 })
@@ -686,6 +749,30 @@ test('freezes the particle phase offscreen, in the background and after a user p
   await expectContinuedPhase(page, phase)
 })
 
+test('returns to static stars during a live reduced-motion change and resumes a partial assembly phase', async ({ page }) => {
+  await prepareParticleMotion(page)
+  await page.clock.runFor(500)
+  const assembling = await particleState(page)
+  expect(assembling.frame!.progress).toBeGreaterThan(0.2)
+  expect(assembling.frame!.progress).toBeLessThan(1)
+  await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'assembling')
+  await expectGatedPlanets(page)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expectStaticStarfield(page)
+  const pausedTime = await expectFrozenParticles(page)
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.clock.runFor(160)
+  await expectActiveWordmark(page)
+  const resumed = await particleState(page)
+  expect(resumed.frame!.time).toBeGreaterThanOrEqual(pausedTime)
+  expect(resumed.frame!.time - pausedTime).toBeLessThan(0.3)
+  expect(resumed.frame!.progress, 'Changing motion preference must not restart or skip assembly').toBeGreaterThanOrEqual(assembling.frame!.progress)
+  expect(resumed.frame!.progress).toBeLessThan(1)
+  await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'assembling')
+  await expectGatedPlanets(page)
+  await expectAssembledParticles(page)
+})
+
 test('honors live reduced-motion changes and reconnects without losing a user pause or replaying the entrance', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
@@ -693,7 +780,7 @@ test('honors live reduced-motion changes and reconnects without losing a user pa
   await expectAssembledParticles(page)
   const screen = page.locator('.home-hero-screen')
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await expectStaticLogo(page)
+  await expectStaticStarfield(page)
   await expect(screen).toHaveAttribute('data-particles-paused', '')
   let phase = await expectFrozenParticles(page)
   await page.emulateMedia({ reducedMotion: 'no-preference' })

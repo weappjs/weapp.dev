@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { siteCopy } from '../../src/i18n/ui'
+import { expectStaticStarfield } from './hero-fallback'
 import { heroWordmark, isOpenSourceSite, siteOrigin } from './site-target'
 import { expect, test } from './test'
 
@@ -76,7 +77,8 @@ async function mockAnalyticsScripts(
 
 test('renders the bilingual ecosystem home with valid metadata', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeAttached()
+  await expect(page.locator('#home-hero-title')).toHaveText(heroWordmark)
   await expectHomeVisuals(page)
   await expect(page.getByRole('heading', { name: 'Uni Helper 和 Wot UI' })).toBeVisible()
   await expect(page.locator('#styling').getByRole('heading', { name: 'weapp-tailwindcss' })).toBeVisible()
@@ -189,6 +191,7 @@ test('home hero keeps a cosmic first screen while the rest of the page follows t
 test('reduced motion keeps content visible and product interactions stationary', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expectStaticStarfield(page)
   const movingOrHidden = () => page.locator('[data-reveal], [data-hero-enter], [data-project-visual] img, .home-project-proof').evaluateAll(elements => elements.filter((element) => {
     const style = getComputedStyle(element)
     return style.opacity !== '1' || style.transform !== 'none' || style.animationName !== 'none' || style.transitionDuration !== '0s'
@@ -415,20 +418,7 @@ test('keeps core content and links available without JavaScript', async ({ brows
     const page = await context.newPage()
     for (const locale of ['zh-CN', 'en'] as const) {
       await page.goto(locale === 'en' ? '/en/' : '/')
-      const heading = page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })
-      await expect(heading).toBeAttached()
-      await expect(heading).toHaveText(heroWordmark)
-      const logo = page.locator('[data-hero-logo]')
-      await expect(logo).toBeVisible()
-      await expect(logo).toHaveCSS('visibility', 'visible')
-      expect(await logo.evaluate(element => element.tagName.toLowerCase())).toBe('svg')
-      const accessibleText = page.locator('#home-hero-title > .sr-only')
-      await expect(accessibleText).toHaveText(heroWordmark)
-      expect(await accessibleText.evaluate((element) => {
-        const style = getComputedStyle(element)
-        return style.clipPath !== 'none' || style.getPropertyValue('clip') !== 'auto'
-      }), 'The accessible brand name must not paint central text over the inline Logo').toBe(true)
-      await expect(page.locator('.home-hero-screen')).not.toHaveAttribute('data-particles-active', '')
+      await expectStaticStarfield(page, false)
       await expect(page.getByRole('link', { name: siteCopy[locale].projects.documentation }).first()).toBeVisible()
       await expectHomeVisuals(page)
     }
@@ -519,7 +509,8 @@ test('keeps the other provider working when GA4 fails to load', async ({ page })
 
   await page.goto('/')
   await expect(page.locator('#weapp-baidu-tongji')).toHaveCount(1)
-  await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeAttached()
+  await expect(page.locator('#home-hero-title')).toHaveText(heroWordmark)
 })
 
 test('retries a failed GA4 script without duplicating its configuration', async ({ page }) => {

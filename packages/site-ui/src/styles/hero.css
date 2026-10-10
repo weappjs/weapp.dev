@@ -16,11 +16,6 @@
   --hero-title-size: clamp(4.25rem, 14vw, 11rem);
   --hero-center-y: 50%;
   --hero-brand-height: var(--hero-stage-height);
-  --hero-logo-size: min(
-    46vw,
-    calc(var(--hero-brand-height) * 0.46),
-    calc((var(--orbit-ry) - var(--planet-hit-size) / 2 - 21px) * 2)
-  );
   --planet-size: 3.25rem;
   --planet-scale: 1;
   --planet-hit-size: calc(var(--planet-size) * var(--planet-scale));
@@ -55,6 +50,17 @@
   height: 100%;
   overflow: hidden;
   pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.home-hero-screen[data-hero-phase='ready'] .home-hero-constellation {
+  visibility: visible;
+  opacity: var(--hero-planet-reveal, 0);
+}
+
+.home-hero-screen:not([data-hero-phase='ready']) .home-hero-spotlight {
+  visibility: hidden;
 }
 
 .home-hero-gridlines {
@@ -200,19 +206,27 @@
   translate: -50% -50%;
 }
 
-.home-hero-logo {
+.home-hero-brand-anchor {
   position: absolute;
   top: var(--hero-center-y);
   left: 50%;
-  z-index: 1;
-  width: var(--hero-logo-size);
-  height: var(--hero-logo-size);
-  color: #edf5f0;
+  width: 1px;
+  height: 1px;
   pointer-events: none;
   translate: -50% -50%;
 }
 
-.home-hero-screen[data-particles-active] .home-hero-logo {
+.home-hero-starfield {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  fill: #fff;
+  pointer-events: none;
+}
+
+.home-hero-screen[data-particles-active] .home-hero-starfield {
   visibility: hidden;
 }
 
@@ -419,11 +433,6 @@
 }
 @media (max-width: 720px) {
   .home-hero-screen {
-    --hero-logo-size: min(
-      42vw,
-      calc(var(--hero-brand-height) * 0.42),
-      calc((var(--orbit-ry) - var(--planet-hit-size) / 2 - 21px) * 2)
-    );
     --hero-title-size: clamp(2.25rem, 10vw, 4.5rem);
     --planet-size: 2.75rem;
     --orbit-rx: calc(50vw - 2rem);
@@ -431,6 +440,12 @@
   }
   .home-hero .home-project-rail {
     padding-block: 1.25rem 1.5rem;
+  }
+}
+
+@media (max-width: 719px) {
+  .home-hero-star--desktop {
+    display: none;
   }
 }
 
@@ -445,11 +460,6 @@
     --hero-stage-height: max(26rem, calc(100svh - 64px));
     --hero-center-y: calc(50% - 2rem);
     --hero-brand-height: calc(var(--hero-stage-height) - 4rem);
-    --hero-logo-size: min(
-      46vw,
-      calc(var(--hero-brand-height) * 0.46),
-      calc((var(--orbit-ry) - var(--planet-hit-size) / 2 - 21px) * 2)
-    );
     --hero-title-size: clamp(4.25rem, 10vw, 9rem);
     --planet-size: 5rem;
     --planet-scale: 1.35;
@@ -548,30 +558,6 @@
   }
 }
 
-/* Reserve the bottom control strip while the center still contains a Logo. */
-@media (min-width: 1024px) {
-  .home-hero-screen:not([data-particles-active][data-particles-ready]) .home-hero-spotlight:not([hidden]) {
-    top: auto;
-    bottom: 16px;
-    left: 24px;
-    display: flex;
-    gap: 12px;
-    align-items: baseline;
-    width: max-content;
-    max-width: min(36rem, calc(100% - 248px));
-    text-align: left;
-    translate: none;
-  }
-  .home-hero-screen:not([data-particles-active][data-particles-ready]) .home-hero-spotlight strong {
-    flex: none;
-    font-size: 14px;
-    line-height: 20px;
-  }
-  .home-hero-screen:not([data-particles-active][data-particles-ready]) .home-hero-spotlight span {
-    font-size: 12px;
-    line-height: 18px;
-  }
-}
 @media (max-width: 520px) {
   .home-hero-stage {
     aspect-ratio: 4 / 3;

@@ -1,10 +1,12 @@
 import { readHeroMotionPaused, setHeroMotionPaused, subscribeHeroMotionPaused } from './hero-motion'
+import { subscribeHeroPhase } from './hero-phase'
 
 export interface PlanetEnvironment {
   desktop: boolean
   reducedMotion: boolean
   visible: boolean
   pageHidden: boolean
+  revealed: boolean
 }
 
 export interface PlanetPresentation {
@@ -34,7 +36,7 @@ export function createPlanetController(
   let destroyed = false
 
   const eligible = () => environment.desktop && !environment.reducedMotion
-    && environment.visible && !environment.pageHidden
+    && environment.visible && !environment.pageHidden && environment.revealed
   const interacting = () => focusId !== null || hoverId !== null
   const cancel = () => {
     clearTimeout(timer)
@@ -44,10 +46,10 @@ export function createPlanetController(
     if (destroyed) {
       return
     }
-    const activeId = environment.desktop ? focusId ?? hoverId ?? automaticId : null
+    const activeId = environment.desktop && environment.revealed ? focusId ?? hoverId ?? automaticId : null
     present({
       activeId,
-      orbitRunning: environment.visible && !environment.pageHidden && !environment.reducedMotion
+      orbitRunning: environment.revealed && environment.visible && !environment.pageHidden && !environment.reducedMotion
         && !userPaused && !interacting() && automaticId === null,
       controlsVisible: !environment.reducedMotion,
       userPaused,
@@ -77,7 +79,7 @@ export function createPlanetController(
     wait()
   }
   const setInteraction = (kind: 'focus' | 'hover', id: string | null) => {
-    if (destroyed || (kind === 'focus' ? focusId : hoverId) === id) {
+    if (destroyed || !environment.revealed || (kind === 'focus' ? focusId : hoverId) === id) {
       return
     }
     if (kind === 'focus') {
@@ -118,6 +120,10 @@ export function createPlanetController(
       }
       const previous = eligible()
       environment = { ...environment, ...next }
+      if (!environment.revealed) {
+        focusId = null
+        hoverId = null
+      }
       if (!eligible()) {
         cancel()
         automaticId = null
@@ -205,7 +211,7 @@ export function defineHeroPlanets() {
           pauseIcon?.toggleAttribute('hidden', state.userPaused)
           playIcon?.toggleAttribute('hidden', !state.userPaused)
         },
-        { desktop: desktop.matches, reducedMotion: reducedMotion.matches, visible: false, pageHidden: document.hidden },
+        { desktop: desktop.matches, reducedMotion: reducedMotion.matches, visible: false, pageHidden: document.hidden, revealed: false },
         readHeroMotionPaused(screen),
       )
       const focusedPlanet = (target: EventTarget | null) => {
@@ -242,12 +248,28 @@ export function defineHeroPlanets() {
       reducedMotion.addEventListener('change', onReducedMotion)
       document.addEventListener('visibilitychange', onVisibility)
       toggle?.addEventListener('click', onToggle)
+      const unsubscribePhase = subscribeHeroPhase(screen, (phase) => {
+        const revealed = phase === 'ready'
+        controller.setEnvironment({ revealed })
+        this.inert = !revealed
+        if (revealed) {
+          this.removeAttribute('aria-hidden')
+        }
+        else {
+          this.setAttribute('aria-hidden', 'true')
+          const active = document.activeElement
+          if (active instanceof HTMLElement && focusedPlanet(active)) {
+            active.blur()
+          }
+        }
+      })
       controller.setFocus(focusedPlanet(document.activeElement))
       intersection.observe(screen)
       this.setAttribute('data-planets-ready', '')
       this.#cleanup = () => {
         controller.destroy()
         unsubscribeMotion()
+        unsubscribePhase()
         intersection.disconnect()
         for (const unbind of pointerBindings) {
           unbind()
@@ -260,6 +282,8 @@ export function defineHeroPlanets() {
         toggle?.removeEventListener('click', onToggle)
         this.removeAttribute('data-planets-ready')
         this.removeAttribute('data-planets-orbit-running')
+        this.inert = true
+        this.setAttribute('aria-hidden', 'true')
         for (const planet of planets) {
           planet.removeAttribute('data-planet-active')
         }

@@ -3,7 +3,7 @@ import { ArrowUpRight, Pause, Play } from '@lucide/astro'
 import type { Locale } from '@weapp/project-catalog/types'
 import type { HomeProject } from '../../lib/home-projects'
 import { shell } from '../../styles/classes'
-import { MINIPROGRAM_PATH, MINIPROGRAM_VIEWBOX } from '../../lib/hero-brand'
+import { createHeroStarfield } from '../../scripts/hero-starfield'
 import HeroParticles from './HeroParticles.astro'
 
 interface RailProject {
@@ -28,18 +28,22 @@ interface Props {
 }
 
 const { locale, railGroups, constellation, wordmark, overviewLabel, railLabel } = Astro.props
+const stars = createHeroStarfield(400)
 ---
 
 <section class="home-hero" aria-label={overviewLabel}>
-  <div class="home-hero-screen">
+  <div class="home-hero-screen" data-hero-phase="stars">
     <script is:inline>
       document.documentElement.setAttribute('data-hero-cosmos', '')
     </script>
     <HeroParticles wordmark={wordmark} />
-    <svg class="home-hero-logo" data-hero-logo viewBox={`0 0 ${MINIPROGRAM_VIEWBOX} ${MINIPROGRAM_VIEWBOX}`} fill="currentColor" fill-rule="evenodd" aria-hidden="true">
-      <path d={MINIPROGRAM_PATH} />
+    <svg class="home-hero-starfield" data-hero-starfield aria-hidden="true">
+      {stars.map((star, index) => (
+        <circle cx={`${star.x * 100}%`} cy={`${star.y * 100}%`} r={star.size / 2} opacity={star.brightness} class:list={{ 'home-hero-star--desktop': index >= 160 }} />
+      ))}
     </svg>
-    <hero-planets class="home-hero-constellation">
+    <span class="home-hero-brand-anchor" aria-hidden="true"></span>
+    <hero-planets class="home-hero-constellation" inert aria-hidden="true">
       <span class="home-hero-gridlines" aria-hidden="true"></span>
       <span class="home-hero-orbit" aria-hidden="true"></span>
       <div class="home-hero-orbit-track">

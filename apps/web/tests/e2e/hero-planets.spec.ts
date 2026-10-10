@@ -1,17 +1,47 @@
 import type { Page } from '@playwright/test'
+import { expectStaticStarfield } from './hero-fallback'
 import { installMotionClock, setPageHidden } from './hero-motion'
 import { expect, test } from './test'
 
 const constellation = 'hero-planets'
 const activePlanet = '.home-hero-planet[data-planet-active]'
 
+declare global {
+  interface Window {
+    __heroSpotlightDelayStartedAt: number | null
+  }
+}
+
 async function prepareSpotlight(page: Page, path: string) {
-  // Freeze time before navigation: the observer must arm the intro delay before
-  // the test advances it, independently of resource loading and machine speed.
   await installMotionClock(page)
+  await page.addInitScript(() => {
+    window.__heroSpotlightDelayStartedAt = null
+    // Observe the public running state and desktop eligibility so the delay is
+    // measured from readiness, interaction resume or breakpoint re-entry.
+    // The mobile orbit keeps running while automatic spotlights are disabled.
+    window.matchMedia('(min-width: 1024px)').addEventListener('change', (event) => {
+      if (event.matches) {
+        window.__heroSpotlightDelayStartedAt = performance.now()
+      }
+    })
+    new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        const element = mutation.target
+        if (element instanceof HTMLElement && element.matches('hero-planets')
+          && element.hasAttribute('data-planets-orbit-running')) {
+          window.__heroSpotlightDelayStartedAt = performance.now()
+        }
+      }
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-planets-orbit-running'] })
+  })
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto(path)
   await expect(page.locator(constellation)).toHaveAttribute('data-planets-ready', '')
+  await expect.poll(() => page.evaluate(() => [...document.fonts].some(face => /Syne/.test(face.family) && face.status === 'loaded'))).toBe(true)
+  await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-particles-active', '')
+  await page.clock.runFor(1600)
+  await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
+  await expect(page.locator(constellation)).toHaveJSProperty('inert', false)
   await expect(page.locator(constellation)).toHaveAttribute('data-planets-orbit-running', '')
 }
 
@@ -27,7 +57,14 @@ async function expectSpotlight(page: Page, index: number) {
 
 async function expectFreshDelay(page: Page, index: number) {
   await expect(page.locator(constellation)).toHaveAttribute('data-planets-orbit-running', '')
-  await page.clock.fastForward(2999)
+  const elapsed = await page.evaluate(() => {
+    if (window.__heroSpotlightDelayStartedAt === null) {
+      throw new Error('The hero must enter a running desktop interval before its next spotlight')
+    }
+    return performance.now() - window.__heroSpotlightDelayStartedAt
+  })
+  expect(elapsed, 'The test must inspect the pending three-second interval').toBeLessThan(2999)
+  await page.clock.fastForward(2999 - elapsed)
   await expect(page.locator(activePlanet)).toHaveCount(0)
   await page.clock.fastForward(1)
   await expectSpotlight(page, index)
@@ -41,6 +78,8 @@ for (const path of ['/', '/en/']) {
       const planets = page.locator('.home-hero-planet')
       await expect(planets).toHaveCount(10)
       await expect(page.locator(constellation)).toHaveAttribute('data-planets-ready', '')
+      await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
+      await expect(page.locator(constellation)).toHaveJSProperty('inert', false)
       for (const [id, docs] of [['weapp-pandacss', 'https://panda.weapp.dev/'], ['weapp-stylex', 'https://stylex.weapp.dev/']]) {
         const planet = page.locator(`.home-hero-planet[data-analytics-project="${id}"]`)
         await expect(planet).toHaveAttribute('href', docs)
@@ -71,32 +110,30 @@ for (const path of ['/', '/en/']) {
         }
       }
       await page.emulateMedia({ reducedMotion: 'reduce' })
+      await expectStaticStarfield(page)
       for (const planet of await planets.all()) {
-        await planet.focus()
         expect(await planet.evaluate(element => getComputedStyle(element).animationName)).toBe('none')
       }
       await page.emulateMedia({ reducedMotion: 'no-preference' })
+      await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
     }
   })
 
-  test(`planet links and logos work without JavaScript on ${path}`, async ({ browser, baseURL, viewport }) => {
+  test(`gates orbital planets and keeps project rail links available without JavaScript on ${path}`, async ({ browser, baseURL, viewport }) => {
     const context = await browser.newContext({ javaScriptEnabled: false, baseURL, viewport, reducedMotion: 'reduce' })
     try {
       const page = await context.newPage()
       await page.goto(path)
-      const planets = page.locator('.home-hero-planet')
-      await expect(planets).toHaveCount(10)
+      await expectStaticStarfield(page, false)
       await expect(page.locator('[data-planet-toggle]')).toBeHidden()
-      await expect(page.locator('[data-planet-caption]')).toBeHidden()
-      for (const planet of await planets.all()) {
-        await expect(planet).toBeVisible()
+      for (const planet of await page.locator('.home-hero-planet').all()) {
         await expect(planet).toHaveAttribute('aria-label', /.+/)
         expect(await planet.locator('img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
         await expect(planet).toHaveCSS('animation-name', 'none')
-        if ((viewport?.width ?? 0) >= 1024) {
-          await expect(planet.locator('xpath=following-sibling::*[1]')).toBeVisible()
-        }
       }
+      const rail = page.locator('.home-project-rail a').first()
+      await rail.focus()
+      await expect(rail).toBeFocused()
     }
     finally {
       await context.close()
@@ -136,19 +173,11 @@ for (const path of ['/', '/en/']) {
       await page.setViewportSize({ width: 1280, height: 900 })
     })
 
-    test('cycles every project once, with a four-second pause and no WebGL dependency', async ({ page }) => {
-      await page.addInitScript(() => {
-        const getContext = HTMLCanvasElement.prototype.getContext
-        HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, contextId, options) {
-          if (contextId === 'webgl' || contextId === 'webgl2' || contextId === 'experimental-webgl') {
-            return null
-          }
-          return getContext.call(this, contextId, options)
-        } as typeof getContext
-      })
+    test('cycles every project once after wordmark readiness, with a four-second pause', async ({ page }) => {
       await prepareSpotlight(page, path)
       await expect(page.locator('[data-planet-caption]')).toHaveAttribute('aria-hidden', 'true')
-      await expect(page.locator('[data-hero-logo]')).toHaveCSS('visibility', 'visible')
+      await expect(page.locator('[data-hero-logo]')).toHaveCount(0)
+      await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
       for (let index = 0; index <= 10; index += 1) {
         await expectFreshDelay(page, index % 10)
         expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true)
@@ -198,6 +227,43 @@ for (const path of ['/', '/en/']) {
       await expectFreshDelay(page, 2)
     })
 
+    test('keeps a ready focused project and its caption through desktop resizes, including a user pause', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await prepareSpotlight(page, path)
+      await page.clock.runFor(400)
+      const planet = page.locator('.home-hero-planet').nth(2)
+      const toggle = page.locator('[data-planet-toggle]')
+      const screen = page.locator('.home-hero-screen')
+      const canvas = page.locator('.home-hero-particle-canvas')
+      for (const paused of [false, true]) {
+        if (paused) {
+          await page.setViewportSize({ width: 1440, height: 900 })
+          await expect.poll(() => canvas.evaluate((element: HTMLCanvasElement) => element.width === Math.floor(1440 * Math.min(1.75, devicePixelRatio)))).toBe(true)
+          await toggle.click()
+        }
+        await planet.focus()
+        await expectSpotlight(page, 2)
+        await expect(toggle).toHaveAttribute('aria-pressed', String(paused))
+        const previousWidth = await canvas.evaluate((element: HTMLCanvasElement) => element.width)
+        await page.setViewportSize({ width: 1280, height: 900 })
+        // A resized drawing buffer confirms the real observer has run before
+        // checking focus continuity; an immediate assertion could miss a blur.
+        await expect.poll(() => canvas.evaluate((element: HTMLCanvasElement, oldWidth) => {
+          const stage = element.closest<HTMLElement>('.home-hero-screen')!
+          return element.width !== oldWidth && element.width === Math.floor(stage.clientWidth * Math.min(1.75, devicePixelRatio))
+        }, previousWidth)).toBe(true)
+        await expect(screen).toHaveAttribute('data-hero-phase', 'ready')
+        await expect(screen).toHaveAttribute('data-particles-active', '')
+        await expect(planet).toBeFocused()
+        await expectSpotlight(page, 2)
+        await expect(toggle).toHaveAttribute('aria-pressed', String(paused))
+        if (paused) {
+          await expect(screen).toHaveAttribute('data-hero-motion-paused', '')
+          await expect(screen).toHaveAttribute('data-particles-paused', '')
+        }
+      }
+    })
+
     test('restarts its delay after motion, viewport, visibility and offscreen changes', async ({ page }) => {
       await prepareSpotlight(page, path)
       await expectFreshDelay(page, 0)
@@ -206,12 +272,14 @@ for (const path of ['/', '/en/']) {
       await expect(page.locator('[data-planet-toggle]')).toBeHidden()
       await page.clock.fastForward(60000)
       await expect(page.locator(activePlanet)).toHaveCount(0)
+      await expectStaticStarfield(page)
       const manualPlanet = page.locator('.home-hero-planet').nth(5)
-      await manualPlanet.focus()
-      await expectSpotlight(page, 5)
-      await expect(manualPlanet.locator('.home-hero-planet-visual')).toHaveCSS('transform', 'none')
-      await expect(manualPlanet.locator('.home-hero-planet-visual')).toHaveCSS('scale', 'none')
+      await manualPlanet.evaluate((element: HTMLAnchorElement) => element.focus({ preventScroll: true }))
+      await expect(manualPlanet).not.toBeFocused()
+      await expect(page.locator(activePlanet)).toHaveCount(0)
       await page.emulateMedia({ reducedMotion: 'no-preference' })
+      await page.clock.runFor(160)
+      await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
       await expect(page.locator('[data-planet-toggle]')).toBeVisible()
       await page.locator('[data-planet-toggle]').focus()
       await expectFreshDelay(page, 1)

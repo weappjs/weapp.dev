@@ -2,7 +2,7 @@ import type { PlanetEnvironment, PlanetPresentation } from './hero-planets'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPlanetController } from './hero-planets'
 
-const desktop: PlanetEnvironment = { desktop: true, reducedMotion: false, visible: true, pageHidden: false }
+const desktop: PlanetEnvironment = { desktop: true, reducedMotion: false, visible: true, pageHidden: false, revealed: true }
 
 function setup(environment = desktop, initiallyPaused = false) {
   let state: PlanetPresentation
@@ -16,6 +16,67 @@ function setup(environment = desktop, initiallyPaused = false) {
 describe('hero planet attention lifecycle', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
+
+  it('keeps the opening stationary with independent pause controls and starts only after reveal', () => {
+    const { controller, current } = setup({ ...desktop, revealed: false })
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false, controlsVisible: true, userPaused: false })
+    expect(vi.getTimerCount()).toBe(0)
+    vi.advanceTimersByTime(60000)
+    controller.setPaused(true)
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false, controlsVisible: true, userPaused: true })
+    controller.setPaused(false)
+    expect(vi.getTimerCount()).toBe(0)
+    controller.setEnvironment({ revealed: true })
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true })
+    vi.advanceTimersByTime(2999)
+    expect(current().activeId).toBeNull()
+    vi.advanceTimersByTime(1)
+    expect(current()).toMatchObject({ activeId: 'vite', orbitRunning: false })
+    controller.destroy()
+  })
+
+  it('discards focus and hover from a hidden stage instead of restoring stale captions', () => {
+    const { controller, current } = setup({ ...desktop, revealed: false })
+    controller.setFocus('rezor')
+    controller.setHover('panda')
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false })
+    controller.setEnvironment({ revealed: true })
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true })
+    vi.advanceTimersByTime(3000)
+    expect(current().activeId).toBe('vite')
+    controller.setFocus('rezor')
+    controller.setHover('panda')
+    expect(current().activeId).toBe('rezor')
+    controller.setEnvironment({ revealed: false })
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false })
+    expect(vi.getTimerCount()).toBe(0)
+    vi.advanceTimersByTime(60000)
+    controller.setEnvironment({ revealed: true })
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true })
+    vi.advanceTimersByTime(2999)
+    expect(current().activeId).toBeNull()
+    vi.advanceTimersByTime(1)
+    expect(current().activeId).toBe('panda')
+    controller.destroy()
+  })
+
+  it('preserves shared user pause while a reveal reset clears the selected project', () => {
+    const { controller, current } = setup()
+    vi.advanceTimersByTime(3000)
+    controller.setPaused(true)
+    controller.setEnvironment({ revealed: false })
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false, userPaused: true })
+    controller.setEnvironment({ revealed: true })
+    vi.advanceTimersByTime(60000)
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false, userPaused: true })
+    expect(vi.getTimerCount()).toBe(0)
+    controller.setPaused(false)
+    vi.advanceTimersByTime(2999)
+    expect(current().activeId).toBeNull()
+    vi.advanceTimersByTime(1)
+    expect(current().activeId).toBe('panda')
+    controller.destroy()
+  })
 
   it('rotates one highlight at a time with a quiet interval between projects', () => {
     const { controller, current } = setup()
@@ -57,6 +118,7 @@ describe('hero planet attention lifecycle', () => {
     ['background', { pageHidden: true }, { pageHidden: false }],
     ['mobile', { desktop: false }, { desktop: true }],
     ['reduced motion', { reducedMotion: true }, { reducedMotion: false }],
+    ['unrevealed stage', { revealed: false }, { revealed: true }],
   ] as const)('clears automatic attention while %s and resumes without catching up', (_name, paused, resumed) => {
     const { controller, current } = setup()
     vi.advanceTimersByTime(3000)
@@ -121,6 +183,7 @@ describe('hero planet attention lifecycle', () => {
     const { controller, current } = setup()
     vi.advanceTimersByTime(2000)
     controller.setEnvironment({ visible: true })
+    controller.setEnvironment({ revealed: true })
     vi.advanceTimersByTime(1000)
     expect(current().activeId).toBe('vite')
     controller.destroy()
@@ -159,7 +222,7 @@ describe('hero planet attention lifecycle', () => {
   })
 
   it('waits for every environment blocker to clear before starting an initial cycle', () => {
-    const { controller, current } = setup({ desktop: false, visible: false, pageHidden: true, reducedMotion: true })
+    const { controller, current } = setup({ desktop: false, visible: false, pageHidden: true, reducedMotion: true, revealed: true })
     expect(vi.getTimerCount()).toBe(0)
     controller.setEnvironment({ desktop: true, reducedMotion: false })
     controller.setEnvironment({ visible: true })

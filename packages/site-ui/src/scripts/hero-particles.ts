@@ -1,7 +1,8 @@
-import { MINIPROGRAM_PATH, MINIPROGRAM_VIEWBOX } from '../lib/hero-brand'
 import { subscribeHeroMotionPaused } from './hero-motion'
 import { loadWordmarkFont } from './hero-particle-font'
 import { createActiveClock, glyphSafeRadii, particleFrameInterval, smoothValue } from './hero-particle-motion'
+import { heroEntranceState, setHeroPhase } from './hero-phase'
+import { createHeroStarfield } from './hero-starfield'
 import { ellipseWordmarkWidth, fitGlyphLayout, measureGlyphLayout } from './hero-wordmark-layout'
 
 export interface GlyphPoint {
@@ -56,6 +57,7 @@ out float v_accent;
 out float v_kind;
 out float v_spin;
 out float v_seed;
+out float v_field;
 void main() {
   float span = max(0.18, 1.0 - max(a_delay, 0.0));
   float t = clamp((u_progress - a_delay) / span, 0.0, 1.0);
@@ -66,7 +68,7 @@ void main() {
     smoothstep(0.55, 1.0, u_progress)
   );
   float glyph = step(0.0, a_delay);
-  float fieldTime = min(u_time, 2.2) + max(0.0, u_time - 2.2) * 0.12;
+  float fieldTime = min(u_time, 1.5) + max(0.0, u_time - 1.5) * 0.12;
   float wanderTime = mix(fieldTime, u_time, glyph);
   float speed = mix(0.06, 0.38, glyph) * (0.55 + a_seed);
   float ang = wanderTime * speed + a_seed * 6.2832;
@@ -75,6 +77,10 @@ void main() {
     sin(wanderTime * 0.042 + a_seed * 5.1),
     cos(wanderTime * 0.031 + a_depth * 2.7)
   ) * mix(a_orbit * 2.4, 0.35, glyph);
+  float initialAngle = a_seed * 6.2832;
+  vec2 initialWander = vec2(cos(initialAngle), sin(initialAngle * 0.87)) * a_orbit;
+  initialWander += vec2(sin(a_seed * 5.1), cos(a_depth * 2.7)) * mix(a_orbit * 2.4, 0.35, glyph);
+  wander -= initialWander;
   // Quiet anchors preserve the silhouette; one third carry a nine-second flow.
   float phase = u_time * 0.6981 + a_seed * 6.2832;
   vec2 flow = vec2(sin(phase + a_target.y * 0.009), cos(phase + a_target.x * 0.006)) * 0.7071;
@@ -86,14 +92,17 @@ void main() {
   offset += direction * u_pointerStrength * influence * u_pointerRadius / 15.0;
   float offsetLength = length(offset);
   offset *= min(1.0, a_radius / max(0.001, offsetLength));
-  pos += mix(wander * idle, offset * e, glyph * smoothstep(0.55, 1.0, u_progress));
+  pos += mix(wander * mix(1.0, idle, glyph), offset * e, glyph * smoothstep(0.55, 1.0, u_progress));
   vec2 clip = (pos / u_resolution) * 2.0 - 1.0;
   clip.y *= -1.0;
   gl_Position = vec4(clip, 0.0, 1.0);
-  gl_PointSize = min(48.0, a_size * (0.72 + a_depth * 0.85));
+  gl_PointSize = min(48.0, a_size * mix(1.0, 0.72 + a_depth * 0.85, glyph));
   float pulse = 0.5 + 0.5 * sin(wanderTime * (0.65 + a_seed * 2.3) + a_seed * 12.6);
   float flare = pow(max(0.0, sin(wanderTime * (0.09 + a_seed * 0.18) + a_seed * 4.2)), 12.0);
-  v_brightness = a_brightness * (1.0 - a_twinkle * 0.45 + a_twinkle * (0.55 * pulse + 1.25 * flare));
+  float initialPulse = 0.5 + 0.5 * sin(a_seed * 12.6);
+  float initialFlare = pow(max(0.0, sin(a_seed * 4.2)), 12.0);
+  v_brightness = a_brightness * (1.0 + a_twinkle * (0.55 * (pulse - initialPulse) + 1.25 * (flare - initialFlare)));
+  v_brightness *= mix(1.0, smoothstep(0.0, 0.28, t), glyph);
   float ripple = influence * u_pointerStrength * (0.5 + 0.5 * sin(dist / max(1.0, u_pointerRadius) * 18.0 - u_time * 8.0));
   float trail = 0.0;
   for (int i = 0; i < 4; i++) {
@@ -105,6 +114,7 @@ void main() {
   v_kind = a_kind;
   v_spin = wanderTime * (0.11 + a_seed * 0.32);
   v_seed = a_seed;
+  v_field = 1.0 - glyph;
 }
 `
 
@@ -115,9 +125,18 @@ in float v_accent;
 in float v_kind;
 in float v_spin;
 in float v_seed;
+in float v_field;
 out vec4 fragColor;
 void main() {
   vec2 uv = gl_PointCoord * 2.0 - 1.0;
+  if (v_field > 0.5) {
+    if (dot(uv, uv) > 1.0) {
+      discard;
+    }
+    // Match SSR's low-brightness white circles at the initial frame.
+    fragColor = vec4(vec3(v_brightness), v_brightness);
+    return;
+  }
   float ca = cos(v_spin);
   float sa = sin(v_spin);
   vec2 p = vec2(ca * uv.x - sa * uv.y, sa * uv.x + ca * uv.y);
@@ -551,7 +570,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   }
 
   let count = 0
-  let assembled = elapsed >= 2200
+  let entranceSettled = heroEntranceState(elapsed).settled
   const clock = createActiveClock(elapsed)
   clock.setRunning(false, performance.now())
   let raf = 0
@@ -594,13 +613,13 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     desktop = cssWidth >= 1024
     const titleStyle = getComputedStyle(title)
     const canvasBox = canvas.getBoundingClientRect()
-    const logo = screen.querySelector<HTMLElement>('.home-hero-logo')
-    if (!logo) {
+    const anchor = screen.querySelector<HTMLElement>('.home-hero-brand-anchor')
+    if (!anchor) {
       return false
     }
-    const logoBox = logo.getBoundingClientRect()
-    const centerX = (logoBox.left + logoBox.width / 2 - canvasBox.left) * dpr
-    const centerY = (logoBox.top + logoBox.height / 2 - canvasBox.top) * dpr
+    const anchorBox = anchor.getBoundingClientRect()
+    const centerX = (anchorBox.left + anchorBox.width / 2 - canvasBox.left) * dpr
+    const centerY = (anchorBox.top + anchorBox.height / 2 - canvasBox.top) * dpr
     // The rendered orbit resolves CSS min()/calc() values into actual pixels.
     const orbitElement = screen.querySelector<HTMLElement>('.home-hero-orbit')
     const orbitBox = orbitElement?.getBoundingClientRect()
@@ -608,7 +627,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const orbitRy = (orbitBox?.height ?? cssHeight) / 2
     const planetSize = Math.max(0, ...[...screen.querySelectorAll<HTMLElement>('.home-hero-planet')]
       .map(planet => Number.parseFloat(getComputedStyle(planet).width) || 0))
-    const key = `${cssWidth}:${cssHeight}:${dpr}:${titleStyle.fontSize}:${titleStyle.fontFamily}:${titleStyle.fontWeight}:${titleStyle.letterSpacing}:${centerX}:${centerY}:${logoBox.width}:${orbitRx}:${orbitRy}:${planetSize}`
+    const key = `${cssWidth}:${cssHeight}:${dpr}:${titleStyle.fontSize}:${titleStyle.fontFamily}:${titleStyle.fontWeight}:${titleStyle.letterSpacing}:${centerX}:${centerY}:${orbitRx}:${orbitRy}:${planetSize}`
     if (key === layoutKey) {
       return true
     }
@@ -636,19 +655,11 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       step: glyphStep,
     })
     const word = downsamplePoints(sampledWord, glyphBudget)
-    const mark = downsamplePoints(samplePathSilhouette({
-      d: MINIPROGRAM_PATH,
-      viewBox: MINIPROGRAM_VIEWBOX,
-      width: canvas.width,
-      height: canvas.height,
-      size: Math.min(logoBox.width, logoBox.height) * dpr,
-      centerX,
-      centerY,
-      step: glyphStep,
-    }), glyphBudget)
+    const scattered = createHeroStarfield(glyphBudget)
+      .map(star => ({ x: star.x * canvas.width, y: star.y * canvas.height, accent: 0 }))
     const cx = centerX
     const cy = centerY
-    const paired = pairClouds(mark, word, cx, cy)
+    const paired = pairClouds(scattered, word, cx, cy)
     if (paired.length < 40) {
       return false
     }
@@ -657,7 +668,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     title.style.width = `${glyphBounds.right - glyphBounds.left}px`
     title.style.height = `${glyphBounds.bottom - glyphBounds.top}px`
     screen.style.setProperty('--hero-wordmark-height', `${glyphBounds.bottom - glyphBounds.top}px`)
-    const rand = mulberry32(0x5EED ^ Math.floor(cssWidth * 13 + cssHeight))
+    const rand = mulberry32(0x5EED)
     const maxDist = Math.hypot(canvas.width, canvas.height) * 0.28
     const total = paired.length + fieldBudget
     const start = new Float32Array(total * 2)
@@ -691,26 +702,25 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       radius[index] = Math.min(8 * dpr, safeRadius.get(pair.to) ?? 0)
       flow[index] = index % 3 === 0 ? 1 : 0
     })
+    const field = createHeroStarfield(fieldBudget)
     for (let index = 0; index < fieldBudget; index += 1) {
       const i = paired.length + index
-      const x = rand() * canvas.width
-      const y = rand() * canvas.height
-      const wander = (0.02 + rand() * 0.05) * Math.min(canvas.width, canvas.height)
-      const heading = rand() * Math.PI * 2
-      const dust = pickFieldDust(rand)
+      const star = field[index]!
+      const x = star.x * canvas.width
+      const y = star.y * canvas.height
       start[i * 2] = x
       start[i * 2 + 1] = y
-      target[i * 2] = x + Math.cos(heading) * wander
-      target[i * 2 + 1] = y + Math.sin(heading) * wander
+      target[i * 2] = x
+      target[i * 2 + 1] = y
       delay[i] = -1
-      kind[i] = dust.kind
-      size[i] = Math.max(1.05, dust.size) * dpr
-      brightness[i] = dust.brightness
-      accent[i] = dust.hue
+      kind[i] = 0
+      size[i] = star.size * dpr
+      brightness[i] = star.brightness
+      accent[i] = 0
       depth[i] = rand() * 0.45
       seed[i] = rand()
       orbit[i] = (6 + rand() * 12) * dpr
-      twinkle[i] = dust.twinkle
+      twinkle[i] = 0
     }
     count = total
     bindFloat(buffers.start, loc.start, start, 2)
@@ -760,13 +770,11 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     pointer.strength = 0
     trails.length = 0
   }
+  let syncPlayback: () => void
 
   const draw = (activeElapsed: number) => {
-    const progress = Math.min(1, Math.max(0, (activeElapsed - 700) / 1500))
-    if (progress >= 1) {
-      assembled = true
-      screen.dataset.particlesReady = ''
-    }
+    const entrance = heroEntranceState(activeElapsed)
+    const progress = entrance.progress
     const delta = Math.max(0, activeElapsed - lastInput)
     lastInput = activeElapsed
     pointer.x = smoothValue(pointer.x, pointer.targetX, delta, 85)
@@ -799,20 +807,23 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     gl.uniform1f(loc.flowAmplitude, (desktop ? 4 : 1) * dpr)
     gl.uniform3fv(loc.trails, trailData)
     gl.drawArrays(gl.POINTS, 0, count)
-    // A failed first frame must never replace the static inline Logo.
-    if (!needsStaticDraw) {
-      return
-    }
-    if (!gl.isContextLost() && gl.getError() === gl.NO_ERROR) {
-      screen.dataset.particlesActive = ''
-      needsStaticDraw = false
-      hasValidFrame = true
-    }
-    else {
+    // A failed first frame must never replace the static shared starfield.
+    if (gl.isContextLost() || (needsStaticDraw && gl.getError() !== gl.NO_ERROR)) {
       contextLost = true
       delete screen.dataset.particlesActive
       delete screen.dataset.particlesReady
+      screen.style.removeProperty('--hero-planet-reveal')
+      setHeroPhase(screen, 'stars')
+      syncPlayback()
+      return
     }
+    screen.dataset.particlesActive = ''
+    needsStaticDraw = false
+    hasValidFrame = true
+    entranceSettled = entrance.settled
+    screen.toggleAttribute('data-particles-ready', entrance.phase === 'ready')
+    screen.style.setProperty('--hero-planet-reveal', String(entrance.reveal))
+    setHeroPhase(screen, entrance.phase)
   }
 
   // Only this scheduler owns a pending timer/RAF. Pointer input can wake it,
@@ -821,7 +832,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     if (!canPlay() || raf || idleTimer) {
       return
     }
-    const interval = particleFrameInterval(desktop, assembled, interacting())
+    const interval = particleFrameInterval(desktop, entranceSettled, interacting())
     const wait = interval - (performance.now() - lastDraw)
     if (wait > 4) {
       idleTimer = window.setTimeout(() => {
@@ -838,14 +849,14 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     if (!canPlay()) {
       return
     }
-    const interval = particleFrameInterval(desktop, assembled, interacting())
+    const interval = particleFrameInterval(desktop, entranceSettled, interacting())
     if (now - lastDraw >= interval - 0.1) {
       draw(clock.advance(now))
       lastDraw = now
     }
     schedule(tick)
   }
-  const syncPlayback = () => {
+  syncPlayback = () => {
     const running = canPlay()
     const resumed = running && !playing
     playing = running
@@ -929,6 +940,9 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     if (reduced) {
       gl.clear(gl.COLOR_BUFFER_BIT)
       delete screen.dataset.particlesActive
+      delete screen.dataset.particlesReady
+      screen.style.removeProperty('--hero-planet-reveal')
+      setHeroPhase(screen, 'stars')
       needsStaticDraw = true
     }
     syncPlayback()
@@ -938,6 +952,8 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     contextLost = true
     delete screen.dataset.particlesActive
     delete screen.dataset.particlesReady
+    screen.style.removeProperty('--hero-planet-reveal')
+    setHeroPhase(screen, 'stars')
     syncPlayback()
   }
   const resizeObserver = new ResizeObserver(() => {
@@ -947,7 +963,12 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     clearPointer()
     const previousLayout = layoutKey
     if (!rebuild()) {
+      contextLost = true
       delete screen.dataset.particlesActive
+      delete screen.dataset.particlesReady
+      screen.style.removeProperty('--hero-planet-reveal')
+      setHeroPhase(screen, 'stars')
+      syncPlayback()
       return
     }
     if (layoutKey === previousLayout) {
@@ -959,6 +980,11 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       // Resizing a paused hero is the one permitted static redraw.
       draw(clock.current())
       lastDraw = performance.now()
+    }
+    else {
+      delete screen.dataset.particlesReady
+      screen.style.removeProperty('--hero-planet-reveal')
+      setHeroPhase(screen, 'stars')
     }
     wake()
   })
@@ -997,6 +1023,8 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       delete screen.dataset.particlesReady
       delete screen.dataset.particlesActive
       delete screen.dataset.particlesPaused
+      screen.style.removeProperty('--hero-planet-reveal')
+      setHeroPhase(screen, 'stars')
       title.style.removeProperty('width')
       title.style.removeProperty('height')
       screen.style.removeProperty('--hero-wordmark-height')
@@ -1044,6 +1072,9 @@ export function defineHeroParticles() {
       if (!screen) {
         return
       }
+      setHeroPhase(screen, 'stars')
+      delete screen.dataset.particlesReady
+      screen.style.removeProperty('--hero-planet-reveal')
       const unbind = bindHeroCosmos(screen)
       if (!canvas || !title || !wordmark) {
         delete screen.dataset.particlesActive
@@ -1081,6 +1112,9 @@ export function defineHeroParticles() {
         if (!engine) {
           fontFailed = true
           delete screen.dataset.particlesActive
+          delete screen.dataset.particlesReady
+          screen.style.removeProperty('--hero-planet-reveal')
+          setHeroPhase(screen, 'stars')
         }
       }
       const onReducedMotion = () => {

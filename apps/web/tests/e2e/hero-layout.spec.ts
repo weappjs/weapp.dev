@@ -1,3 +1,4 @@
+import { expectStaticStarfield } from './hero-fallback'
 import { expect, test } from './test'
 
 const viewports = [
@@ -15,12 +16,12 @@ const viewports = [
   { width: 390, height: 844 },
 ]
 
-const cases = viewports.flatMap(viewport => ['logo', 'wordmark'].map(phase => ({ viewport, phase })))
+const cases = viewports.flatMap(viewport => ['stars', 'wordmark'].map(phase => ({ viewport, phase })))
 
 for (const { viewport, phase } of cases) {
   test(`planet targets, names and descriptions stay clear around the ${phase} at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
-    await page.emulateMedia({ reducedMotion: phase === 'logo' ? 'reduce' : 'no-preference' })
+    await page.emulateMedia({ reducedMotion: phase === 'stars' ? 'reduce' : 'no-preference' })
     for (const path of ['/', '/en/']) {
       await page.goto(path)
       const planets = page.locator('.home-hero-planet')
@@ -28,10 +29,23 @@ for (const { viewport, phase } of cases) {
       await expect(page.locator('hero-planets')).toHaveAttribute('data-planets-ready', '')
       if (phase === 'wordmark') {
         await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-particles-ready', '')
-        await expect(page.locator('[data-hero-logo]')).toBeHidden()
+        await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
+        await expect(page.locator('hero-planets')).toHaveJSProperty('inert', false)
+        await expect(page.locator('[data-hero-logo]')).toHaveCount(0)
       }
       else {
-        await expect(page.locator('[data-hero-logo]')).toBeVisible()
+        await expectStaticStarfield(page)
+        const layout = await page.locator('[data-hero-starfield]').evaluate((element) => {
+          const screen = element.closest('.home-hero-screen')!.getBoundingClientRect()
+          const stars = element.getBoundingClientRect()
+          return {
+            clipped: stars.left < screen.left - 0.5 || stars.right > screen.right + 0.5
+              || stars.top < screen.top - 0.5 || stars.bottom > screen.bottom + 0.5,
+            overflow: document.documentElement.scrollWidth > innerWidth + 1,
+          }
+        })
+        expect(layout, `${path} stars ${viewport.width}px`).toEqual({ clipped: false, overflow: false })
+        continue
       }
       await planets.first().focus()
       for (let step = 0; step < 72; step += 1) {
@@ -45,7 +59,7 @@ for (const { viewport, phase } of cases) {
         }, step / 72)
         const collisions = await page.evaluate(() => {
           const stage = document.querySelector<HTMLElement>('.home-hero-screen')!
-          const word = document.querySelector(stage.hasAttribute('data-particles-active') ? '#home-hero-title' : '[data-hero-logo]')!.getBoundingClientRect()
+          const word = document.querySelector('#home-hero-title')!.getBoundingClientRect()
           const screen = stage.getBoundingClientRect()
           const links = [...document.querySelectorAll<HTMLElement>('.home-hero-planet')]
           const planets = links.map(element => ({ id: element.dataset.analyticsProject, element, box: element.getBoundingClientRect() }))

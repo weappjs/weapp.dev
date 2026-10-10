@@ -76,6 +76,7 @@ describe('shared hero user pause', () => {
       reducedMotion: false,
       visible: true,
       pageHidden: false,
+      revealed: true,
     }, readHeroMotionPaused(scope))
     const listener = vi.fn((paused: boolean) => controller.setPaused(paused))
     const unbind = subscribeHeroMotionPaused(scope, listener)
@@ -103,6 +104,7 @@ describe('shared hero user pause', () => {
       reducedMotion: false,
       visible: true,
       pageHidden: false,
+      revealed: true,
     }, readHeroMotionPaused(scope))
     const first = createController()
     const unbindFirst = subscribeHeroMotionPaused(scope, paused => first.setPaused(paused))
