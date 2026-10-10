@@ -52,6 +52,21 @@ SSR 和 WebGL 使用同一固定种子的标准化星位、CSS 尺寸与低亮�
 
 ## CI 尺寸断言修正
 
-首次开源站 CI 的 416 项通过、42 项跳过，两个桌面缩放用例在恢复 1440px 宽度时失败。测试把画布宽度等同于窗口宽度，而渲染器的尺寸契约是实际舞台 `clientWidth` 乘以 DPR；经典滚动条会占用页面宽度。双站用例统一改为要求绘制缓冲宽度发生变化，并精确匹配实际舞台尺寸。焦点、项目说明、ready 和手动暂停断言全部保留，没有修改渲染器或放宽阈值。
+首次开源站 CI 的 416 项通过、42 项跳过，商业站 460 项通过、42 项跳过；两站均只有两个桌面缩放用例在恢复 1440px 宽度时失败。测试把画布宽度等同于窗口宽度，而渲染器的尺寸契约是实际舞台 `clientWidth` 乘以 DPR。开源站中英文失败 trace 确认：Linux Chromium 的 DPR 为 1，1440px 窗口中画布 CSS 宽度与绘制缓冲均为 1425px，1280px 时均为 1265px；既有 `scrollbar-gutter: stable` 预留了 15px，ResizeObserver 已正确完成。双站用例统一改为要求绘制缓冲宽度发生变化，并精确匹配实际舞台尺寸。焦点、项目说明、ready 和手动暂停断言全部保留，没有修改渲染器或放宽阈值。
 
-修正后的双站中英文桌面缩放定向回归共 4 项通过，两站 TypeScript 和测试文件 ESLint 检查通过。原始失败日志为 `ci-open-source-failed.log`，定向回归记录为 `resize-open-source.log` 与 `resize-web.log`。
+修正后的双站中英文桌面缩放定向回归共 4 项通过，两站 TypeScript 和测试文件 ESLint 检查通过。原始失败日志为 `ci-open-source-failed.log` 与 `ci-commercial-failed.log`，开源站截图和 trace 位于 `ci-open-source-evidence/`，定向回归记录为 `resize-open-source.log` 与 `resize-web.log`。
+
+## 发布与正式域名核对
+
+2026-10-11（北京时间）完成发布。实现提交为 [5ee96e2](https://github.com/weappjs/weapp.dev/commit/5ee96e2af240cccf944f3937603d60bcb2964fa3)，尺寸断言修正为 [d22e3fa](https://github.com/weappjs/weapp.dev/commit/d22e3fa8665566b02259f3c294f75d3096710704)。两站最终 CI 与部署均使用 `d22e3fa8665566b02259f3c294f75d3096710704` 的验证产物。
+
+| 正式站点                              | CI                                                                              | 验证与部署       | E2E 通过／跳过 | 部署完成（北京时间） |
+| ------------------------------------- | ------------------------------------------------------------------------------- | ---------------- | -------------: | -------------------- |
+| [weapp.dev](https://weapp.dev/)       | [Commercial CI](https://github.com/weappjs/weapp.dev/actions/runs/38066759685)  | success／success |        462／42 | 2026-10-11 00:27:43  |
+| [weapp.js.org](https://weapp.js.org/) | [Open source CI](https://github.com/weappjs/weapp.dev/actions/runs/38066759684) | success／success |        418／42 | 2026-10-11 00:25:12  |
+
+最终 CI 共 880 项 E2E 通过、84 项跳过、0 项失败；`pnpm install --frozen-lockfile`、边界、lint、类型、单测、构建及产物验证也全部通过。商业站 Cloudflare Worker 版本为 `2c2dafa8-3610-41fa-a538-c3e799313f69`。完整日志为 `ci-commercial-final-full.log` 与 `ci-open-source-final-full.log`。
+
+2026-10-11 00:28（北京时间）核对两个正式域名，共 12 个场景通过、0 个页面错误：两站 × 中英文 × 1440×900 深色桌面／390×844 浅色手机，共 8 个动态场景；另有两站中英文共 4 个无 JavaScript 桌面场景。延迟脚本时确认初始 stars 阶段、静态星场、视觉隐藏的品牌 H1、无中央 Logo 和隐藏且 inert 的星球；就绪后确认真实 Syne 700 Canvas 字符采样、字体成功加载、10 个可交互星球、淡入完成、许可文件 HTTP 200，以及没有横向溢出。统一暂停／继续、动态减少动画回到星空并恢复均通过。
+
+无脚本场景保持静态星空，下方原生项目链接可见、具有 HTTPS 地址且能获得键盘焦点。正式域名的 8 张完成阶段截图已保存，并核对双站桌面和手机字标、星球及按钮边界。证据为 `live/results.json`、`live/*.png` 与 `live.log`；无头浏览器、两个 context 和临时页面均已关闭，资源记录 `closed: true`，没有保留临时浏览器页面。
