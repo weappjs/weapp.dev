@@ -192,6 +192,7 @@ export function defineHeroPlanets() {
       const planets = [...this.querySelectorAll<HTMLAnchorElement>('.home-hero-planet')]
       const orbit = this.querySelector<HTMLElement>('.home-hero-orbit')
       let selectedPlanet: HTMLAnchorElement | undefined
+      let highlightGeneration = 0
       const updateHighlight = () => {
         const angle = orbit && selectedPlanet
           ? getPlanetOrbitHighlightAngle(selectedPlanet.getBoundingClientRect(), orbit.getBoundingClientRect())
@@ -203,6 +204,29 @@ export function defineHeroPlanets() {
         else {
           this.style.removeProperty('--orbit-highlight-angle')
         }
+      }
+      const settleHighlight = () => {
+        const generation = ++highlightGeneration
+        const planet = selectedPlanet
+        if (!planet || !orbit || this.hasAttribute('data-planets-orbit-running')) {
+          return
+        }
+        const animations = planet.getAnimations().filter(animation => animation instanceof CSSAnimation
+          && animation.animationName === 'home-hero-revolve')
+        if (animations.length === 0) {
+          return
+        }
+        // CSS pause finalizes its hold time asynchronously. Keep the immediate
+        // feedback, then measure again once the actual path has stopped.
+        void Promise.allSettled(animations.map(animation => animation.ready)).then((results) => {
+          if (generation !== highlightGeneration || !this.isConnected || selectedPlanet !== planet
+            || this.hasAttribute('data-planets-orbit-running')
+            || results.some(result => result.status === 'rejected')
+            || animations.some(animation => animation.playState !== 'paused')) {
+            return
+          }
+          updateHighlight()
+        })
       }
       const caption = screen.querySelector<HTMLElement>('[data-planet-caption]')
       const captionName = screen.querySelector<HTMLElement>('[data-planet-caption-name]')
@@ -227,6 +251,7 @@ export function defineHeroPlanets() {
           this.toggleAttribute('data-planets-orbit-running', state.orbitRunning)
           // Pause the path before measuring the stable link target, not its enlarged visual.
           updateHighlight()
+          settleHighlight()
           if (caption) {
             caption.hidden = !selectedPlanet
           }
@@ -310,6 +335,7 @@ export function defineHeroPlanets() {
       }
       this.setAttribute('data-planets-ready', '')
       this.#cleanup = () => {
+        ++highlightGeneration
         controller.destroy()
         unsubscribeMotion()
         unsubscribePhase()

@@ -189,6 +189,68 @@ for (const path of ['/', '/en/']) {
       }
     })
 
+    test('aligns the orbit highlight with the settled link after focus or hover pauses a running orbit', async ({ page }) => {
+      // Use natural CSS animation time: pre-pausing or advancing a fake clock
+      // would skip the pending CSS pause that previously left the arc stale.
+      await page.emulateMedia({ reducedMotion: 'no-preference' })
+      await page.goto(path)
+      const scope = page.locator(constellation)
+      await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
+      await expect.poll(() => page.locator('.home-hero-screen').evaluate(element => Number.parseFloat(getComputedStyle(element).getPropertyValue('--hero-planet-reveal')))).toBe(1)
+      for (const [interaction, index] of [['focus', 2], ['hover', 7]] as const) {
+        const planet = page.locator('.home-hero-planet').nth(index)
+        await expect(scope).toHaveAttribute('data-planets-orbit-running', '')
+        await expect.poll(() => planet.evaluate(element => element.getAnimations().some(animation => animation.playState === 'running' && !animation.pending))).toBe(true)
+        if (interaction === 'focus') {
+          const wasRunning = await planet.evaluate((element: HTMLAnchorElement) => {
+            const running = element.closest('hero-planets')!.hasAttribute('data-planets-orbit-running')
+            element.focus({ preventScroll: true })
+            return running
+          })
+          expect(wasRunning, 'The focus event must pause an orbit that was actually running').toBe(true)
+          await expect(planet).toBeFocused()
+        }
+        else {
+          const box = await planet.boundingBox()
+          await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
+        }
+        await expect(planet).toHaveAttribute('data-planet-active', '')
+        await expect(scope).not.toHaveAttribute('data-planets-orbit-running', '')
+        const alignment = await planet.evaluate(async (element) => {
+          const animations = element.getAnimations()
+          await Promise.all(animations.map(animation => animation.ready))
+          const beforeFrame = element.getBoundingClientRect()
+          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+          // Measure the native stable link, whose size does not change when
+          // the inner planet visual scales during a spotlight.
+          const link = element.getBoundingClientRect()
+          const constellation = element.closest<HTMLElement>('hero-planets')!
+          const orbit = constellation.querySelector('.home-hero-orbit')!.getBoundingClientRect()
+          const dx = link.left + link.width / 2 - (orbit.left + orbit.width / 2)
+          const dy = link.top + link.height / 2 - (orbit.top + orbit.height / 2)
+          const actual = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360
+          const stored = Number.parseFloat(getComputedStyle(constellation).getPropertyValue('--orbit-highlight-angle'))
+          return {
+            animationCount: animations.length,
+            settled: animations.every(animation => !animation.pending && animation.playState === 'paused'),
+            centerMovement: Math.hypot(link.left - beforeFrame.left, link.top - beforeFrame.top),
+            actual,
+            stored,
+            error: Math.abs((stored - actual + 540) % 360 - 180),
+          }
+        })
+        expect(alignment.animationCount, 'This regression must exercise a real CSS animation pause').toBeGreaterThan(0)
+        expect(alignment.settled, 'CSS pause promises must finish before checking the arc').toBe(true)
+        expect(alignment.centerMovement, 'The link must remain stationary after its pause has settled').toBeLessThan(0.001)
+        expect(Number.isFinite(alignment.stored)).toBe(true)
+        expect(alignment.error, `${interaction}: stored ${alignment.stored}°, stable center ${alignment.actual}°`).toBeLessThanOrEqual(0.01)
+        await planet.evaluate((element: HTMLAnchorElement) => element.blur())
+        await page.mouse.move(0, 0)
+        await expect(scope).toHaveAttribute('data-planets-orbit-running', '')
+        await expect(planet).not.toHaveAttribute('data-planet-active', '')
+      }
+    })
+
     test('prioritizes focus over hover and resumes a fair cycle after interaction or pause', async ({ page }) => {
       await prepareSpotlight(page, path)
       await expectFreshDelay(page, 0)
