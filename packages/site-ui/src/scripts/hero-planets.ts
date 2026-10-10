@@ -16,6 +16,27 @@ export interface PlanetPresentation {
   userPaused: boolean
 }
 
+interface PlanetBounds {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+/** Conic masks start at the top; use rendered centers rather than ellipse path progress. */
+export function getPlanetOrbitHighlightAngle(planet: PlanetBounds | undefined, orbit: PlanetBounds): number | null {
+  if (!planet || ![planet.left, planet.top, planet.width, planet.height, orbit.left, orbit.top, orbit.width, orbit.height].every(Number.isFinite)
+    || planet.width <= 0 || planet.height <= 0 || orbit.width <= 0 || orbit.height <= 0) {
+    return null
+  }
+  const dx = planet.left + planet.width / 2 - (orbit.left + orbit.width / 2)
+  const dy = planet.top + planet.height / 2 - (orbit.top + orbit.height / 2)
+  if (dx === 0 && dy === 0) {
+    return null
+  }
+  return (Math.atan2(dy, dx) * 180 / Math.PI + 450) % 360
+}
+
 const INTRO_DELAY = 3000
 const HIGHLIGHT_DURATION = 4000
 
@@ -169,6 +190,20 @@ export function defineHeroPlanets() {
         return
       }
       const planets = [...this.querySelectorAll<HTMLAnchorElement>('.home-hero-planet')]
+      const orbit = this.querySelector<HTMLElement>('.home-hero-orbit')
+      let selectedPlanet: HTMLAnchorElement | undefined
+      const updateHighlight = () => {
+        const angle = orbit && selectedPlanet
+          ? getPlanetOrbitHighlightAngle(selectedPlanet.getBoundingClientRect(), orbit.getBoundingClientRect())
+          : null
+        this.toggleAttribute('data-planets-highlight', angle !== null)
+        if (angle !== null) {
+          this.style.setProperty('--orbit-highlight-angle', `${angle}deg`)
+        }
+        else {
+          this.style.removeProperty('--orbit-highlight-angle')
+        }
+      }
       const caption = screen.querySelector<HTMLElement>('[data-planet-caption]')
       const captionName = screen.querySelector<HTMLElement>('[data-planet-caption-name]')
       const captionTagline = screen.querySelector<HTMLElement>('[data-planet-caption-tagline]')
@@ -181,23 +216,25 @@ export function defineHeroPlanets() {
       const controller = createPlanetController(
         planets.map(planet => planet.dataset.analyticsProject!).filter(Boolean),
         (state) => {
-          let selected: HTMLAnchorElement | undefined
+          selectedPlanet = undefined
           for (const planet of planets) {
             const active = planet.dataset.analyticsProject === state.activeId
             planet.toggleAttribute('data-planet-active', active)
             if (active) {
-              selected = planet
+              selectedPlanet = planet
             }
           }
           this.toggleAttribute('data-planets-orbit-running', state.orbitRunning)
+          // Pause the path before measuring the stable link target, not its enlarged visual.
+          updateHighlight()
           if (caption) {
-            caption.hidden = !selected
+            caption.hidden = !selectedPlanet
           }
           if (captionName) {
-            captionName.textContent = selected?.dataset.planetName ?? ''
+            captionName.textContent = selectedPlanet?.dataset.planetName ?? ''
           }
           if (captionTagline) {
-            captionTagline.textContent = selected?.dataset.planetTagline ?? ''
+            captionTagline.textContent = selectedPlanet?.dataset.planetTagline ?? ''
           }
           if (toggle) {
             toggle.hidden = !state.controlsVisible
@@ -228,6 +265,7 @@ export function defineHeroPlanets() {
       const intersection = new IntersectionObserver((entries) => {
         controller.setEnvironment({ visible: entries.some(entry => entry.isIntersecting && entry.intersectionRatio >= 0.08) })
       }, { threshold: [0, 0.08] })
+      const resize = new ResizeObserver(updateHighlight)
       const pointerBindings = planets.map((planet) => {
         const onEnter = (event: PointerEvent) => {
           if (event.pointerType !== 'touch') {
@@ -254,6 +292,7 @@ export function defineHeroPlanets() {
         this.inert = !revealed
         if (revealed) {
           this.removeAttribute('aria-hidden')
+          updateHighlight()
         }
         else {
           this.setAttribute('aria-hidden', 'true')
@@ -265,12 +304,17 @@ export function defineHeroPlanets() {
       })
       controller.setFocus(focusedPlanet(document.activeElement))
       intersection.observe(screen)
+      resize.observe(screen)
+      if (orbit) {
+        resize.observe(orbit)
+      }
       this.setAttribute('data-planets-ready', '')
       this.#cleanup = () => {
         controller.destroy()
         unsubscribeMotion()
         unsubscribePhase()
         intersection.disconnect()
+        resize.disconnect()
         for (const unbind of pointerBindings) {
           unbind()
         }
@@ -282,6 +326,8 @@ export function defineHeroPlanets() {
         toggle?.removeEventListener('click', onToggle)
         this.removeAttribute('data-planets-ready')
         this.removeAttribute('data-planets-orbit-running')
+        selectedPlanet = undefined
+        updateHighlight()
         this.inert = true
         this.setAttribute('aria-hidden', 'true')
         for (const planet of planets) {

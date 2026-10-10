@@ -398,7 +398,7 @@
     "typographyMeta": {
       "display": {
         "displayName": "Display",
-        "purpose": "Homepage-only Syne 700 particle wordmark, with -0.02em tracking and actual-ink fitting; static starfield before successful startup; planets reveal only after assembly."
+        "purpose": "Homepage-only Syne 700 particle wordmark, with -0.02em tracking and actual-ink fitting; static particle Logo and starfield before successful startup; 700ms Logo hold, 1500ms morph and 320ms planet reveal."
       },
       "page": {
         "displayName": "Page",
@@ -446,6 +446,11 @@
         "name": "floating-panel",
         "value": "0 18px 48px var(--shadow)",
         "purpose": "Dropdowns and dialogs; neutral 10% black in light theme, 34% in dark."
+      },
+      {
+        "name": "project-planet-sphere",
+        "value": "inset 1px 1px 2px rgb(255 255 255 / 45%), inset -1px -2px 3px rgb(0 0 0 / 28%), 0 3px 10px rgb(0 0 0 / 28%)",
+        "purpose": "Fixed upper-left light and lower-right shadow on the neutral planet body, with subtle project-color reflection. A separate opaque face preserves Logo colors; a selection ring and short current-position orbit arc identify the active project."
       }
     ],
     "motion": [
@@ -462,17 +467,32 @@
       {
         "name": "planet-reveal",
         "value": "320ms",
-        "purpose": "Project planets enter only after wordmark assembly, using the shared active clock."
+        "purpose": "Project planets enter from ready at 2200ms using the shared active clock; settled at 2520ms. Automatic spotlights wait 3 seconds from ready."
       },
       {
         "name": "particle-assembly",
         "value": "1500ms",
-        "purpose": "Wordmark assembly."
+        "purpose": "Morph the shared Logo point cloud into the wordmark after its 700ms hold; ready at 2200 active milliseconds."
       },
       {
         "name": "particle-draw-budget",
         "value": "60/30/10fps",
         "purpose": "Desktop entrance, planet reveal and interaction use at most 60fps, desktop idle 30fps, and widths below 1024px 10fps; pauses offscreen and in hidden documents."
+      },
+      {
+        "name": "particle-logo-hold",
+        "value": "700ms",
+        "purpose": "Hold the SSR-matched particle Logo after the first successful GL handoff; font waiting does not advance active time."
+      },
+      {
+        "name": "background-star-twinkle",
+        "value": "6–12s, ±25%",
+        "purpose": "Staggered brightness cycles continue after assembly using the same active clock and pause rules."
+      },
+      {
+        "name": "background-star-drift",
+        "value": "45–75s",
+        "purpose": "Slow staggered background drift continues after assembly without a phase reset; uses the existing frame budget."
       }
     ],
     "breakpoints": [

@@ -16,6 +16,11 @@
   --hero-title-size: clamp(4.25rem, 14vw, 11rem);
   --hero-center-y: 50%;
   --hero-brand-height: var(--hero-stage-height);
+  --hero-logo-size: min(
+    46vw,
+    calc(var(--hero-brand-height) * 0.46),
+    calc((var(--orbit-ry) - var(--planet-hit-size) / 2 - 21px) * 2)
+  );
   --planet-size: 3.25rem;
   --planet-scale: 1;
   --planet-hit-size: calc(var(--planet-size) * var(--planet-scale));
@@ -95,10 +100,33 @@
   left: 50%;
   width: calc(var(--orbit-rx) * 2);
   height: calc(var(--orbit-ry) * 2);
-  border: 1px solid rgb(255 255 255 / 7%);
   border-radius: 50%;
   pointer-events: none;
   translate: -50% -50%;
+}
+.home-hero-orbit::before,
+.home-hero-orbit::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  border: 1px solid rgb(237 245 240 / 17%);
+  border-radius: inherit;
+}
+.home-hero-orbit::before {
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 18%), rgb(0 0 0 / 45%) 40%, #000 80%);
+}
+.home-hero-orbit::after {
+  border-color: rgb(237 245 240 / 64%);
+  mask-image: conic-gradient(
+    from calc(var(--orbit-highlight-angle, 0deg) - 12deg),
+    transparent,
+    #000 6deg 18deg,
+    transparent 24deg 360deg
+  );
+  opacity: 0;
+}
+.home-hero-constellation[data-planets-highlight] .home-hero-orbit::after {
+  opacity: 1;
 }
 
 .home-hero-planet,
@@ -130,8 +158,9 @@
   inset: -4px;
   z-index: 3;
   content: '';
-  border: 2px solid rgb(237 245 240 / 80%);
+  border: 1px solid rgb(237 245 240 / 80%);
   border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(5 5 5 / 55%);
   opacity: 0;
   pointer-events: none;
 }
@@ -161,20 +190,32 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: #777;
+
+  --planet-reflection: 20%;
+
+  background:
+    radial-gradient(
+      ellipse at 88% 62%,
+      color-mix(in srgb, var(--planet-accent) var(--planet-reflection), transparent),
+      transparent 48%
+    ),
+    radial-gradient(circle at 28% 20%, #e1e8e3, #b5c2b9 39%, #82978a 71%, #536b5d);
   box-shadow:
-    inset 0.15rem 0.15rem 0.3rem rgb(255 255 255 / 14%),
-    inset -0.15rem -0.2rem 0.35rem rgb(0 0 0 / 24%),
-    0 2px 12px rgb(0 0 0 / 12%);
+    inset 1px 1px 2px rgb(255 255 255 / 45%),
+    inset -1px -2px 3px rgb(0 0 0 / 28%),
+    0 3px 10px rgb(0 0 0 / 28%);
+}
+.home-hero-planet[data-planet-active] .home-hero-planet-body {
+  --planet-reflection: 32%;
 }
 
-/* An opaque face keeps the planet's shading out of transparent logo pixels. */
+/* The softly lit opaque face keeps transparent logo pixels clear of the darker rim. */
 .home-hero-planet-face {
   position: absolute;
-  inset: 7%;
+  inset: 5%;
   z-index: 1;
   border-radius: 50%;
-  background: #f4f7f5;
+  background: radial-gradient(circle at 28% 20%, #fff, #f6f9f6 48%, #e4ece6);
   pointer-events: none;
 }
 
@@ -216,6 +257,18 @@
   translate: -50% -50%;
 }
 
+.home-hero-particle-logo {
+  position: absolute;
+  top: var(--hero-center-y);
+  left: 50%;
+  z-index: 0;
+  width: var(--hero-logo-size);
+  height: var(--hero-logo-size);
+  fill: #fff;
+  pointer-events: none;
+  translate: -50% -50%;
+}
+
 .home-hero-starfield {
   position: absolute;
   inset: 0;
@@ -226,8 +279,22 @@
   pointer-events: none;
 }
 
-.home-hero-screen[data-particles-active] .home-hero-starfield {
+.home-hero-screen[data-particles-active] .home-hero-starfield,
+.home-hero-screen[data-particles-active] .home-hero-particle-logo {
   visibility: hidden;
+}
+
+@media (max-width: 719px) {
+  .home-hero-screen {
+    --hero-logo-size: min(
+      42vw,
+      calc(var(--hero-brand-height) * 0.42),
+      calc((var(--orbit-ry) - var(--planet-hit-size) / 2 - 21px) * 2)
+    );
+  }
+  .home-hero-logo--desktop {
+    display: none;
+  }
 }
 
 .home-hero-screen[data-particles-active] .home-hero-gridlines,
@@ -287,6 +354,20 @@
 }
 
 @media (max-width: 1023px) {
+  .home-hero-orbit::before {
+    border-color: rgb(237 245 240 / 9%);
+    mask-image: none;
+  }
+  .home-hero-orbit::after {
+    display: none;
+  }
+  .home-hero-planet-body {
+    background: radial-gradient(circle at 28% 20%, #dce2df, #87988f 48%, #34453c);
+    box-shadow:
+      inset 1px 1px 2px rgb(255 255 255 / 45%),
+      inset -1px -2px 3px rgb(0 0 0 / 35%),
+      0 2px 6px rgb(0 0 0 / 20%);
+  }
   .home-hero-motion {
     right: 16px;
     gap: 0;

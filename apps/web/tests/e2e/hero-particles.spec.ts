@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
 import { expectGatedPlanets, expectStaticStarfield } from './hero-fallback'
-import { captureParticleFrames, installMotionClock, particleState, setPageHidden } from './hero-motion'
+import { captureParticleFrames, captureParticleSurface, installMotionClock, particleState, particleSurfaceDifference, setPageHidden } from './hero-motion'
 import { heroWordmark, isOpenSourceSite } from './site-target'
 
 interface WordmarkSample {
@@ -88,6 +88,7 @@ async function expectActiveWordmark(page: Page) {
   await expect(page.locator('#home-hero-title')).toHaveText(heroWordmark)
   await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toHaveCount(1)
   await expect(page.locator('[data-hero-logo]')).toHaveCount(0)
+  await expect(page.locator('[data-hero-particle-logo]')).toBeHidden()
   await expect(page.locator('[data-hero-starfield]')).toBeHidden()
   const samples = await page.evaluate(() => window.__heroWordmarkSamples)
   expect(samples.length, 'The active renderer must actually sample a canvas wordmark').toBeGreaterThan(0)
@@ -157,7 +158,7 @@ async function prepareParticleMotion(page: Page, isolateGlyphs = false) {
 }
 
 async function expectAssembledParticles(page: Page) {
-  await page.clock.runFor(2000)
+  await page.clock.runFor(2600)
   await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-particles-ready', '')
   await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
   await expect(page.locator('hero-planets')).toHaveJSProperty('inert', false)
@@ -287,7 +288,7 @@ for (const value of ['missing', 'blank'] as const) {
   })
 }
 
-test('paints only the static starfield while the application scripts are delayed', async ({ page }) => {
+test('paints the static particle Logo and starfield while the application scripts are delayed', async ({ page }) => {
   await installMotionClock(page)
   await captureWordmarkSamples(page)
   let release!: () => void
@@ -315,7 +316,7 @@ test('paints only the static starfield while the application scripts are delayed
   }
 })
 
-test('gates planets until a cold-cache wordmark assembles, then fades them in over active time', async ({ page }) => {
+test('holds the cold-cache particle Logo before morphing and revealing planets over active time', async ({ page }) => {
   await installMotionClock(page)
   await captureWordmarkSamples(page)
   await captureFontLoading(page)
@@ -331,13 +332,19 @@ test('gates planets until a cold-cache wordmark assembles, then fades them in ov
     await page.clock.runFor(16)
     await expectActiveWordmark(page)
     const opening = await particleState(page)
-    expect(opening.frame!.time, 'The first valid frame must begin at the scatter phase').toBeLessThan(0.08)
-    expect(opening.frame!.progress).toBeLessThan(0.06)
+    expect(opening.frame!.time, 'The first valid frame must begin at the Logo hold').toBeLessThan(0.08)
+    expect(opening.frame!.progress).toBe(0)
+    await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'logo')
+    await page.clock.runFor(600)
+    expect((await particleState(page)).frame!.progress, 'The Logo must remain intact for the first 700 active milliseconds').toBe(0)
+    await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'logo')
+    await expectGatedPlanets(page)
     await expectGatedPlanets(page)
 
-    await page.clock.runFor(1380)
+    await page.clock.runFor(1480)
     const assembling = await particleState(page)
-    expect(assembling.frame!.time).toBeLessThan(1.5)
+    expect(assembling.frame!.time).toBeGreaterThan(2)
+    expect(assembling.frame!.time).toBeLessThan(2.2)
     expect(assembling.frame!.progress).toBeGreaterThan(0.8)
     expect(assembling.frame!.progress).toBeLessThan(1)
     await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'assembling')
@@ -346,8 +353,8 @@ test('gates planets until a cold-cache wordmark assembles, then fades them in ov
 
     await page.clock.runFor(200)
     const ready = await particleState(page)
-    expect(ready.frame!.time).toBeGreaterThanOrEqual(1.5)
-    expect(ready.frame!.time).toBeLessThan(1.82)
+    expect(ready.frame!.time).toBeGreaterThanOrEqual(2.2)
+    expect(ready.frame!.time).toBeLessThan(2.52)
     expect(ready.frame!.progress).toBe(1)
     const screen = page.locator('.home-hero-screen')
     await expect(screen).toHaveAttribute('data-hero-phase', 'ready')
@@ -404,7 +411,7 @@ test('waits for the real Syne font before sampling without counting the font wai
     const frame = (await particleState(page)).frame!
     expect(frame.time, 'Font waiting must not advance the assembly phase').toBeLessThan(0.2)
     expect(frame.progress).toBeLessThan(0.15)
-    await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'assembling')
+    await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'logo')
     await expectGatedPlanets(page)
     await expectAssembledParticles(page)
   }
@@ -677,6 +684,93 @@ test('keeps real wordmark glyphs flowing after assembly rather than only moving 
   expect(movement.elapsed).toBeGreaterThan(1)
 })
 
+test('moves the real Logo points into wordmark positions after the seven-hundred-millisecond hold', async ({ page }) => {
+  await prepareParticleMotion(page, true)
+  const screen = page.locator('.home-hero-screen')
+  await expect(screen).toHaveAttribute('data-hero-phase', 'logo')
+  const svgInk = await page.locator('[data-hero-particle-logo]').evaluate((logo: SVGSVGElement) => {
+    const canvas = document.querySelector<HTMLCanvasElement>('.home-hero-particle-canvas')!
+    const canvasBox = canvas.getBoundingClientRect()
+    const scale = canvas.width / canvasBox.width
+    const corners: DOMPoint[] = []
+    for (const path of logo.querySelectorAll<SVGPathElement>('path[data-logo-points]')) {
+      let shown = true
+      for (let node: Element | null = path; node && node !== logo; node = node.parentElement) {
+        shown &&= getComputedStyle(node).display !== 'none'
+      }
+      if (!shown) {
+        continue
+      }
+      const box = path.getBBox()
+      const transform = path.getScreenCTM()!
+      corners.push(new DOMPoint(box.x, box.y).matrixTransform(transform), new DOMPoint(box.x + box.width, box.y + box.height).matrixTransform(transform))
+    }
+    return {
+      left: (Math.min(...corners.map(point => point.x)) - canvasBox.left) * scale,
+      top: (Math.min(...corners.map(point => point.y)) - canvasBox.top) * scale,
+      right: (Math.max(...corners.map(point => point.x)) - canvasBox.left) * scale,
+      bottom: (Math.max(...corners.map(point => point.y)) - canvasBox.top) * scale,
+      scale,
+    }
+  })
+  const openingState = await particleState(page)
+  const origin = openingState.sourceBounds!
+  expect(openingState.glyphCount).toBe((page.viewportSize()!.width < 720) ? 900 : 2400)
+  for (const edge of ['left', 'top', 'right', 'bottom'] as const) {
+    expect(Math.abs(origin[edge] - svgInk[edge]), `The GL Logo ${edge} edge must match its rendered SSR point cloud`).toBeLessThan(5 * svgInk.scale)
+  }
+  const opening = await captureParticleSurface(page)
+  expect(opening.visible, 'The first GL frame must paint Logo particles before hiding the SSR Logo').toBeGreaterThan(40)
+  expect(opening.time).toBeLessThan(0.7)
+  await page.clock.runFor(200)
+  await captureParticleSurface(page)
+  const hold = await particleSurfaceDifference(page)
+  expect(hold.changed, 'Holding must preserve foreground positions; this draw excludes background, twinkle and sprite rotation').toBeLessThanOrEqual(Math.max(6, hold.visible * 0.01))
+  await expect(screen).toHaveAttribute('data-hero-phase', 'logo')
+  await expectGatedPlanets(page)
+
+  await page.clock.runFor(550)
+  await expect(screen).toHaveAttribute('data-hero-phase', 'assembling')
+  await expectGatedPlanets(page)
+  // Per-particle stagger delays keep the earliest assembling frames close to
+  // the Logo. Inspect the phase boundary first, then sample actual mid-morph.
+  await page.clock.runFor(450)
+  const morphing = await captureParticleSurface(page)
+  const morph = await particleSurfaceDifference(page)
+  expect(morph.changed, 'The Logo must actually move, rather than replace a phase attribute or fade stationary pixels').toBeGreaterThan(morph.visible * 0.2)
+  expect(morphing.bounds.right - morphing.bounds.left).toBeGreaterThan((opening.bounds.right - opening.bounds.left) * 1.4)
+  await expectGatedPlanets(page)
+  await expectAssembledParticles(page)
+  const assembled = await captureParticleSurface(page)
+  const target = (await particleState(page)).targetBounds!
+  for (const edge of ['left', 'top', 'right', 'bottom'] as const) {
+    expect(Math.abs(assembled.bounds[edge] - target[edge]), `The assembled framebuffer must reach the sampled ${edge} wordmark edge`).toBeLessThan(12 * svgInk.scale)
+  }
+})
+
+for (const effect of ['position', 'brightness'] as const) {
+  test(`keeps real background-star ${effect} changing after the Logo has become the wordmark`, async ({ page }) => {
+    await installMotionClock(page)
+    await captureWordmarkSamples(page)
+    await captureParticleFrames(page, effect === 'position' ? 'field-position' : 'field-brightness')
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.goto(resizeRoute)
+    await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.some(sample => sample.syneLoaded))).toBe(true)
+    await page.clock.runFor(2800)
+    await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
+    const opening = await captureParticleSurface(page)
+    expect(opening.visible, 'The isolated framebuffer must actually contain rendered background stars').toBeGreaterThan(100)
+    await page.clock.runFor(effect === 'position' ? 8000 : 3000)
+    await captureParticleSurface(page)
+    const change = await particleSurfaceDifference(page)
+    expect(change.elapsed).toBeGreaterThan(effect === 'position' ? 8 : 3)
+    expect(change.changed, effect === 'position'
+      ? 'Background pixels must drift with fixed brightness and no foreground particles'
+      : 'Background pixels must twinkle at fixed positions and without foreground particles').toBeGreaterThan(Math.max(12, change.visible * 0.03))
+    expect(change.absoluteAlphaChange).toBeGreaterThan(change.visible)
+  })
+}
+
 test('caps entrance, idle and interaction drawing at the desktop and mobile budgets', async ({ page }) => {
   await prepareParticleMotion(page)
   const desktop = page.viewportSize()!.width >= 1024
@@ -749,9 +843,9 @@ test('freezes the particle phase offscreen, in the background and after a user p
   await expectContinuedPhase(page, phase)
 })
 
-test('returns to static stars during a live reduced-motion change and resumes a partial assembly phase', async ({ page }) => {
+test('returns to the static particle Logo during a live reduced-motion change and resumes a partial morph', async ({ page }) => {
   await prepareParticleMotion(page)
-  await page.clock.runFor(500)
+  await page.clock.runFor(1000)
   const assembling = await particleState(page)
   expect(assembling.frame!.progress).toBeGreaterThan(0.2)
   expect(assembling.frame!.progress).toBeLessThan(1)

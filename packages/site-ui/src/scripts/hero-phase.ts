@@ -1,11 +1,11 @@
-export type HeroPhase = 'stars' | 'assembling' | 'ready'
+export type HeroPhase = 'logo' | 'assembling' | 'ready'
 
 const PHASE_ATTRIBUTE = 'data-hero-phase'
 const CHANGE_EVENT = 'hero-phase-change'
 
 export function readHeroPhase(scope: HTMLElement): HeroPhase {
   const phase = scope.getAttribute(PHASE_ATTRIBUTE)
-  return phase === 'assembling' || phase === 'ready' ? phase : 'stars'
+  return phase === 'assembling' || phase === 'ready' ? phase : 'logo'
 }
 
 export function setHeroPhase(scope: HTMLElement, phase: HeroPhase): void {
@@ -26,15 +26,15 @@ export function subscribeHeroPhase(scope: HTMLElement, listener: (phase: HeroPha
 /** The same active clock advances assembly and the subsequent planet reveal. */
 export function heroEntranceState(elapsed: number): {
   progress: number
-  phase: 'assembling' | 'ready'
+  phase: HeroPhase
   reveal: number
   settled: boolean
 } {
   const activeTime = Number.isFinite(elapsed) ? Math.max(0, elapsed) : 0
   return {
-    progress: Math.min(1, activeTime / 1500),
-    phase: activeTime < 1500 ? 'assembling' : 'ready',
-    reveal: Math.min(1, Math.max(0, (activeTime - 1500) / 320)),
-    settled: activeTime >= 1820,
+    progress: Math.min(1, Math.max(0, (activeTime - 700) / 1500)),
+    phase: activeTime < 700 ? 'logo' : activeTime < 2200 ? 'assembling' : 'ready',
+    reveal: Math.min(1, Math.max(0, (activeTime - 2200) / 320)),
+    settled: activeTime >= 2520,
   }
 }

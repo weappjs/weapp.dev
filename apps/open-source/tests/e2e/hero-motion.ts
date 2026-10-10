@@ -11,7 +11,18 @@ export interface ParticleFrame {
 
 interface GlyphSnapshot {
   time: number
+  width: number
+  height: number
   pixels: Uint8Array
+}
+
+export type ParticleLayer = boolean | 'field-position' | 'field-brightness'
+
+interface ParticleBounds {
+  left: number
+  top: number
+  right: number
+  bottom: number
 }
 
 interface ParticleProbe {
@@ -24,6 +35,11 @@ interface ParticleProbe {
   captureGlyph: boolean
   glyph: GlyphSnapshot | null
   previousGlyph: GlyphSnapshot | null
+  captureSurface: boolean
+  surface: GlyphSnapshot | null
+  previousSurface: GlyphSnapshot | null
+  sourceBounds: ParticleBounds | null
+  targetBounds: ParticleBounds | null
 }
 
 declare global {
@@ -47,8 +63,8 @@ export async function setPageHidden(page: Page, hidden: boolean) {
   }, hidden)
 }
 
-export async function captureParticleFrames(page: Page, isolateGlyphs = false) {
-  await page.addInitScript((glyphsOnly) => {
+export async function captureParticleFrames(page: Page, layer: ParticleLayer = false) {
+  await page.addInitScript((selectedLayer) => {
     const probe: ParticleProbe = {
       draws: 0,
       frames: [],
@@ -59,6 +75,11 @@ export async function captureParticleFrames(page: Page, isolateGlyphs = false) {
       captureGlyph: false,
       glyph: null,
       previousGlyph: null,
+      captureSurface: false,
+      surface: null,
+      previousSurface: null,
+      sourceBounds: null,
+      targetBounds: null,
     }
     window.__heroParticleProbe = probe
     const uniformNames = new WeakMap<WebGLUniformLocation, string>()
@@ -70,10 +91,15 @@ export async function captureParticleFrames(page: Page, isolateGlyphs = false) {
     const prototype = WebGL2RenderingContext.prototype
     const shaderSource = prototype.shaderSource
     prototype.shaderSource = function (shader, source) {
-      if (glyphsOnly && source.includes('gl_Position') && source.includes('a_flow')) {
-        // Keep production glyph positions intact but remove twinkle and sprite
-        // rotation, making framebuffer changes evidence of positional flow.
-        source = source.replace(/\}\s*$/, 'v_brightness = a_brightness; v_spin = 0.0;\n}')
+      if (selectedLayer && source.includes('gl_Position') && source.includes('a_flow')) {
+        // Isolate one physical effect while retaining its production shader.
+        // A moving background cannot satisfy a foreground assertion, and
+        // brightness cannot make a stationary field pass the position check.
+        const fixedPosition = 'vec2 fixedClip = (a_target / u_resolution) * 2.0 - 1.0; fixedClip.y *= -1.0; gl_Position = vec4(fixedClip, 0.0, 1.0);'
+        const isolation = selectedLayer === 'field-brightness'
+          ? `${fixedPosition} v_spin = 0.0;`
+          : `v_brightness = a_brightness; v_spin = 0.0; ${selectedLayer === true ? 'v_sourceLight = a_sourceStyle.y;' : ''}`
+        source = source.replace(/\}\s*$/, `${isolation}\n}`)
       }
       return shaderSource.call(this, shader, source)
     }
@@ -157,9 +183,26 @@ export async function captureParticleFrames(page: Page, isolateGlyphs = false) {
       probe.glyphCount = glyphCount
       probe.flowCount = attribute('a_flow')?.slice(0, glyphCount).filter(value => value > 0).length ?? 0
       probe.maxRadius = Math.max(0, ...(attribute('a_radius')?.slice(0, glyphCount) ?? []))
-      // The visual-motion test renders the real glyph shader without field
-      // dust, so background movement cannot make a stationary wordmark pass.
-      drawArrays.call(this, mode, first, glyphsOnly ? glyphCount : count)
+      const positionBounds = (positions?: Float32Array): ParticleBounds | null => {
+        if (!positions || glyphCount === 0) {
+          return null
+        }
+        let left = Infinity
+        let top = Infinity
+        let right = -Infinity
+        let bottom = -Infinity
+        for (let index = 0; index < glyphCount * 2; index += 2) {
+          left = Math.min(left, positions[index]!)
+          right = Math.max(right, positions[index]!)
+          top = Math.min(top, positions[index + 1]!)
+          bottom = Math.max(bottom, positions[index + 1]!)
+        }
+        return { left, top, right, bottom }
+      }
+      probe.sourceBounds = positionBounds(attribute('a_start'))
+      probe.targetBounds = positionBounds(attribute('a_target'))
+      const fieldOnly = typeof selectedLayer === 'string'
+      drawArrays.call(this, mode, fieldOnly ? first + glyphCount : first, fieldOnly ? count - glyphCount : selectedLayer ? glyphCount : count)
       const current = uniforms.get(this)
       const frame: ParticleFrame = {
         time: current?.get('u_time')?.[0] ?? 0,
@@ -185,11 +228,20 @@ export async function captureParticleFrames(page: Page, isolateGlyphs = false) {
         const pixels = new Uint8Array(width * height * 4)
         this.readPixels(x, this.canvas.height - y - height, width, height, this.RGBA, this.UNSIGNED_BYTE, pixels)
         probe.previousGlyph = probe.glyph
-        probe.glyph = { time: frame.time, pixels }
+        probe.glyph = { time: frame.time, width, height, pixels }
         probe.captureGlyph = false
       }
+      if (probe.captureSurface) {
+        const width = this.canvas.width
+        const height = this.canvas.height
+        const pixels = new Uint8Array(width * height * 4)
+        this.readPixels(0, 0, width, height, this.RGBA, this.UNSIGNED_BYTE, pixels)
+        probe.previousSurface = probe.surface
+        probe.surface = { time: frame.time, width, height, pixels }
+        probe.captureSurface = false
+      }
     }
-  }, isolateGlyphs)
+  }, layer)
 }
 
 export async function particleState(page: Page) {
@@ -200,5 +252,66 @@ export async function particleState(page: Page) {
     flowCount: window.__heroParticleProbe.flowCount,
     maxRadius: window.__heroParticleProbe.maxRadius,
     contexts: window.__heroParticleProbe.contexts,
+    sourceBounds: window.__heroParticleProbe.sourceBounds,
+    targetBounds: window.__heroParticleProbe.targetBounds,
   }))
+}
+
+export async function captureParticleSurface(page: Page) {
+  await page.evaluate(() => {
+    window.__heroParticleProbe.captureSurface = true
+  })
+  await page.clock.runFor(160)
+  return page.evaluate(() => {
+    const sample = window.__heroParticleProbe.surface
+    if (!sample) {
+      throw new Error('A real particle framebuffer must be captured')
+    }
+    let visible = 0
+    let left = Infinity
+    let top = Infinity
+    let right = -Infinity
+    let bottom = -Infinity
+    let alpha = 0
+    for (let index = 3; index < sample.pixels.length; index += 4) {
+      const value = sample.pixels[index]!
+      alpha += value
+      if (value >= 8) {
+        const pixel = (index - 3) / 4
+        const x = pixel % sample.width
+        const y = sample.height - 1 - Math.floor(pixel / sample.width)
+        visible += 1
+        left = Math.min(left, x)
+        right = Math.max(right, x)
+        top = Math.min(top, y)
+        bottom = Math.max(bottom, y)
+      }
+    }
+    return { time: sample.time, visible, alpha, bounds: { left, top, right, bottom } }
+  })
+}
+
+export async function particleSurfaceDifference(page: Page) {
+  return page.evaluate(() => {
+    const { surface, previousSurface } = window.__heroParticleProbe
+    if (!surface || !previousSurface || surface.pixels.length !== previousSurface.pixels.length) {
+      throw new Error('Two equal-sized real particle framebuffer samples must be captured')
+    }
+    let visible = 0
+    let changed = 0
+    let absoluteAlphaChange = 0
+    for (let index = 3; index < surface.pixels.length; index += 4) {
+      const current = surface.pixels[index]!
+      const previous = previousSurface.pixels[index]!
+      if (current >= 8 || previous >= 8) {
+        visible += 1
+        const difference = Math.abs(current - previous)
+        absoluteAlphaChange += difference
+        if (difference >= 2) {
+          changed += 1
+        }
+      }
+    }
+    return { visible, changed, absoluteAlphaChange, elapsed: surface.time - previousSurface.time }
+  })
 }

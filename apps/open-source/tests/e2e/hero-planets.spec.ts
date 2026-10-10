@@ -39,7 +39,7 @@ async function prepareSpotlight(page: Page, path: string) {
   await expect(page.locator(constellation)).toHaveAttribute('data-planets-ready', '')
   await expect.poll(() => page.evaluate(() => [...document.fonts].some(face => /Syne/.test(face.family) && face.status === 'loaded'))).toBe(true)
   await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-particles-active', '')
-  await page.clock.runFor(1600)
+  await page.clock.runFor(2600)
   await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
   await expect(page.locator(constellation)).toHaveJSProperty('inert', false)
   await expect(page.locator(constellation)).toHaveAttribute('data-planets-orbit-running', '')

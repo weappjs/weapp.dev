@@ -16,12 +16,12 @@ const viewports = [
   { width: 390, height: 844 },
 ]
 
-const cases = viewports.flatMap(viewport => ['stars', 'wordmark'].map(phase => ({ viewport, phase })))
+const cases = viewports.flatMap(viewport => ['logo', 'wordmark'].map(phase => ({ viewport, phase })))
 
 for (const { viewport, phase } of cases) {
   test(`planet targets, names and descriptions stay clear around the ${phase} at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
-    await page.emulateMedia({ reducedMotion: phase === 'stars' ? 'reduce' : 'no-preference' })
+    await page.emulateMedia({ reducedMotion: phase === 'logo' ? 'reduce' : 'no-preference' })
     for (const path of ['/', '/en/']) {
       await page.goto(path)
       const planets = page.locator('.home-hero-planet')
@@ -32,6 +32,7 @@ for (const { viewport, phase } of cases) {
         await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
         await expect(page.locator('hero-planets')).toHaveJSProperty('inert', false)
         await expect(page.locator('[data-hero-logo]')).toHaveCount(0)
+        await expect(page.locator('[data-hero-particle-logo]')).toBeHidden()
       }
       else {
         await expectStaticStarfield(page)

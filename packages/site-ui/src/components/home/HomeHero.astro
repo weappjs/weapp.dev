@@ -4,6 +4,7 @@ import type { Locale } from '@weapp/project-catalog/types'
 import type { HomeProject } from '../../lib/home-projects'
 import { shell } from '../../styles/classes'
 import { createHeroStarfield } from '../../scripts/hero-starfield'
+import { createHeroLogoPaths, HERO_LOGO_VIEWBOX } from '../../scripts/hero-logo'
 import HeroParticles from './HeroParticles.astro'
 
 interface RailProject {
@@ -29,10 +30,11 @@ interface Props {
 
 const { locale, railGroups, constellation, wordmark, overviewLabel, railLabel } = Astro.props
 const stars = createHeroStarfield(400)
+const logoPaths = createHeroLogoPaths()
 ---
 
 <section class="home-hero" aria-label={overviewLabel}>
-  <div class="home-hero-screen" data-hero-phase="stars">
+  <div class="home-hero-screen" data-hero-phase="logo">
     <script is:inline>
       document.documentElement.setAttribute('data-hero-cosmos', '')
     </script>
@@ -41,6 +43,10 @@ const stars = createHeroStarfield(400)
       {stars.map((star, index) => (
         <circle cx={`${star.x * 100}%`} cy={`${star.y * 100}%`} r={star.size / 2} opacity={star.brightness} class:list={{ 'home-hero-star--desktop': index >= 160 }} />
       ))}
+    </svg>
+    <svg class="home-hero-particle-logo" data-hero-particle-logo data-logo-count="2400" data-logo-mobile-count="900" viewBox={`0 0 ${HERO_LOGO_VIEWBOX} ${HERO_LOGO_VIEWBOX}`} aria-hidden="true">
+      {logoPaths.mobile.map(group => <path d={group.d} opacity={group.brightness} data-logo-points={group.count} />)}
+      {logoPaths.desktop.map(group => <path d={group.d} opacity={group.brightness} data-logo-points={group.count} class="home-hero-logo--desktop" />)}
     </svg>
     <span class="home-hero-brand-anchor" aria-hidden="true"></span>
     <hero-planets class="home-hero-constellation" inert aria-hidden="true">

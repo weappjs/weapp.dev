@@ -1,8 +1,9 @@
+import { createHeroLogo } from './hero-logo'
 import { subscribeHeroMotionPaused } from './hero-motion'
 import { loadWordmarkFont } from './hero-particle-font'
 import { createActiveClock, glyphSafeRadii, particleFrameInterval, smoothValue } from './hero-particle-motion'
 import { heroEntranceState, setHeroPhase } from './hero-phase'
-import { createHeroStarfield } from './hero-starfield'
+import { createHeroStarfield, heroStarMotion } from './hero-starfield'
 import { ellipseWordmarkWidth, fitGlyphLayout, measureGlyphLayout } from './hero-wordmark-layout'
 
 export interface GlyphPoint {
@@ -44,6 +45,7 @@ in float a_orbit;
 in float a_twinkle;
 in float a_radius;
 in float a_flow;
+in vec3 a_sourceStyle;
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_progress;
@@ -58,6 +60,9 @@ out float v_kind;
 out float v_spin;
 out float v_seed;
 out float v_field;
+out float v_morph;
+out float v_sourceLight;
+out float v_sparkle;
 void main() {
   float span = max(0.18, 1.0 - max(a_delay, 0.0));
   float t = clamp((u_progress - a_delay) / span, 0.0, 1.0);
@@ -68,8 +73,7 @@ void main() {
     smoothstep(0.55, 1.0, u_progress)
   );
   float glyph = step(0.0, a_delay);
-  float fieldTime = min(u_time, 1.5) + max(0.0, u_time - 1.5) * 0.12;
-  float wanderTime = mix(fieldTime, u_time, glyph);
+  float wanderTime = u_time;
   float speed = mix(0.06, 0.38, glyph) * (0.55 + a_seed);
   float ang = wanderTime * speed + a_seed * 6.2832;
   vec2 wander = vec2(cos(ang), sin(ang * 0.87)) * a_orbit;
@@ -92,17 +96,33 @@ void main() {
   offset += direction * u_pointerStrength * influence * u_pointerRadius / 15.0;
   float offsetLength = length(offset);
   offset *= min(1.0, a_radius / max(0.001, offsetLength));
-  pos += mix(wander * mix(1.0, idle, glyph), offset * e, glyph * smoothstep(0.55, 1.0, u_progress));
+  // Logo points remain anchored during the hold. Background motion has its
+  // own slow wave, evaluated from the same active clock without a time reset.
+  float fieldPhase = a_seed * 6.2831853;
+  vec2 drift = vec2(
+    sin(u_time * 6.2831853 / max(1.0, a_depth) + fieldPhase) - sin(fieldPhase),
+    cos(u_time * 6.2831853 / max(1.0, a_depth * 1.13) + fieldPhase * 1.7) - cos(fieldPhase * 1.7)
+  ) * a_orbit * 0.5;
+  vec2 glyphWander = wander * idle * smoothstep(0.0, 0.35, u_progress);
+  vec2 glyphOffset = mix(glyphWander, offset * e, smoothstep(0.55, 1.0, u_progress));
+  pos += mix(drift, glyphOffset, glyph);
   vec2 clip = (pos / u_resolution) * 2.0 - 1.0;
   clip.y *= -1.0;
   gl_Position = vec4(clip, 0.0, 1.0);
-  gl_PointSize = min(48.0, a_size * mix(1.0, 0.72 + a_depth * 0.85, glyph));
+  float targetSize = a_size * mix(1.0, 0.72 + a_depth * 0.85, glyph);
+  v_sparkle = (1.0 - glyph) * a_flow * smoothstep(0.0, 0.8, u_time);
+  float pointSize = min(48.0, mix(targetSize * (1.0 + v_sparkle * 0.8), mix(a_sourceStyle.x, targetSize, e), glyph));
+  gl_PointSize = pointSize;
+  v_morph = e;
+  float logoWave = sin(u_time * 6.2831853 / (7.0 + a_seed * 3.0) + fieldPhase) - sin(fieldPhase);
+  v_sourceLight = a_sourceStyle.y * (1.0 + logoWave * 0.025);
   float pulse = 0.5 + 0.5 * sin(wanderTime * (0.65 + a_seed * 2.3) + a_seed * 12.6);
   float flare = pow(max(0.0, sin(wanderTime * (0.09 + a_seed * 0.18) + a_seed * 4.2)), 12.0);
   float initialPulse = 0.5 + 0.5 * sin(a_seed * 12.6);
   float initialFlare = pow(max(0.0, sin(a_seed * 4.2)), 12.0);
   v_brightness = a_brightness * (1.0 + a_twinkle * (0.55 * (pulse - initialPulse) + 1.25 * (flare - initialFlare)));
-  v_brightness *= mix(1.0, smoothstep(0.0, 0.28, t), glyph);
+  float fieldWave = sin(u_time * 6.2831853 / max(1.0, a_twinkle) + fieldPhase) - sin(fieldPhase);
+  v_brightness = mix(a_brightness * (1.0 + fieldWave * 0.125), v_brightness, glyph);
   float ripple = influence * u_pointerStrength * (0.5 + 0.5 * sin(dist / max(1.0, u_pointerRadius) * 18.0 - u_time * 8.0));
   float trail = 0.0;
   for (int i = 0; i < 4; i++) {
@@ -126,17 +146,11 @@ in float v_kind;
 in float v_spin;
 in float v_seed;
 in float v_field;
+in float v_morph;
+in float v_sourceLight;
+in float v_sparkle;
 out vec4 fragColor;
-void main() {
-  vec2 uv = gl_PointCoord * 2.0 - 1.0;
-  if (v_field > 0.5) {
-    if (dot(uv, uv) > 1.0) {
-      discard;
-    }
-    // Match SSR's low-brightness white circles at the initial frame.
-    fragColor = vec4(vec3(v_brightness), v_brightness);
-    return;
-  }
+vec4 glyphColor(vec2 uv) {
   float ca = cos(v_spin);
   float sa = sin(v_spin);
   vec2 p = vec2(ca * uv.x - sa * uv.y, sa * uv.x + ca * uv.y);
@@ -146,7 +160,7 @@ void main() {
   if (k == 0 || k == 3) {
     float r2 = dot(uv, uv);
     if (r2 > 1.0) {
-      discard;
+      return vec4(0.0);
     }
     float core = exp(-r2 * 36.0);
     float body = exp(-r2 * 7.0) * 0.55;
@@ -159,13 +173,12 @@ void main() {
     }
     float alpha = (core + body + bloom + spike) * v_brightness;
     if (alpha < 0.01) {
-      discard;
+      return vec4(0.0);
     }
     vec3 ice = vec3(0.72, 0.86, 1.0);
     vec3 amber = vec3(1.0, 0.64, 0.34);
     vec3 col = mix(ice, amber, clamp(v_accent, 0.0, 1.0));
-    fragColor = vec4(col * alpha, alpha);
-    return;
+    return vec4(col * alpha, alpha);
   }
   float r = length(p);
   float ring = 0.0;
@@ -174,7 +187,7 @@ void main() {
     ring = smoothstep(0.18, 0.02, ell) * smoothstep(1.28, 0.7, length(vec2(p.x, p.y * 0.32)));
   }
   if (r > 1.0 && ring < 0.02) {
-    discard;
+    return vec4(0.0);
   }
   float z = sqrt(max(0.0, 1.0 - r * r));
   vec3 n = vec3(p, z);
@@ -196,8 +209,33 @@ void main() {
     color += mix(vec3(0.55, 0.72, 0.66), green, 0.35) * ring * 0.9;
     alpha = max(alpha, ring * v_brightness);
   }
-  fragColor = vec4(color * alpha, alpha);
+  return vec4(color * alpha, alpha);
 }
+void main() {
+  vec2 uv = gl_PointCoord * 2.0 - 1.0;
+  if (v_field > 0.5) {
+    float r2 = dot(uv, uv);
+    if (r2 > 1.0) {
+      discard;
+    }
+    // At t=0 this is exactly the SSR circle. Only rare background stars
+    // acquire a soft core and fine rays after the first successful handoff.
+    float core = exp(-r2 * 9.0);
+    float rays = (max(0.0, 1.0 - abs(uv.x) * 12.0) + max(0.0, 1.0 - abs(uv.y) * 12.0)) * exp(-r2 * 2.5);
+    float shape = mix(1.0, core + rays * 0.18, v_sparkle);
+    float light = v_brightness * shape;
+    fragColor = vec4(vec3(light), light);
+    return;
+  }
+  // The source disc scales with its interpolated quad, so shrinking toward
+  // a smaller wordmark star cannot clip a circle into a square.
+  vec4 source = dot(uv, uv) <= 1.0 ? vec4(vec3(v_sourceLight), v_sourceLight) : vec4(0.0);
+  fragColor = mix(source, glyphColor(uv), v_morph);
+  if (fragColor.a < 0.001) {
+    discard;
+  }
+}
+
 `
 
 export function downsamplePoints<T>(items: T[], max: number): T[] {
@@ -543,6 +581,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     twinkle: gl.getAttribLocation(program, 'a_twinkle'),
     radius: gl.getAttribLocation(program, 'a_radius'),
     flow: gl.getAttribLocation(program, 'a_flow'),
+    sourceStyle: gl.getAttribLocation(program, 'a_sourceStyle'),
     resolution: gl.getUniformLocation(program, 'u_resolution'),
     time: gl.getUniformLocation(program, 'u_time'),
     progress: gl.getUniformLocation(program, 'u_progress'),
@@ -567,6 +606,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     twinkle: gl.createBuffer(),
     radius: gl.createBuffer(),
     flow: gl.createBuffer(),
+    sourceStyle: gl.createBuffer(),
   }
 
   let count = 0
@@ -620,6 +660,12 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const anchorBox = anchor.getBoundingClientRect()
     const centerX = (anchorBox.left + anchorBox.width / 2 - canvasBox.left) * dpr
     const centerY = (anchorBox.top + anchorBox.height / 2 - canvasBox.top) * dpr
+    const logo = screen.querySelector<SVGSVGElement>('[data-hero-particle-logo]')
+    if (!logo) {
+      return false
+    }
+    const logoBox = logo.getBoundingClientRect()
+    const logoSize = Math.min(logoBox.width, logoBox.height) * dpr
     // The rendered orbit resolves CSS min()/calc() values into actual pixels.
     const orbitElement = screen.querySelector<HTMLElement>('.home-hero-orbit')
     const orbitBox = orbitElement?.getBoundingClientRect()
@@ -627,7 +673,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const orbitRy = (orbitBox?.height ?? cssHeight) / 2
     const planetSize = Math.max(0, ...[...screen.querySelectorAll<HTMLElement>('.home-hero-planet')]
       .map(planet => Number.parseFloat(getComputedStyle(planet).width) || 0))
-    const key = `${cssWidth}:${cssHeight}:${dpr}:${titleStyle.fontSize}:${titleStyle.fontFamily}:${titleStyle.fontWeight}:${titleStyle.letterSpacing}:${centerX}:${centerY}:${orbitRx}:${orbitRy}:${planetSize}`
+    const key = `${cssWidth}:${cssHeight}:${dpr}:${titleStyle.fontSize}:${titleStyle.fontFamily}:${titleStyle.fontWeight}:${titleStyle.letterSpacing}:${centerX}:${centerY}:${logoSize}:${orbitRx}:${orbitRy}:${planetSize}`
     if (key === layoutKey) {
       return true
     }
@@ -655,11 +701,15 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       step: glyphStep,
     })
     const word = downsamplePoints(sampledWord, glyphBudget)
-    const scattered = createHeroStarfield(glyphBudget)
-      .map(star => ({ x: star.x * canvas.width, y: star.y * canvas.height, accent: 0 }))
+    const sourceStyles = new WeakMap<GlyphPoint, { size: number, brightness: number }>()
+    const mark = createHeroLogo(mobile).map((star) => {
+      const point = { x: centerX + (star.x - 0.5) * logoSize, y: centerY + (star.y - 0.5) * logoSize, accent: 0 }
+      sourceStyles.set(point, { size: star.size * logoSize, brightness: star.brightness })
+      return point
+    })
     const cx = centerX
     const cy = centerY
-    const paired = pairClouds(scattered, word, cx, cy)
+    const paired = pairClouds(mark, word, cx, cy)
     if (paired.length < 40) {
       return false
     }
@@ -684,7 +734,11 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const twinkle = new Float32Array(total)
     const radius = new Float32Array(total)
     const flow = new Float32Array(total)
+    const sourceStyle = new Float32Array(total * 3)
     paired.forEach((pair, index) => {
+      const source = sourceStyles.get(pair.from)!
+      sourceStyle[index * 3] = source.size
+      sourceStyle[index * 3 + 1] = source.brightness
       start[index * 2] = pair.from.x
       start[index * 2 + 1] = pair.from.y
       target[index * 2] = pair.to.x
@@ -717,10 +771,14 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       size[i] = star.size * dpr
       brightness[i] = star.brightness
       accent[i] = 0
-      depth[i] = rand() * 0.45
-      seed[i] = rand()
-      orbit[i] = (6 + rand() * 12) * dpr
-      twinkle[i] = 0
+      const motion = heroStarMotion(index, !desktop)
+      // Keep the entire drift within the stage even for stars near its edge.
+      const edgeDistance = Math.min(star.x * cssWidth, (1 - star.x) * cssWidth, star.y * cssHeight, (1 - star.y) * cssHeight)
+      depth[i] = motion.driftPeriod
+      seed[i] = motion.phase
+      orbit[i] = Math.min(motion.amplitude, Math.max(0, edgeDistance - 3.5)) * dpr
+      twinkle[i] = motion.twinklePeriod
+      flow[i] = index % 9 === 0 && star.brightness > 0.3 ? 1 : 0
     }
     count = total
     bindFloat(buffers.start, loc.start, start, 2)
@@ -736,6 +794,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     bindFloat(buffers.twinkle, loc.twinkle, twinkle, 1)
     bindFloat(buffers.radius, loc.radius, radius, 1)
     bindFloat(buffers.flow, loc.flow, flow, 1)
+    bindFloat(buffers.sourceStyle, loc.sourceStyle, sourceStyle, 3)
     layoutKey = key
     return true
   }
@@ -807,13 +866,13 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     gl.uniform1f(loc.flowAmplitude, (desktop ? 4 : 1) * dpr)
     gl.uniform3fv(loc.trails, trailData)
     gl.drawArrays(gl.POINTS, 0, count)
-    // A failed first frame must never replace the static shared starfield.
+    // A failed first frame must never replace the static particle Logo and starfield.
     if (gl.isContextLost() || (needsStaticDraw && gl.getError() !== gl.NO_ERROR)) {
       contextLost = true
       delete screen.dataset.particlesActive
       delete screen.dataset.particlesReady
       screen.style.removeProperty('--hero-planet-reveal')
-      setHeroPhase(screen, 'stars')
+      setHeroPhase(screen, 'logo')
       syncPlayback()
       return
     }
@@ -942,7 +1001,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       delete screen.dataset.particlesActive
       delete screen.dataset.particlesReady
       screen.style.removeProperty('--hero-planet-reveal')
-      setHeroPhase(screen, 'stars')
+      setHeroPhase(screen, 'logo')
       needsStaticDraw = true
     }
     syncPlayback()
@@ -953,7 +1012,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     delete screen.dataset.particlesActive
     delete screen.dataset.particlesReady
     screen.style.removeProperty('--hero-planet-reveal')
-    setHeroPhase(screen, 'stars')
+    setHeroPhase(screen, 'logo')
     syncPlayback()
   }
   const resizeObserver = new ResizeObserver(() => {
@@ -967,7 +1026,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       delete screen.dataset.particlesActive
       delete screen.dataset.particlesReady
       screen.style.removeProperty('--hero-planet-reveal')
-      setHeroPhase(screen, 'stars')
+      setHeroPhase(screen, 'logo')
       syncPlayback()
       return
     }
@@ -984,7 +1043,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     else {
       delete screen.dataset.particlesReady
       screen.style.removeProperty('--hero-planet-reveal')
-      setHeroPhase(screen, 'stars')
+      setHeroPhase(screen, 'logo')
     }
     wake()
   })
@@ -1024,7 +1083,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       delete screen.dataset.particlesActive
       delete screen.dataset.particlesPaused
       screen.style.removeProperty('--hero-planet-reveal')
-      setHeroPhase(screen, 'stars')
+      setHeroPhase(screen, 'logo')
       title.style.removeProperty('width')
       title.style.removeProperty('height')
       screen.style.removeProperty('--hero-wordmark-height')
@@ -1072,7 +1131,7 @@ export function defineHeroParticles() {
       if (!screen) {
         return
       }
-      setHeroPhase(screen, 'stars')
+      setHeroPhase(screen, 'logo')
       delete screen.dataset.particlesReady
       screen.style.removeProperty('--hero-planet-reveal')
       const unbind = bindHeroCosmos(screen)
@@ -1114,7 +1173,7 @@ export function defineHeroParticles() {
           delete screen.dataset.particlesActive
           delete screen.dataset.particlesReady
           screen.style.removeProperty('--hero-planet-reveal')
-          setHeroPhase(screen, 'stars')
+          setHeroPhase(screen, 'logo')
         }
       }
       const onReducedMotion = () => {

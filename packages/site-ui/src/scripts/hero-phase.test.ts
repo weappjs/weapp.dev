@@ -11,11 +11,11 @@ function createScope() {
 }
 
 describe('hero opening phase', () => {
-  it('defaults to stars and immediately sends the current phase to new subscribers', () => {
+  it('defaults to logo and immediately sends the current phase to new subscribers', () => {
     const scope = createScope()
     const initial = vi.fn()
     const removeInitial = subscribeHeroPhase(scope, initial)
-    expect(initial).toHaveBeenCalledExactlyOnceWith('stars')
+    expect(initial).toHaveBeenCalledExactlyOnceWith('logo')
     setHeroPhase(scope, 'assembling')
     const current = vi.fn()
     const removeCurrent = subscribeHeroPhase(scope, current)
@@ -32,32 +32,45 @@ describe('hero opening phase', () => {
     const unrelated = vi.fn()
     const remove = subscribeHeroPhase(first, listener)
     const removeUnrelated = subscribeHeroPhase(second, unrelated)
-    setHeroPhase(first, 'stars')
+    setHeroPhase(first, 'logo')
     setHeroPhase(first, 'assembling')
     setHeroPhase(first, 'assembling')
     setHeroPhase(first, 'ready')
-    expect(listener.mock.calls).toEqual([['stars'], ['assembling'], ['ready']])
-    expect(unrelated.mock.calls).toEqual([['stars']])
+    expect(listener.mock.calls).toEqual([['logo'], ['assembling'], ['ready']])
+    expect(unrelated.mock.calls).toEqual([['logo']])
     remove()
-    setHeroPhase(first, 'stars')
+    setHeroPhase(first, 'logo')
     expect(listener).toHaveBeenCalledTimes(3)
-    expect(readHeroPhase(first)).toBe('stars')
+    expect(readHeroPhase(first)).toBe('logo')
     removeUnrelated()
   })
 
-  it('starts assembly immediately and delays planet reveal until the wordmark is complete', () => {
-    expect(heroEntranceState(0)).toEqual({ progress: 0, phase: 'assembling', reveal: 0, settled: false })
-    expect(heroEntranceState(750)).toEqual({ progress: 0.5, phase: 'assembling', reveal: 0, settled: false })
-    expect(heroEntranceState(1499).phase).toBe('assembling')
-    expect(heroEntranceState(1500)).toEqual({ progress: 1, phase: 'ready', reveal: 0, settled: false })
-    expect(heroEntranceState(1660)).toEqual({ progress: 1, phase: 'ready', reveal: 0.5, settled: false })
-    expect(heroEntranceState(1820)).toEqual({ progress: 1, phase: 'ready', reveal: 1, settled: true })
+  it('holds the particle Logo, morphs for 1500ms, then reveals planets for 320ms', () => {
+    expect(heroEntranceState(0)).toEqual({ progress: 0, phase: 'logo', reveal: 0, settled: false })
+    expect(heroEntranceState(699).phase).toBe('logo')
+    expect(heroEntranceState(700)).toEqual({ progress: 0, phase: 'assembling', reveal: 0, settled: false })
+    expect(heroEntranceState(1450)).toEqual({ progress: 0.5, phase: 'assembling', reveal: 0, settled: false })
+    expect(heroEntranceState(2199).phase).toBe('assembling')
+    expect(heroEntranceState(2200)).toEqual({ progress: 1, phase: 'ready', reveal: 0, settled: false })
+    expect(heroEntranceState(2360)).toEqual({ progress: 1, phase: 'ready', reveal: 0.5, settled: false })
+    expect(heroEntranceState(2520)).toEqual({ progress: 1, phase: 'ready', reveal: 1, settled: true })
     expect(heroEntranceState(-100).progress).toBe(0)
+    expect(heroEntranceState(Number.NaN).phase).toBe('logo')
     expect(heroEntranceState(10_000).reveal).toBe(1)
   })
 
+  it('freezes the Logo hold while paused and continues its remaining active time', () => {
+    const clock = createActiveClock(350)
+    clock.setRunning(false, 100)
+    clock.advance(60_100)
+    expect(heroEntranceState(clock.current()).phase).toBe('logo')
+    clock.setRunning(true, 60_100)
+    expect(heroEntranceState(clock.advance(60_449)).phase).toBe('logo')
+    expect(heroEntranceState(clock.advance(60_450)).phase).toBe('assembling')
+  })
+
   it('freezes the reveal through inactive wall-clock time and resumes the same phase', () => {
-    const clock = createActiveClock(1660)
+    const clock = createActiveClock(2360)
     clock.setRunning(false, 100)
     clock.advance(60_100)
     expect(heroEntranceState(clock.current()).reveal).toBe(0.5)
