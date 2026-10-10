@@ -84,8 +84,8 @@ async function hoverMovingPlanet(page: Page, planet: Locator) {
 }
 
 for (const path of ['/', '/en/']) {
-  test(`planet logos load and remain keyboard accessible on ${path}`, async ({ page }) => {
-    for (const theme of ['light', 'dark']) {
+  for (const theme of ['light', 'dark']) {
+    test(`planet logos load and remain keyboard accessible in ${theme} theme on ${path}`, async ({ page }) => {
       await page.addInitScript(value => localStorage.setItem('weapp-theme', value), theme)
       await page.goto(path)
       const planets = page.locator('.home-hero-planet')
@@ -133,8 +133,8 @@ for (const path of ['/', '/en/']) {
       }
       await page.emulateMedia({ reducedMotion: 'no-preference' })
       await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
-    }
-  })
+    })
+  }
 
   test(`gates orbital planets and keeps project rail links available without JavaScript on ${path}`, async ({ browser, baseURL, viewport }) => {
     const context = await browser.newContext({ javaScriptEnabled: false, baseURL, viewport, reducedMotion: 'reduce' })
