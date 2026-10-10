@@ -245,6 +245,8 @@ test('keeps the static starfield visible with reduced motion', async ({ page }) 
   for (const route of homeRoutes) {
     await page.goto(route)
     await expectStaticStarfield(page)
+    await expect(page.locator('[data-planet-toggle]')).toBeHidden()
+    await expect(page.locator('[data-hero-replay]')).toBeHidden()
   }
 })
 
@@ -265,6 +267,11 @@ test('keeps the static starfield visible when WebGL is unavailable', async ({ pa
     await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.resolved))).toBe(true)
     await expectStaticStarfield(page)
     expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
+    const replay = page.locator('[data-hero-replay]')
+    await expect(replay).toBeVisible()
+    await replay.click()
+    await expectStaticStarfield(page)
+    expect(await page.evaluate(() => window.__heroWordmarkSamples.length), 'Replay cannot replace a failed renderer with an HTML wordmark').toBe(0)
   }
 })
 
@@ -428,7 +435,7 @@ test('holds the cold-cache particle Logo before morphing and revealing planets o
   }
 })
 
-test('waits for the real Syne font before sampling without counting the font wait as entrance time', async ({ page }) => {
+test('waits for the real Syne font without advancing entrance or opening another font request when replayed', async ({ page }) => {
   await installMotionClock(page)
   await captureWordmarkSamples(page)
   await captureFontLoading(page)
@@ -443,6 +450,11 @@ test('waits for the real Syne font before sampling without counting the font wai
     expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
     expect((await particleState(page)).draws).toBe(0)
     await expectStaticStarfield(page)
+    const loading = await page.evaluate(() => window.__heroFontLoads.length)
+    await page.locator('[data-hero-replay]').click()
+    expect(await page.evaluate(() => window.__heroFontLoads.length), 'A replay during font waiting must reuse the original request and deadline').toBe(loading)
+    expect((await particleState(page)).draws).toBe(0)
+    await expectStaticStarfield(page)
     font.release()
     await expect.poll(() => page.evaluate(() => window.__heroFontLoads.some(load => load.resolved))).toBe(true)
     await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(0)
@@ -453,6 +465,8 @@ test('waits for the real Syne font before sampling without counting the font wai
     expect(frame.progress).toBeLessThan(0.15)
     await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'logo')
     await expectGatedPlanets(page)
+    await page.clock.runFor(400)
+    expect((await particleState(page)).frame!.progress, 'A replayed font wait must still begin with the complete Logo hold').toBe(0)
     await expectAssembledParticles(page)
   }
   finally {
@@ -474,7 +488,7 @@ test('keeps the static starfield after a font failure', async ({ page }) => {
   expect((await particleState(page)).draws).toBe(0)
 })
 
-test('ignores a real font response arriving after the three-second deadline', async ({ page }) => {
+test('ignores a late font response at the original three-second deadline even after a replay while waiting', async ({ page }) => {
   await installMotionClock(page)
   await captureWordmarkSamples(page)
   await captureFontLoading(page)
@@ -484,7 +498,9 @@ test('ignores a real font response arriving after the three-second deadline', as
     await page.goto(resizeRoute, { waitUntil: 'domcontentloaded' })
     await font.started
     await expect.poll(() => page.evaluate(() => window.__heroFontLoads.length)).toBeGreaterThan(0)
-    await page.clock.fastForward(3000)
+    await page.clock.fastForward(2000)
+    await page.locator('[data-hero-replay]').click()
+    await page.clock.fastForward(1000)
     await expectStaticStarfield(page)
     expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(0)
     font.release()
@@ -939,6 +955,180 @@ test('honors live reduced-motion changes and reconnects without losing a user pa
   await expect(screen).toHaveAttribute('data-particles-paused', '')
   await expectFrozenParticles(page)
   expect(errors).toEqual([])
+})
+
+for (const state of ['ready', 'paused', 'partial'] as const) {
+  test(`replays the real particle entrance from ${state} through the public icon without creating another renderer`, async ({ page }) => {
+    await prepareParticleMotion(page)
+    if (state === 'partial') {
+      await page.clock.runFor(1000)
+      await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'assembling')
+    }
+    else {
+      await expectAssembledParticles(page)
+    }
+    const screen = page.locator('.home-hero-screen')
+    const toggle = page.locator('[data-planet-toggle]')
+    if (state === 'paused') {
+      await toggle.click()
+      await expect(screen).toHaveAttribute('data-hero-motion-paused', '')
+      await expectFrozenParticles(page)
+    }
+    const before = await particleState(page)
+    const samples = await page.evaluate(() => window.__heroWordmarkSamples.length)
+    await page.locator('[data-hero-replay]').click()
+    await expect(screen).toHaveAttribute('data-hero-phase', 'logo')
+    await expect(screen).not.toHaveAttribute('data-hero-motion-paused', '')
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    await expectGatedPlanets(page)
+    await page.clock.runFor(16)
+    const opening = await particleState(page)
+    expect(opening.frame!.time, 'Replay must reset the saved active phase to the Logo opening').toBeLessThan(0.2)
+    expect(opening.frame!.progress).toBe(0)
+    expect(opening.frame!.pointerStrength).toBe(0)
+    expect(opening.frame!.trailCount).toBe(0)
+    expect(opening.contexts, 'Replay must reuse the existing GL renderer').toBe(before.contexts)
+    expect(await page.evaluate(() => window.__heroWordmarkSamples.length), 'Replay must not reload the font or resample an unchanged layout').toBe(samples)
+    await page.clock.runFor(2500)
+    await expect(screen).toHaveAttribute('data-hero-phase', 'ready')
+    await expect(screen).toHaveAttribute('data-particles-active', '')
+    expect((await particleState(page)).frame!.progress).toBe(1)
+    await sampleDrawRate(page, page.viewportSize()!.width >= 1024 ? 18 : 8, page.viewportSize()!.width >= 1024 ? 31 : 11)
+  })
+}
+
+test('coalesces repeated public replays and restarts a background replay without counting hidden wall time', async ({ page }) => {
+  await page.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, contextId, options) {
+      // Retain this test's actual drawing buffer so an explicit replay clear
+      // is observable, rather than relying on the browser's implicit discard.
+      const attributes = contextId === 'webgl2' && this.classList.contains('home-hero-particle-canvas')
+        ? { ...options, preserveDrawingBuffer: true }
+        : options
+      return getContext.call(this, contextId, attributes)
+    } as typeof getContext
+  })
+  await prepareParticleMotion(page)
+  await expectAssembledParticles(page)
+  const screen = page.locator('.home-hero-screen')
+  const replay = page.locator('[data-hero-replay]')
+  const before = await particleState(page)
+  const samples = await page.evaluate(() => window.__heroWordmarkSamples.length)
+  await replay.click()
+  await page.clock.runFor(1000)
+  expect((await particleState(page)).frame!.progress).toBeGreaterThan(0)
+  await replay.click({ clickCount: 3 })
+  await page.clock.runFor(16)
+  const repeated = await particleState(page)
+  expect(repeated.frame!.progress).toBe(0)
+  expect(repeated.frame!.time).toBeLessThan(0.2)
+  expect(repeated.contexts).toBe(before.contexts)
+  expect(await page.evaluate(() => window.__heroWordmarkSamples.length)).toBe(samples)
+  await page.clock.runFor(2500)
+  await expect(screen).toHaveAttribute('data-hero-phase', 'ready')
+  expect((await captureParticleSurface(page)).visible, 'The hidden replay scenario must start with a real retained picture').toBeGreaterThan(40)
+  await setPageHidden(page, true)
+  await expect(screen).toHaveAttribute('data-particles-paused', '')
+  const hidden = await particleState(page)
+  await replay.click()
+  await expect(screen).toHaveAttribute('data-hero-phase', 'logo')
+  await expectStaticStarfield(page)
+  const previousPicture = await page.locator('.home-hero-particle-canvas').evaluate((canvas: HTMLCanvasElement) => {
+    const gl = canvas.getContext('webgl2')!
+    const pixels = new Uint8Array(canvas.width * canvas.height * 4)
+    gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+    let visible = 0
+    for (let offset = 3; offset < pixels.length; offset += 4) {
+      visible += pixels[offset]! > 0 ? 1 : 0
+    }
+    return visible
+  })
+  expect(previousPicture, 'A background replay must clear the retained wordmark framebuffer before handing back to the static Logo').toBe(0)
+  await page.clock.fastForward(30000)
+  expect((await particleState(page)).draws, 'Background replay must clear and gate the previous picture without making a hidden drawing loop').toBe(hidden.draws)
+  await setPageHidden(page, false)
+  await page.clock.runFor(160)
+  await expectActiveWordmark(page)
+  const resumed = await particleState(page)
+  expect(resumed.frame!.time, 'The background replay must resume at the Logo rather than skip it using hidden wall time').toBeLessThan(0.3)
+  expect(resumed.frame!.progress).toBe(0)
+  expect(resumed.contexts).toBe(before.contexts)
+  await expectGatedPlanets(page)
+  await expectAssembledParticles(page)
+})
+
+test('isolates replay intent by hero scope and restores its saved replay phase after particle reconnection', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await prepareParticleMotion(page)
+  await expectAssembledParticles(page)
+  const original = page.locator('.home-hero-screen')
+  await page.locator('[data-planet-toggle]').click()
+  await expect(original).toHaveAttribute('data-hero-motion-paused', '')
+  const originalSamples = await page.evaluate(() => window.__heroWordmarkSamples.length)
+  await page.evaluate(() => {
+    const screen = document.querySelector<HTMLElement>('.home-hero-screen')!
+    screen.dataset.replayFixture = 'original'
+    const fixture = screen.cloneNode(true) as HTMLElement
+    fixture.dataset.replayFixture = 'secondary'
+    // Keep a second real, visible scope instead of dispatching an internal
+    // replay event. Native controls exercise their own scoped subscribers.
+    fixture.style.position = 'fixed'
+    fixture.style.inset = '64px 0 auto'
+    fixture.style.zIndex = '20'
+    const cosmos = screen.closest('.home-hero')!
+    cosmos.append(fixture)
+  })
+  const first = page.locator('[data-replay-fixture="original"]')
+  const second = page.locator('[data-replay-fixture="secondary"]')
+  try {
+    await expect(second).toHaveAttribute('data-hero-phase', 'logo')
+    await expect(second.locator('hero-planets')).toHaveAttribute('data-planets-ready', '')
+    await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(originalSamples)
+    await second.locator('[data-hero-replay]').click()
+    await expect(second).not.toHaveAttribute('data-hero-motion-paused', '')
+    await expect(first).toHaveAttribute('data-hero-motion-paused', '')
+    await page.clock.runFor(1000)
+    await expect(second).toHaveAttribute('data-hero-phase', 'assembling')
+    await expect(first).toHaveAttribute('data-hero-phase', 'ready')
+    await second.locator('[data-planet-toggle]').click()
+    await expect(second).toHaveAttribute('data-particles-paused', '')
+    const partial = await particleState(page)
+    const particle = await second.locator('hero-particles').elementHandle()
+    await particle!.evaluate(element => element.remove())
+    await page.clock.fastForward(30000)
+    await particle!.evaluate(element => document.querySelector('[data-replay-fixture="secondary"]')!.prepend(element))
+    await page.clock.runFor(160)
+    await expect(second).toHaveAttribute('data-hero-motion-paused', '')
+    await second.locator('[data-planet-toggle]').click()
+    await page.clock.runFor(160)
+    const resumed = await particleState(page)
+    expect(resumed.frame!.time).toBeGreaterThanOrEqual(partial.frame!.time)
+    expect(resumed.frame!.time - partial.frame!.time, 'Reconnection must extend the saved replay phase without counting detached wall time').toBeLessThan(0.3)
+    expect(resumed.frame!.progress).toBeGreaterThanOrEqual(partial.frame!.progress)
+    expect(resumed.frame!.progress).toBeLessThan(1)
+    await expect(first).toHaveAttribute('data-hero-motion-paused', '')
+    await expect(first).toHaveAttribute('data-hero-phase', 'ready')
+    await particle!.evaluate(element => element.remove())
+    await second.locator('[data-hero-replay]').click()
+    await expect(second).not.toHaveAttribute('data-hero-motion-paused', '')
+    await expect(first).toHaveAttribute('data-hero-motion-paused', '')
+    const detachedSamples = await page.evaluate(() => window.__heroWordmarkSamples.length)
+    await particle!.evaluate(element => document.querySelector('[data-replay-fixture="secondary"]')!.prepend(element))
+    await expect.poll(() => page.evaluate(() => window.__heroWordmarkSamples.length)).toBeGreaterThan(detachedSamples)
+    await page.clock.runFor(160)
+    const offlineReplay = await particleState(page)
+    expect(offlineReplay.frame!.time, 'A replay through still-connected public controls must reset a detached particle before it reconnects').toBeLessThan(0.3)
+    expect(offlineReplay.frame!.progress).toBe(0)
+    await expect(second).toHaveAttribute('data-hero-phase', 'logo')
+    await expect(second.locator('hero-planets')).toHaveJSProperty('inert', true)
+    await expect(first).toHaveAttribute('data-hero-phase', 'ready')
+    expect(errors).toEqual([])
+  }
+  finally {
+    await second.evaluate(element => element.remove())
+  }
 })
 
 test('restores a paused hero after a hidden resize and applies the new breakpoint motion budget', async ({ page }) => {

@@ -90,6 +90,7 @@ export function glyphSafeRadii(alpha: Uint8ClampedArray, width: number, height: 
 export function createActiveClock(initialElapsed = 0): {
   advance: (now: number) => number
   setRunning: (running: boolean, now: number) => void
+  reset: (value?: number, now?: number) => void
   current: () => number
 } {
   let elapsed = initialElapsed
@@ -110,6 +111,14 @@ export function createActiveClock(initialElapsed = 0): {
     setRunning(nextRunning, now) {
       advance(now)
       running = nextRunning
+    },
+    reset(value = 0, now) {
+      if (!Number.isFinite(value) || value < 0) {
+        throw new RangeError('Active elapsed time must be finite and nonnegative')
+      }
+      elapsed = value
+      // Reset the wall-time anchor without advancing or changing playback.
+      previous = now !== undefined && Number.isFinite(now) ? now : undefined
     },
     current: () => elapsed,
   }

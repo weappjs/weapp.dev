@@ -1,4 +1,4 @@
-import { readHeroMotionPaused, setHeroMotionPaused, subscribeHeroMotionPaused } from './hero-motion'
+import { readHeroMotionPaused, readHeroReplayVersion, requestHeroReplay, setHeroMotionPaused, subscribeHeroMotionPaused, subscribeHeroReplay } from './hero-motion'
 import { subscribeHeroPhase } from './hero-phase'
 
 export interface PlanetEnvironment {
@@ -14,27 +14,6 @@ export interface PlanetPresentation {
   orbitRunning: boolean
   controlsVisible: boolean
   userPaused: boolean
-}
-
-interface PlanetBounds {
-  left: number
-  top: number
-  width: number
-  height: number
-}
-
-/** Conic masks start at the top; use rendered centers rather than ellipse path progress. */
-export function getPlanetOrbitHighlightAngle(planet: PlanetBounds | undefined, orbit: PlanetBounds): number | null {
-  if (!planet || ![planet.left, planet.top, planet.width, planet.height, orbit.left, orbit.top, orbit.width, orbit.height].every(Number.isFinite)
-    || planet.width <= 0 || planet.height <= 0 || orbit.width <= 0 || orbit.height <= 0) {
-    return null
-  }
-  const dx = planet.left + planet.width / 2 - (orbit.left + orbit.width / 2)
-  const dy = planet.top + planet.height / 2 - (orbit.top + orbit.height / 2)
-  if (dx === 0 && dy === 0) {
-    return null
-  }
-  return (Math.atan2(dy, dx) * 180 / Math.PI + 450) % 360
 }
 
 const INTRO_DELAY = 3000
@@ -71,7 +50,7 @@ export function createPlanetController(
     present({
       activeId,
       orbitRunning: environment.revealed && environment.visible && !environment.pageHidden && !environment.reducedMotion
-        && !userPaused && !interacting() && automaticId === null,
+        && !userPaused,
       controlsVisible: !environment.reducedMotion,
       userPaused,
     })
@@ -164,6 +143,18 @@ export function createPlanetController(
       setInteraction('hover', id)
     },
     setPaused,
+    replay() {
+      if (destroyed) {
+        return
+      }
+      cancel()
+      cursor = -1
+      focusId = null
+      hoverId = null
+      automaticId = null
+      render()
+      wait()
+    },
     togglePause() {
       setPaused(!userPaused)
     },
@@ -180,6 +171,8 @@ export function defineHeroPlanets() {
   }
   class HeroPlanets extends HTMLElement {
     #cleanup: (() => void) | undefined
+    #replayVersion: number | undefined
+    #orbitTime = 0
 
     connectedCallback() {
       if (this.#cleanup) {
@@ -190,48 +183,36 @@ export function defineHeroPlanets() {
         return
       }
       const planets = [...this.querySelectorAll<HTMLAnchorElement>('.home-hero-planet')]
-      const orbit = this.querySelector<HTMLElement>('.home-hero-orbit')
+      // Own one native timeline. Unlike a CSS animation, removing the host
+      // does not discard its current time before disconnectedCallback runs.
+      const orbitAnimation = this.animate({ '--orbit-turn': [0, 1] }, {
+        duration: 240000,
+        iterations: Number.POSITIVE_INFINITY,
+        easing: 'linear',
+      })
+      orbitAnimation.pause()
+      orbitAnimation.currentTime = this.#orbitTime
+      let orbitRunning = false
       let selectedPlanet: HTMLAnchorElement | undefined
-      let highlightGeneration = 0
       const updateHighlight = () => {
-        const angle = orbit && selectedPlanet
-          ? getPlanetOrbitHighlightAngle(selectedPlanet.getBoundingClientRect(), orbit.getBoundingClientRect())
-          : null
-        this.toggleAttribute('data-planets-highlight', angle !== null)
-        if (angle !== null) {
-          this.style.setProperty('--orbit-highlight-angle', `${angle}deg`)
+        const progress = Number.parseFloat(selectedPlanet?.style.getPropertyValue('--orbit-p') ?? '')
+        const highlighted = Number.isFinite(progress) && progress >= 0 && progress < 1
+        this.toggleAttribute('data-planets-highlight', highlighted)
+        if (highlighted) {
+          // The SVG dash and every planet inherit one animated orbit phase.
+          // A selection only changes its fixed equal-distance path origin.
+          this.style.setProperty('--orbit-highlight-p', String(progress))
         }
         else {
-          this.style.removeProperty('--orbit-highlight-angle')
+          this.style.removeProperty('--orbit-highlight-p')
         }
-      }
-      const settleHighlight = () => {
-        const generation = ++highlightGeneration
-        const planet = selectedPlanet
-        if (!planet || !orbit || this.hasAttribute('data-planets-orbit-running')) {
-          return
-        }
-        const animations = planet.getAnimations().filter(animation => animation instanceof CSSAnimation
-          && animation.animationName === 'home-hero-revolve')
-        if (animations.length === 0) {
-          return
-        }
-        // CSS pause finalizes its hold time asynchronously. Keep the immediate
-        // feedback, then measure again once the actual path has stopped.
-        void Promise.allSettled(animations.map(animation => animation.ready)).then((results) => {
-          if (generation !== highlightGeneration || !this.isConnected || selectedPlanet !== planet
-            || this.hasAttribute('data-planets-orbit-running')
-            || results.some(result => result.status === 'rejected')
-            || animations.some(animation => animation.playState !== 'paused')) {
-            return
-          }
-          updateHighlight()
-        })
       }
       const caption = screen.querySelector<HTMLElement>('[data-planet-caption]')
       const captionName = screen.querySelector<HTMLElement>('[data-planet-caption-name]')
       const captionTagline = screen.querySelector<HTMLElement>('[data-planet-caption-tagline]')
       const toggle = screen.querySelector<HTMLButtonElement>('[data-planet-toggle]')
+      const replay = screen.querySelector<HTMLButtonElement>('[data-hero-replay]')
+      const controls = screen.querySelector<HTMLElement>('[data-hero-controls]')
       const toggleLabel = toggle?.querySelector<HTMLElement>('[data-planet-toggle-label]')
       const pauseIcon = toggle?.querySelector('[data-planet-pause-icon]')
       const playIcon = toggle?.querySelector('[data-planet-play-icon]')
@@ -249,9 +230,16 @@ export function defineHeroPlanets() {
             }
           }
           this.toggleAttribute('data-planets-orbit-running', state.orbitRunning)
-          // Pause the path before measuring the stable link target, not its enlarged visual.
+          if (orbitRunning !== state.orbitRunning) {
+            orbitRunning = state.orbitRunning
+            if (orbitRunning) {
+              orbitAnimation.play()
+            }
+            else {
+              orbitAnimation.pause()
+            }
+          }
           updateHighlight()
-          settleHighlight()
           if (caption) {
             caption.hidden = !selectedPlanet
           }
@@ -262,13 +250,20 @@ export function defineHeroPlanets() {
             captionTagline.textContent = selectedPlanet?.dataset.planetTagline ?? ''
           }
           if (toggle) {
+            const label = state.userPaused ? toggle.dataset.resumeLabel ?? '' : toggle.dataset.pauseLabel ?? ''
             toggle.hidden = !state.controlsVisible
             toggle.setAttribute('aria-pressed', String(state.userPaused))
+            toggle.setAttribute('aria-label', label)
+            toggle.title = label
+            if (toggleLabel) {
+              toggleLabel.textContent = label
+            }
           }
-          if (toggleLabel) {
-            toggleLabel.textContent = state.userPaused
-              ? toggle?.dataset.resumeLabel ?? ''
-              : toggle?.dataset.pauseLabel ?? ''
+          if (replay) {
+            replay.hidden = !state.controlsVisible
+          }
+          if (controls) {
+            controls.hidden = !state.controlsVisible
           }
           pauseIcon?.toggleAttribute('hidden', state.userPaused)
           playIcon?.toggleAttribute('hidden', !state.userPaused)
@@ -286,11 +281,21 @@ export function defineHeroPlanets() {
       const onReducedMotion = () => controller.setEnvironment({ reducedMotion: reducedMotion.matches })
       const onVisibility = () => controller.setEnvironment({ pageHidden: document.hidden })
       const onToggle = () => setHeroMotionPaused(screen, !readHeroMotionPaused(screen))
+      const onReplay = () => requestHeroReplay(screen)
       const unsubscribeMotion = subscribeHeroMotionPaused(screen, paused => controller.setPaused(paused))
+      this.#replayVersion ??= readHeroReplayVersion(screen)
+      const unsubscribeReplay = subscribeHeroReplay(screen, (version) => {
+        if (version === this.#replayVersion) {
+          return
+        }
+        this.#replayVersion = version
+        this.#orbitTime = 0
+        controller.replay()
+        orbitAnimation.currentTime = 0
+      })
       const intersection = new IntersectionObserver((entries) => {
         controller.setEnvironment({ visible: entries.some(entry => entry.isIntersecting && entry.intersectionRatio >= 0.08) })
       }, { threshold: [0, 0.08] })
-      const resize = new ResizeObserver(updateHighlight)
       const pointerBindings = planets.map((planet) => {
         const onEnter = (event: PointerEvent) => {
           if (event.pointerType !== 'touch') {
@@ -311,6 +316,7 @@ export function defineHeroPlanets() {
       reducedMotion.addEventListener('change', onReducedMotion)
       document.addEventListener('visibilitychange', onVisibility)
       toggle?.addEventListener('click', onToggle)
+      replay?.addEventListener('click', onReplay)
       const unsubscribePhase = subscribeHeroPhase(screen, (phase) => {
         const revealed = phase === 'ready'
         controller.setEnvironment({ revealed })
@@ -329,18 +335,19 @@ export function defineHeroPlanets() {
       })
       controller.setFocus(focusedPlanet(document.activeElement))
       intersection.observe(screen)
-      resize.observe(screen)
-      if (orbit) {
-        resize.observe(orbit)
-      }
       this.setAttribute('data-planets-ready', '')
       this.#cleanup = () => {
-        ++highlightGeneration
+        orbitAnimation.pause()
+        const orbitTime = orbitAnimation.currentTime
+        if (typeof orbitTime === 'number' && Number.isFinite(orbitTime) && orbitTime >= 0) {
+          this.#orbitTime = orbitTime
+        }
+        orbitAnimation.cancel()
         controller.destroy()
         unsubscribeMotion()
+        unsubscribeReplay()
         unsubscribePhase()
         intersection.disconnect()
-        resize.disconnect()
         for (const unbind of pointerBindings) {
           unbind()
         }
@@ -350,6 +357,7 @@ export function defineHeroPlanets() {
         reducedMotion.removeEventListener('change', onReducedMotion)
         document.removeEventListener('visibilitychange', onVisibility)
         toggle?.removeEventListener('click', onToggle)
+        replay?.removeEventListener('click', onReplay)
         this.removeAttribute('data-planets-ready')
         this.removeAttribute('data-planets-orbit-running')
         selectedPlanet = undefined
@@ -364,6 +372,12 @@ export function defineHeroPlanets() {
         }
         if (toggle) {
           toggle.hidden = true
+        }
+        if (replay) {
+          replay.hidden = true
+        }
+        if (controls) {
+          controls.hidden = true
         }
       }
     }

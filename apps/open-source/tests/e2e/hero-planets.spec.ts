@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { expectStaticStarfield } from './hero-fallback'
 import { installMotionClock, setPageHidden } from './hero-motion'
 import { expect, test } from './test'
@@ -16,9 +16,8 @@ async function prepareSpotlight(page: Page, path: string) {
   await installMotionClock(page)
   await page.addInitScript(() => {
     window.__heroSpotlightDelayStartedAt = null
-    // Observe the public running state and desktop eligibility so the delay is
-    // measured from readiness, interaction resume or breakpoint re-entry.
-    // The mobile orbit keeps running while automatic spotlights are disabled.
+    // Running motion stays independent of selection. A cleared spotlight also
+    // starts a fresh delay even though the physical orbit keeps moving.
     window.matchMedia('(min-width: 1024px)').addEventListener('change', (event) => {
       if (event.matches) {
         window.__heroSpotlightDelayStartedAt = performance.now()
@@ -27,12 +26,13 @@ async function prepareSpotlight(page: Page, path: string) {
     new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         const element = mutation.target
-        if (element instanceof HTMLElement && element.matches('hero-planets')
-          && element.hasAttribute('data-planets-orbit-running')) {
+        const scope = element instanceof HTMLElement ? element.closest('hero-planets') : null
+        if (scope?.hasAttribute('data-planets-orbit-running')
+          && !scope.querySelector('[data-planet-active]')) {
           window.__heroSpotlightDelayStartedAt = performance.now()
         }
       }
-    }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-planets-orbit-running'] })
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-planets-orbit-running', 'data-planet-active'] })
   })
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto(path)
@@ -45,11 +45,16 @@ async function prepareSpotlight(page: Page, path: string) {
   await expect(page.locator(constellation)).toHaveAttribute('data-planets-orbit-running', '')
 }
 
-async function expectSpotlight(page: Page, index: number) {
+async function expectSpotlight(page: Page, index: number, paused = false) {
   const selected = page.locator('.home-hero-planet').nth(index)
   await expect(page.locator(activePlanet)).toHaveCount(1)
   await expect(selected).toHaveAttribute('data-planet-active', '')
-  await expect(page.locator(constellation)).not.toHaveAttribute('data-planets-orbit-running', '')
+  if (paused) {
+    await expect(page.locator(constellation)).not.toHaveAttribute('data-planets-orbit-running', '')
+  }
+  else {
+    await expect(page.locator(constellation)).toHaveAttribute('data-planets-orbit-running', '')
+  }
   await expect(page.locator('[data-planet-caption]')).toBeVisible()
   await expect(page.locator('[data-planet-caption-name]')).toHaveText((await selected.getAttribute('data-planet-name'))!)
   await expect(page.locator('[data-planet-caption-tagline]')).toHaveText((await selected.getAttribute('data-planet-tagline')) ?? '')
@@ -68,6 +73,14 @@ async function expectFreshDelay(page: Page, index: number) {
   await expect(page.locator(activePlanet)).toHaveCount(0)
   await page.clock.fastForward(1)
   await expectSpotlight(page, index)
+}
+
+async function hoverMovingPlanet(page: Page, planet: Locator) {
+  const box = await planet.boundingBox()
+  if (!box) {
+    throw new Error('A moving project must be visible before pointer interaction')
+  }
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
 }
 
 for (const path of ['/', '/en/']) {
@@ -94,11 +107,14 @@ for (const path of ['/', '/en/']) {
         expect(width).toBeGreaterThanOrEqual(31)
         await planet.focus()
         await expect(planet).toBeFocused()
-        const state = await planet.evaluate((element) => {
+        const state = await planet.evaluate(async (element) => {
           const style = getComputedStyle(element)
-          return { playState: style.animationPlayState, outline: style.outlineStyle }
+          const animations = element.closest('hero-planets')!.getAnimations()
+          await Promise.all(animations.map(animation => animation.ready))
+          return { count: animations.length, playState: animations[0]?.playState, outline: style.outlineStyle }
         })
-        expect(state.playState).toBe('paused')
+        expect(state.count, 'Keyboard selection must retain one actual shared native orbit timeline').toBe(1)
+        expect(state.playState).toBe('running')
         expect(state.outline).toBe('solid')
         const name = await planet.getAttribute('data-planet-name')
         const label = planet.locator('xpath=following-sibling::*[1]')
@@ -111,6 +127,7 @@ for (const path of ['/', '/en/']) {
       }
       await page.emulateMedia({ reducedMotion: 'reduce' })
       await expectStaticStarfield(page)
+      await expect(page.locator(constellation)).toHaveCSS('animation-name', 'none')
       for (const planet of await planets.all()) {
         expect(await planet.evaluate(element => getComputedStyle(element).animationName)).toBe('none')
       }
@@ -126,6 +143,7 @@ for (const path of ['/', '/en/']) {
       await page.goto(path)
       await expectStaticStarfield(page, false)
       await expect(page.locator('[data-planet-toggle]')).toBeHidden()
+      await expect(page.locator('[data-hero-replay]')).toBeHidden()
       for (const planet of await page.locator('.home-hero-planet').all()) {
         await expect(planet).toHaveAttribute('aria-label', /.+/)
         expect(await planet.locator('img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
@@ -167,13 +185,61 @@ for (const path of ['/', '/en/']) {
     await expect(page.locator(activePlanet)).toHaveCount(0)
   })
 
+  test(`hero controls keep two icon targets and localized accessible names on ${path}`, async ({ page }) => {
+    await prepareSpotlight(page, path)
+    const controls = page.locator('[data-hero-controls]')
+    await expect(controls).toBeVisible()
+    await expect(controls.locator('button')).toHaveCount(2)
+    const toggle = controls.locator('[data-planet-toggle]')
+    const replay = controls.locator('[data-hero-replay]')
+    await expect(toggle).toHaveAccessibleName(path === '/en/' ? 'Pause hero animation' : '暂停首屏动画')
+    await expect(toggle).toHaveAttribute('title', path === '/en/' ? 'Pause hero animation' : '暂停首屏动画')
+    await expect(replay).toHaveAccessibleName(path === '/en/' ? 'Replay hero animation' : '重播首屏动画')
+    await expect(replay).toHaveAttribute('title', path === '/en/' ? 'Replay hero animation' : '重播首屏动画')
+    for (const button of [toggle, replay]) {
+      await expect(button).toHaveCSS('width', '44px')
+      await expect(button).toHaveCSS('height', '44px')
+      await expect(button.locator('svg:visible')).toHaveCount(1)
+      const paintedText = await button.evaluate((element) => {
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+        const text: string[] = []
+        while (walker.nextNode()) {
+          const value = walker.currentNode.textContent?.trim()
+          if (!value) {
+            continue
+          }
+          let shown = true
+          for (let parent = walker.currentNode.parentElement; parent && parent !== element; parent = parent.parentElement) {
+            const style = getComputedStyle(parent)
+            shown &&= style.display !== 'none' && style.visibility !== 'hidden'
+              && style.clipPath === 'none' && style.clip === 'auto'
+          }
+          if (shown) {
+            text.push(value)
+          }
+        }
+        return text
+      })
+      expect(paintedText, 'The controls must remain pure icons at desktop and mobile widths').toEqual([])
+    }
+    await toggle.click()
+    await expect(toggle).toHaveAccessibleName(path === '/en/' ? 'Resume hero animation' : '继续首屏动画')
+    await expect(toggle).toHaveAttribute('title', path === '/en/' ? 'Resume hero animation' : '继续首屏动画')
+    await expect(toggle.locator('[data-planet-play-icon]')).toBeVisible()
+    await replay.focus()
+    await expect(replay).toBeFocused()
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await expect(toggle).toBeHidden()
+    await expect(replay).toBeHidden()
+  })
+
   test.describe(`desktop planet spotlights on ${path}`, () => {
     test.beforeEach(async ({ page }, testInfo) => {
       test.skip(testInfo.project.name !== 'desktop', 'Desktop spotlight behavior')
       await page.setViewportSize({ width: 1280, height: 900 })
     })
 
-    test('cycles every project once after wordmark readiness, with a four-second pause', async ({ page }) => {
+    test('cycles every project once after wordmark readiness, with four seconds of emphasis while orbiting', async ({ page }) => {
       await prepareSpotlight(page, path)
       await expect(page.locator('[data-planet-caption]')).toHaveAttribute('aria-hidden', 'true')
       await expect(page.locator('[data-hero-logo]')).toHaveCount(0)
@@ -189,76 +255,129 @@ for (const path of ['/', '/en/']) {
       }
     })
 
-    test('aligns the orbit highlight with the settled link after focus or hover pauses a running orbit', async ({ page }) => {
-      // Use natural CSS animation time: pre-pausing or advancing a fake clock
-      // would skip the pending CSS pause that previously left the arc stale.
+    test('replay gates the projects and restarts the full delay from the first project', async ({ page }) => {
+      await prepareSpotlight(page, path)
+      await expectFreshDelay(page, 0)
+      await page.clock.fastForward(4000)
+      await expectFreshDelay(page, 1)
+      await page.locator('[data-hero-replay]').click()
+      await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'logo')
+      await expect(page.locator(activePlanet)).toHaveCount(0)
+      await expect(page.locator('[data-planet-caption]')).toBeHidden()
+      await expect(page.locator(constellation)).toHaveJSProperty('inert', true)
+      await expect(page.locator(constellation)).not.toHaveAttribute('data-planets-orbit-running', '')
+      await page.clock.runFor(2600)
+      await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
+      await expectFreshDelay(page, 0)
+    })
+
+    test('keeps the shared-phase highlight attached to moving automatic, focused and hovered planets', async ({ page }) => {
+      // Natural animation time proves that selection keeps the physical
+      // orbit moving; a fake clock cannot provide its native layout evidence.
       await page.emulateMedia({ reducedMotion: 'no-preference' })
       await page.goto(path)
       const scope = page.locator(constellation)
       await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
       await expect.poll(() => page.locator('.home-hero-screen').evaluate(element => Number.parseFloat(getComputedStyle(element).getPropertyValue('--hero-planet-reveal')))).toBe(1)
-      for (const [interaction, index] of [['focus', 2], ['hover', 7]] as const) {
-        const planet = page.locator('.home-hero-planet').nth(index)
+      for (const [interaction, index] of [['focus', 2], ['hover', 7], ['automatic', 0]] as const) {
+        let selectedIndex: number = index
+        if (interaction === 'automatic') {
+          await expect(page.locator(activePlanet)).toHaveCount(1)
+          selectedIndex = await page.locator(activePlanet).evaluate(element => [...element.closest('hero-planets')!.querySelectorAll('.home-hero-planet')].indexOf(element))
+        }
+        const planet = page.locator('.home-hero-planet').nth(selectedIndex)
         await expect(scope).toHaveAttribute('data-planets-orbit-running', '')
-        await expect.poll(() => planet.evaluate(element => element.getAnimations().some(animation => animation.playState === 'running' && !animation.pending))).toBe(true)
+        await expect.poll(() => scope.evaluate(element => element.getAnimations().some(animation => animation.playState === 'running' && !animation.pending))).toBe(true)
         if (interaction === 'focus') {
-          const wasRunning = await planet.evaluate((element: HTMLAnchorElement) => {
-            const running = element.closest('hero-planets')!.hasAttribute('data-planets-orbit-running')
-            element.focus({ preventScroll: true })
-            return running
-          })
-          expect(wasRunning, 'The focus event must pause an orbit that was actually running').toBe(true)
+          await planet.focus()
           await expect(planet).toBeFocused()
         }
-        else {
+        else if (interaction === 'hover') {
           const box = await planet.boundingBox()
           await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
         }
-        await expect(planet).toHaveAttribute('data-planet-active', '')
-        await expect(scope).not.toHaveAttribute('data-planets-orbit-running', '')
+        await expectSpotlight(page, selectedIndex)
+        await expect(scope).toHaveAttribute('data-planets-highlight', '')
         const alignment = await planet.evaluate(async (element) => {
-          const animations = element.getAnimations()
-          await Promise.all(animations.map(animation => animation.ready))
-          const beforeFrame = element.getBoundingClientRect()
-          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-          // Measure the native stable link, whose size does not change when
-          // the inner planet visual scales during a spotlight.
-          const link = element.getBoundingClientRect()
           const constellation = element.closest<HTMLElement>('hero-planets')!
-          const orbit = constellation.querySelector('.home-hero-orbit')!.getBoundingClientRect()
-          const dx = link.left + link.width / 2 - (orbit.left + orbit.width / 2)
-          const dy = link.top + link.height / 2 - (orbit.top + orbit.height / 2)
-          const actual = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360
-          const stored = Number.parseFloat(getComputedStyle(constellation).getPropertyValue('--orbit-highlight-angle'))
+          const animations = constellation.getAnimations()
+          await Promise.all(animations.map(animation => animation.ready))
+          const measure = () => {
+            const link = element.getBoundingClientRect()
+            const ellipse = constellation.querySelector<SVGEllipseElement>('[data-planet-highlight]')!
+            const dash = getComputedStyle(ellipse).strokeDashoffset
+            const resolved = dash.match(/^(?:calc\()?\s*(-?[\d.]+)(?:px)?\s*\)?$/)
+            if (!resolved) {
+              throw new Error(`The actual SVG dash offset must resolve to one scalar, received ${dash}`)
+            }
+            const offset = Number(resolved[1])
+            const along = ((2.5 - offset) / 100 % 1 + 1) % 1
+            const point = ellipse.getPointAtLength(along * ellipse.getTotalLength()).matrixTransform(ellipse.getScreenCTM()!)
+            const style = getComputedStyle(constellation)
+            const phase = Number.parseFloat(style.getPropertyValue('--orbit-turn'))
+            const selected = Number.parseFloat(style.getPropertyValue('--orbit-highlight-p'))
+            return {
+              x: link.left + link.width / 2,
+              y: link.top + link.height / 2,
+              error: Math.hypot(point.x - link.left - link.width / 2, point.y - link.top - link.height / 2),
+              phase,
+              selected,
+              offset,
+            }
+          }
+          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+          const first = measure()
+          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+          const second = measure()
           return {
+            first,
+            second,
             animationCount: animations.length,
-            settled: animations.every(animation => !animation.pending && animation.playState === 'paused'),
-            centerMovement: Math.hypot(link.left - beforeFrame.left, link.top - beforeFrame.top),
-            actual,
-            stored,
-            error: Math.abs((stored - actual + 540) % 360 - 180),
+            running: animations.every(animation => !animation.pending && animation.playState === 'running'),
+            movement: Math.hypot(second.x - first.x, second.y - first.y),
+            selectedPosition: Number.parseFloat((element as HTMLElement).style.getPropertyValue('--orbit-p')),
           }
         })
-        expect(alignment.animationCount, 'This regression must exercise a real CSS animation pause').toBeGreaterThan(0)
-        expect(alignment.settled, 'CSS pause promises must finish before checking the arc').toBe(true)
-        expect(alignment.centerMovement, 'The link must remain stationary after its pause has settled').toBeLessThan(0.001)
-        expect(Number.isFinite(alignment.stored)).toBe(true)
-        expect(alignment.error, `${interaction}: stored ${alignment.stored}°, stable center ${alignment.actual}°`).toBeLessThanOrEqual(0.01)
+        expect(alignment.animationCount, 'A single real parent animation must drive both the projects and the highlight').toBe(1)
+        expect(alignment.running, 'Selection must preserve native orbit playback').toBe(true)
+        expect(alignment.movement, `${interaction} must keep the selected link moving`).toBeGreaterThan(0.01)
+        for (const sample of [alignment.first, alignment.second]) {
+          expect(sample.selected).toBeCloseTo(alignment.selectedPosition, 4)
+          expect(sample.offset, 'The bright arc must use the same inherited phase as its selected project').toBeCloseTo(2.5 - (sample.selected + sample.phase) * 100, 3)
+          expect(sample.error, `${interaction}: the actual SVG arc midpoint must coincide with its moving link center`).toBeLessThanOrEqual(1)
+        }
         await planet.evaluate((element: HTMLAnchorElement) => element.blur())
         await page.mouse.move(0, 0)
-        await expect(scope).toHaveAttribute('data-planets-orbit-running', '')
-        await expect(planet).not.toHaveAttribute('data-planet-active', '')
+        if (interaction !== 'automatic') {
+          await expect(planet).not.toHaveAttribute('data-planet-active', '')
+        }
       }
+      await page.locator('[data-planet-toggle]').click()
+      await expect(scope).not.toHaveAttribute('data-planets-orbit-running', '')
+      const frozen = await scope.evaluate(async (element) => {
+        const animations = element.getAnimations()
+        await Promise.all(animations.map(animation => animation.ready))
+        const planet = element.querySelector('.home-hero-planet')!
+        const first = planet.getBoundingClientRect()
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+        const second = planet.getBoundingClientRect()
+        return {
+          paused: animations.every(animation => !animation.pending && animation.playState === 'paused'),
+          movement: Math.hypot(first.left - second.left, first.top - second.top),
+        }
+      })
+      expect(frozen.paused).toBe(true)
+      expect(frozen.movement, 'The explicit pause button must still freeze the physical orbit').toBeLessThan(0.001)
     })
 
     test('prioritizes focus over hover and resumes a fair cycle after interaction or pause', async ({ page }) => {
       await prepareSpotlight(page, path)
       await expectFreshDelay(page, 0)
       const planets = page.locator('.home-hero-planet')
-      await planets.nth(1).hover()
+      await hoverMovingPlanet(page, planets.nth(1))
       await expectSpotlight(page, 1)
       await planets.nth(2).focus()
-      await planets.nth(3).hover()
+      await hoverMovingPlanet(page, planets.nth(3))
       await expectSpotlight(page, 2)
       await page.clock.fastForward(30000)
       await expectSpotlight(page, 2)
@@ -279,7 +398,7 @@ for (const path of ['/', '/en/']) {
       await expect(toggle.locator('[data-planet-pause-icon]')).toBeHidden()
       await expect(toggle.locator('[data-planet-play-icon]')).toBeVisible()
       await page.clock.fastForward(30000)
-      await expectSpotlight(page, 1)
+      await expectSpotlight(page, 1, true)
       await toggle.click()
       await expect(toggle).toHaveAccessibleName(pauseLabel)
       await expect(toggle).toHaveAttribute('aria-pressed', 'false')
@@ -314,13 +433,13 @@ for (const path of ['/', '/en/']) {
           await toggle.click()
         }
         await planet.focus()
-        await expectSpotlight(page, 2)
+        await expectSpotlight(page, 2, paused)
         await expect(toggle).toHaveAttribute('aria-pressed', String(paused))
         await resizeDesktop(1280)
         await expect(screen).toHaveAttribute('data-hero-phase', 'ready')
         await expect(screen).toHaveAttribute('data-particles-active', '')
         await expect(planet).toBeFocused()
-        await expectSpotlight(page, 2)
+        await expectSpotlight(page, 2, paused)
         await expect(toggle).toHaveAttribute('aria-pressed', String(paused))
         if (paused) {
           await expect(screen).toHaveAttribute('data-hero-motion-paused', '')
@@ -399,6 +518,77 @@ for (const path of ['/', '/en/']) {
       await expectFreshDelay(page, 0)
       await page.clock.fastForward(4000)
       await expectFreshDelay(page, 1)
+      expect(errors).toEqual([])
+    })
+
+    test('restores the actual shared orbit phase after reduced motion and a host reconnect', async ({ page }) => {
+      const errors: string[] = []
+      page.on('pageerror', error => errors.push(error.message))
+      await prepareSpotlight(page, path)
+      const toggle = page.locator('[data-planet-toggle]')
+      const scope = page.locator(constellation)
+      await toggle.click()
+      const planet = page.locator('.home-hero-planet').nth(2)
+      await planet.focus()
+      await expectSpotlight(page, 2, true)
+      const before = await scope.evaluate(async (element) => {
+        const animations = element.getAnimations()
+        await Promise.all(animations.map(animation => animation.ready))
+        const animation = animations[0]!
+        const duration = Number(animation.effect!.getComputedTiming().duration)
+        animation.currentTime = duration * 0.375
+        const planet = element.querySelector('.home-hero-planet')!
+        const box = planet.getBoundingClientRect()
+        return {
+          phase: Number.parseFloat(getComputedStyle(element).getPropertyValue('--orbit-turn')),
+          currentTime: Number(animation.currentTime),
+          center: [box.left + box.width / 2, box.top + box.height / 2],
+        }
+      })
+      expect(before.phase).toBeCloseTo(0.375, 4)
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await expectStaticStarfield(page)
+      await page.clock.runFor(1000)
+      const reduced = await scope.evaluate((element) => {
+        const animations = element.getAnimations()
+        return {
+          count: animations.length,
+          phase: Number.parseFloat(getComputedStyle(element).getPropertyValue('--orbit-turn')),
+          currentTime: Number(animations[0]?.currentTime),
+        }
+      })
+      expect(reduced.count, 'Changing motion preference must retain the shared native orbit animation instance').toBe(1)
+      expect(reduced.phase).toBeCloseTo(before.phase, 4)
+      expect(reduced.currentTime).toBeCloseTo(before.currentTime, 3)
+      await page.emulateMedia({ reducedMotion: 'no-preference' })
+      await page.clock.runFor(160)
+      await expect(scope).not.toHaveAttribute('data-planets-orbit-running', '')
+      expect(await scope.evaluate(element => Number.parseFloat(getComputedStyle(element).getPropertyValue('--orbit-turn'))), 'Clearing reduced motion must preserve the saved phase and the explicit user pause').toBeCloseTo(before.phase, 4)
+      const host = await scope.elementHandle()
+      await host!.evaluate(element => element.remove())
+      await page.clock.runFor(200)
+      await host!.evaluate(element => document.querySelector('.home-hero-screen')!.append(element))
+      await expect(scope).toHaveAttribute('data-planets-ready', '')
+      await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+      await page.clock.runFor(160)
+      const restored = await scope.evaluate(async (element) => {
+        const animations = element.getAnimations()
+        await Promise.all(animations.map(animation => animation.ready))
+        const box = element.querySelector('.home-hero-planet')!.getBoundingClientRect()
+        return {
+          count: animations.length,
+          paused: animations.every(animation => !animation.pending && animation.playState === 'paused'),
+          phase: Number.parseFloat(getComputedStyle(element).getPropertyValue('--orbit-turn')),
+          currentTime: Number(animations[0]!.currentTime),
+          center: [box.left + box.width / 2, box.top + box.height / 2],
+        }
+      })
+      expect(restored.count).toBe(1)
+      expect(restored.paused).toBe(true)
+      expect(restored.phase).toBeCloseTo(before.phase, 4)
+      expect(restored.currentTime).toBeCloseTo(before.currentTime, 3)
+      expect(Math.hypot(restored.center[0]! - before.center[0]!, restored.center[1]! - before.center[1]!)).toBeLessThan(0.01)
+
       expect(errors).toEqual([])
     })
   })

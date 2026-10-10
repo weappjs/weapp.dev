@@ -207,7 +207,7 @@ test('reduced motion keeps content visible and product interactions stationary',
     await page.locator('[data-principle-card]').first().hover()
   }
   expect(await movingOrHidden()).toEqual([])
-  expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
+  expect(await page.evaluate(() => document.getAnimations().filter(animation => animation.playState === 'running').length)).toBe(0)
 })
 
 test('project code stays readable while scrolling and changing motion preferences', async ({ page }) => {

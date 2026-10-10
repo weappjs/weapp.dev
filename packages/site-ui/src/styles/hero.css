@@ -90,7 +90,7 @@
 
 @property --orbit-turn {
   syntax: '<number>';
-  inherits: false;
+  inherits: true;
   initial-value: 0;
 }
 
@@ -104,8 +104,7 @@
   pointer-events: none;
   translate: -50% -50%;
 }
-.home-hero-orbit::before,
-.home-hero-orbit::after {
+.home-hero-orbit::before {
   position: absolute;
   inset: 0;
   content: '';
@@ -115,17 +114,27 @@
 .home-hero-orbit::before {
   mask-image: linear-gradient(to bottom, rgb(0 0 0 / 18%), rgb(0 0 0 / 45%) 40%, #000 80%);
 }
-.home-hero-orbit::after {
-  border-color: rgb(237 245 240 / 64%);
-  mask-image: conic-gradient(
-    from calc(var(--orbit-highlight-angle, 0deg) - 12deg),
-    transparent,
-    #000 6deg 18deg,
-    transparent 24deg 360deg
-  );
+.home-hero-orbit-highlight {
+  position: absolute;
+  top: var(--hero-center-y);
+  left: 50%;
+  width: calc(var(--orbit-rx) * 2);
+  height: calc(var(--orbit-ry) * 2);
+  overflow: visible;
+  fill: none;
+  pointer-events: none;
+  translate: -50% -50%;
   opacity: 0;
 }
-.home-hero-constellation[data-planets-highlight] .home-hero-orbit::after {
+.home-hero-orbit-highlight ellipse {
+  stroke: rgb(237 245 240 / 64%);
+  stroke-width: 1.25px;
+  stroke-linecap: round;
+  stroke-dasharray: 5 95;
+  stroke-dashoffset: calc(2.5 - (var(--orbit-highlight-p, 0) + var(--orbit-turn)) * 100);
+  vector-effect: non-scaling-stroke;
+}
+.home-hero-constellation[data-planets-highlight] .home-hero-orbit-highlight {
   opacity: 1;
 }
 
@@ -321,16 +330,21 @@
   color: #c7cfca;
   font: 400 13px/20px var(--font-sans);
 }
-.home-hero-motion {
+.home-hero-controls {
   position: absolute;
   right: 24px;
   bottom: 16px;
   z-index: 4;
   display: inline-flex;
   gap: 8px;
+}
+.home-hero-motion {
+  display: inline-flex;
   align-items: center;
-  min-height: 44px;
-  padding: 10px 14px;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   color: #c7cfca;
   font: 500 13px/20px var(--font-sans);
   border: 1px solid rgb(237 245 240 / 22%);
@@ -347,6 +361,7 @@
   display: inline-flex;
 }
 .home-hero-spotlight[hidden],
+.home-hero-controls[hidden],
 .home-hero-motion[hidden],
 .home-hero-motion [hidden] {
   display: none;
@@ -357,7 +372,7 @@
     border-color: rgb(237 245 240 / 9%);
     mask-image: none;
   }
-  .home-hero-orbit::after {
+  .home-hero-orbit-highlight {
     display: none;
   }
   .home-hero-planet-body {
@@ -367,22 +382,8 @@
       inset -1px -2px 3px rgb(0 0 0 / 35%),
       0 2px 6px rgb(0 0 0 / 20%);
   }
-  .home-hero-motion {
+  .home-hero-controls {
     right: 16px;
-    gap: 0;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-  }
-  .home-hero-motion [data-planet-toggle-label] {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
   }
 }
 
@@ -523,6 +524,20 @@
   }
 }
 
+/* Keep both controls clear of the complete phone and tablet orbit. */
+@media (max-width: 1023px) {
+  .home-hero-screen {
+    --hero-center-y: calc(50% - 2rem);
+    --hero-brand-height: calc(var(--hero-stage-height) - 4rem);
+    --orbit-ry: min(28svh, calc(var(--hero-brand-height) / 2 - var(--planet-hit-size) / 2 - 10px));
+  }
+}
+@media (max-width: 720px) {
+  .home-hero-screen {
+    --orbit-ry: min(36svh, calc(50svh - 3.5rem), calc(var(--hero-brand-height) / 2 - var(--planet-hit-size) / 2 - 10px));
+  }
+}
+
 @media (max-width: 719px) {
   .home-hero-star--desktop {
     display: none;
@@ -654,21 +669,12 @@
     gap: 12px;
     align-items: baseline;
     width: max-content;
-    max-width: min(36rem, calc(100% - 248px));
+    max-width: min(36rem, calc(100% - 160px));
     text-align: left;
     translate: none;
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .home-hero-constellation[data-planets-ready] .home-hero-planet,
-  .home-hero-constellation[data-planets-ready] .home-hero-planet-name {
-    animation: home-hero-revolve calc(var(--orbit-t) * 3) linear infinite;
-    animation-play-state: paused;
-  }
-  .home-hero-constellation[data-planets-orbit-running] .home-hero-planet,
-  .home-hero-constellation[data-planets-orbit-running] .home-hero-planet-name {
-    animation-play-state: running;
-  }
   .home-hero-planet-visual {
     transition: scale 450ms cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -681,15 +687,6 @@
   .home-hero-planet:hover,
   .home-hero-planet:focus-visible {
     z-index: 6;
-  }
-}
-@keyframes home-hero-revolve {
-  0% {
-    --orbit-turn: 0;
-  }
-
-  100% {
-    --orbit-turn: 1;
   }
 }
 @keyframes home-hero-spin {

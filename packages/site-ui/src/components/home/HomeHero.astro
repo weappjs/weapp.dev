@@ -1,5 +1,5 @@
 ---
-import { ArrowUpRight, Pause, Play } from '@lucide/astro'
+import { ArrowUpRight, Pause, Play, RotateCcw } from '@lucide/astro'
 import type { Locale } from '@weapp/project-catalog/types'
 import type { HomeProject } from '../../lib/home-projects'
 import { shell } from '../../styles/classes'
@@ -52,10 +52,13 @@ const logoPaths = createHeroLogoPaths()
     <hero-planets class="home-hero-constellation" inert aria-hidden="true">
       <span class="home-hero-gridlines" aria-hidden="true"></span>
       <span class="home-hero-orbit" aria-hidden="true"></span>
+    <svg class="home-hero-orbit-highlight" aria-hidden="true">
+      <ellipse data-planet-highlight cx="50%" cy="50%" rx="50%" ry="50%" pathLength="100" />
+      </svg>
       <div class="home-hero-orbit-track">
         {constellation.map((mark, index) => {
           const orbitP = ((index + 0.5) / constellation.length).toFixed(4)
-          const orbitStyle = `--orbit-t: 80s; --orbit-p: ${orbitP}; --planet-accent: ${mark.accent};`
+          const orbitStyle = `--orbit-p: ${orbitP}; --planet-accent: ${mark.accent};`
           return (
             <Fragment>
               <a
@@ -92,18 +95,31 @@ const logoPaths = createHeroLogoPaths()
       <strong data-planet-caption-name></strong>
       <span data-planet-caption-tagline></span>
     </div>
-    <button
-      class="home-hero-motion"
-      type="button"
-      data-planet-toggle
-      data-pause-label={locale === 'zh-CN' ? '暂停首屏动画' : 'Pause hero animation'}
-      data-resume-label={locale === 'zh-CN' ? '继续首屏动画' : 'Resume hero animation'}
-      hidden
-    >
-      <span data-planet-pause-icon aria-hidden="true"><Pause size={16} stroke-width={1.8} /></span>
-      <span data-planet-play-icon aria-hidden="true" hidden><Play size={16} stroke-width={1.8} /></span>
-      <span data-planet-toggle-label>{locale === 'zh-CN' ? '暂停首屏动画' : 'Pause hero animation'}</span>
-    </button>
+    <div class="home-hero-controls" data-hero-controls hidden>
+      <button
+        class="home-hero-motion"
+        type="button"
+        data-planet-toggle
+        data-pause-label={locale === 'zh-CN' ? '暂停首屏动画' : 'Pause hero animation'}
+        data-resume-label={locale === 'zh-CN' ? '继续首屏动画' : 'Resume hero animation'}
+        aria-label={locale === 'zh-CN' ? '暂停首屏动画' : 'Pause hero animation'}
+        title={locale === 'zh-CN' ? '暂停首屏动画' : 'Pause hero animation'}
+        hidden
+      >
+        <span data-planet-pause-icon aria-hidden="true"><Pause size={16} stroke-width={1.8} /></span>
+        <span data-planet-play-icon aria-hidden="true" hidden><Play size={16} stroke-width={1.8} /></span>
+        <span class="sr-only" data-planet-toggle-label>{locale === 'zh-CN' ? '暂停首屏动画' : 'Pause hero animation'}</span>
+      </button>
+      <button
+        class="home-hero-motion"
+        type="button"
+        data-hero-replay
+        aria-label={locale === 'zh-CN' ? '重播首屏动画' : 'Replay hero animation'}
+        title={locale === 'zh-CN' ? '重播首屏动画' : 'Replay hero animation'}
+      >
+        <RotateCcw size={16} stroke-width={1.8} aria-hidden="true" />
+      </button>
+    </div>
   </div>
 
   <nav class:list={[shell, 'home-project-rail']} aria-label={railLabel}>
@@ -132,16 +148,3 @@ const logoPaths = createHeroLogoPaths()
 
   defineHeroPlanets()
 </script>
-
-<style is:global>
-  /* Layout CSS can emit a truncated copy of this name; this file loads later so 0% → 100% survives. */
-  @keyframes home-hero-revolve {
-    0% {
-      --orbit-turn: 0;
-    }
-
-    100% {
-      --orbit-turn: 1;
-    }
-  }
-</style>

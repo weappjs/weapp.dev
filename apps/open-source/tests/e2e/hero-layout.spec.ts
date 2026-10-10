@@ -62,12 +62,13 @@ for (const { viewport, phase } of cases) {
       await planets.first().focus()
       for (let step = 0; step < 72; step += 1) {
         // Exercise the entire path, including positions between automatic stops.
-        await page.locator('.home-hero-planet, .home-hero-planet-name').evaluateAll((elements, turn) => {
-          for (const element of elements) {
-            const node = element as HTMLElement
-            node.style.animation = 'none'
-            node.style.setProperty('--orbit-turn', String(turn))
+        await page.locator('hero-planets').evaluate((element: HTMLElement, turn) => {
+          const animations = element.getAnimations()
+          if (animations.length !== 1 || animations[0]!.playState !== 'paused') {
+            throw new Error('Geometry traversal requires the single publicly paused native orbit timeline')
           }
+          const animation = animations[0]!
+          animation.currentTime = Number(animation.effect!.getComputedTiming().duration) * turn
         }, step / 72)
         const collisions = await page.evaluate(() => {
           const stage = document.querySelector<HTMLElement>('.home-hero-screen')!
@@ -156,6 +157,24 @@ for (const { viewport, phase } of cases) {
               if (overlaps(box, other.box)) {
                 collisions.push(`description: ${other.id}`)
               }
+            }
+          }
+          const controls = [...stage.querySelectorAll<HTMLElement>('[data-hero-controls] button')]
+          for (const control of controls) {
+            const box = control.getBoundingClientRect()
+            if (outside(box)) {
+              collisions.push('animation control: clipped')
+            }
+            if (overlaps(box, word)) {
+              collisions.push('animation control: wordmark')
+            }
+            for (const other of [...planets, ...names]) {
+              if (overlaps(box, other.box)) {
+                collisions.push(`animation control: ${other.id}`)
+              }
+            }
+            if (!caption.hidden && overlaps(box, caption.getBoundingClientRect())) {
+              collisions.push('animation control: description')
             }
           }
           if (document.documentElement.scrollWidth > innerWidth + 1) {

@@ -104,4 +104,45 @@ describe('hero particle motion', () => {
     expect(particleFrameInterval(false, false, true)).toBe(100)
     expect(particleFrameInterval(false, true, false)).toBe(100)
   })
+
+  it('resets a running clock without counting the time before its new wall anchor', () => {
+    const clock = createActiveClock(2520)
+    clock.advance(100)
+    expect(clock.advance(200)).toBe(2620)
+    clock.reset(0, 20_000)
+    expect(clock.current()).toBe(0)
+    expect(clock.advance(20_000)).toBe(0)
+    expect(clock.advance(20_016)).toBe(16)
+  })
+
+  it('preserves paused playback across a reset and excludes the subsequent waiting period', () => {
+    const clock = createActiveClock(2520)
+    clock.advance(100)
+    clock.setRunning(false, 200)
+    clock.reset(700, 20_000)
+    expect(clock.advance(40_000)).toBe(700)
+    clock.setRunning(true, 50_000)
+    expect(clock.current()).toBe(700)
+    expect(clock.advance(50_016)).toBe(716)
+  })
+
+  it('defaults a reset to zero and initializes a fresh anchor when no wall time is supplied', () => {
+    const clock = createActiveClock(1500)
+    clock.advance(100)
+    clock.advance(200)
+    clock.reset()
+    expect(clock.current()).toBe(0)
+    expect(clock.advance(20_000)).toBe(0)
+    expect(clock.advance(20_100)).toBe(100)
+  })
+
+  it('rejects invalid reset phases without changing the existing clock', () => {
+    const clock = createActiveClock(500)
+    clock.advance(100)
+    for (const invalid of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => clock.reset(invalid, 20_000)).toThrow(RangeError)
+      expect(clock.current()).toBe(500)
+    }
+    expect(clock.advance(116)).toBe(516)
+  })
 })

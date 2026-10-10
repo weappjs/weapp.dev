@@ -1,6 +1,6 @@
 import type { HeroLogoPoint } from './hero-logo'
 import { createHeroLogo, HERO_LOGO_PALETTE } from './hero-logo'
-import { subscribeHeroMotionPaused } from './hero-motion'
+import { readHeroReplayVersion, subscribeHeroMotionPaused, subscribeHeroReplay } from './hero-motion'
 import { loadWordmarkFont } from './hero-particle-font'
 import { createActiveClock, glyphSafeRadii, particleFrameInterval, smoothValue } from './hero-particle-motion'
 import { heroEntranceState, setHeroPhase } from './hero-phase'
@@ -534,6 +534,7 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string) {
 
 interface Engine {
   stop: () => number
+  replay: () => void
   readonly hasDrawn: boolean
 }
 
@@ -1083,6 +1084,26 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     get hasDrawn() {
       return hasValidFrame
     },
+    replay() {
+      if (stopped) {
+        return
+      }
+      cancelScheduled()
+      clearPointer()
+      pointer.x = pointer.targetX = -9999
+      pointer.y = pointer.targetY = -9999
+      trailData.fill(0)
+      clock.reset(0, performance.now())
+      entranceSettled = false
+      hasValidFrame = false
+      needsStaticDraw = true
+      lastInput = 0
+      lastDraw = -Infinity
+      // Hidden scopes may not redraw until their visibility observer resumes.
+      // Do not leave the previous wordmark beneath the restored static Logo.
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      syncPlayback()
+    },
     stop() {
       stopped = true
       syncPlayback()
@@ -1135,6 +1156,7 @@ export function defineHeroParticles() {
     #elapsed = 0
     #hasDrawn = false
     #generation = 0
+    #replayVersion = 0
     connectedCallback() {
       if (this.#stop) {
         return
@@ -1145,6 +1167,12 @@ export function defineHeroParticles() {
       const wordmark = this.dataset.wordmark?.trim()
       if (!screen) {
         return
+      }
+      const replayVersion = readHeroReplayVersion(screen)
+      if (this.#replayVersion !== replayVersion) {
+        this.#replayVersion = replayVersion
+        this.#elapsed = 0
+        this.#hasDrawn = false
       }
       setHeroPhase(screen, 'logo')
       delete screen.dataset.particlesReady
@@ -1194,9 +1222,19 @@ export function defineHeroParticles() {
       const onReducedMotion = () => {
         void prepare()
       }
+      const unsubscribeReplay = subscribeHeroReplay(screen, (version) => {
+        if (this.#replayVersion === version) {
+          return
+        }
+        this.#replayVersion = version
+        this.#elapsed = 0
+        this.#hasDrawn = false
+        engine?.replay()
+      })
       reducedMotion.addEventListener('change', onReducedMotion)
       this.#stop = () => {
         abort.abort()
+        unsubscribeReplay()
         reducedMotion.removeEventListener('change', onReducedMotion)
         if (engine) {
           this.#hasDrawn = engine.hasDrawn

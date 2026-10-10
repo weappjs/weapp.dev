@@ -176,7 +176,8 @@ test('reduced motion updates results without animation or moving the tab bar', a
   const after = await hero.locator('.home-lab-heading').boundingBox()
   expect(after?.width).toBe(box?.width)
   expect(after?.height).toBe(box?.height)
-  expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
+  expect(await hero.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
+  expect(await page.evaluate(() => document.getAnimations().filter(animation => animation.playState === 'running').length)).toBe(0)
 })
 
 for (const route of ['/', '/en/']) {

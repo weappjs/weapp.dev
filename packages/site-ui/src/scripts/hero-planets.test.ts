@@ -1,6 +1,6 @@
 import type { PlanetEnvironment, PlanetPresentation } from './hero-planets'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPlanetController, getPlanetOrbitHighlightAngle } from './hero-planets'
+import { createPlanetController } from './hero-planets'
 
 const desktop: PlanetEnvironment = { desktop: true, reducedMotion: false, visible: true, pageHidden: false, revealed: true }
 
@@ -13,77 +13,9 @@ function setup(environment = desktop, initiallyPaused = false) {
   return { controller, present, current: () => state! }
 }
 
-describe('hero planet orbit highlight geometry', () => {
-  const orbit = { left: 100, top: 80, width: 800, height: 200 }
-  const centered = (x: number, y: number, size = 108) => ({ left: x - size / 2, top: y - size / 2, width: size, height: size })
-
-  it.each([
-    ['top', 500, 80, 0],
-    ['right', 900, 180, 90],
-    ['bottom', 500, 280, 180],
-    ['left', 100, 180, 270],
-  ] as const)('aligns the conic arc with a planet at the %s of the ellipse', (_side, x, y, angle) => {
-    expect(getPlanetOrbitHighlightAngle(centered(x, y), orbit)).toBe(angle)
-  })
-
-  it('uses the rendered direction on a flattened ellipse instead of its parametric angle', () => {
-    const diagonalPlanet = centered(500 + 400 / Math.SQRT2, 180 + 100 / Math.SQRT2)
-    expect(getPlanetOrbitHighlightAngle(diagonalPlanet, orbit)).toBeCloseTo(104.036243)
-    expect(getPlanetOrbitHighlightAngle(diagonalPlanet, orbit)).not.toBeCloseTo(135)
-  })
-
-  it('keeps the arc centered for different target sizes and updates after orbit resize', () => {
-    const largeTarget = centered(900, 230)
-    const smallTarget = centered(900, 230, 64)
-    const angle = getPlanetOrbitHighlightAngle(largeTarget, orbit)
-    expect(getPlanetOrbitHighlightAngle(smallTarget, orbit)).toBe(angle)
-    expect(getPlanetOrbitHighlightAngle(largeTarget, { ...orbit, width: 600, height: 300 })).toBe(90)
-    expect(getPlanetOrbitHighlightAngle({ ...largeTarget, left: largeTarget.left + 37, top: largeTarget.top - 60 }, { ...orbit, left: 137, top: 20 })).toBe(angle)
-  })
-
-  it('does not expose a stale arc for an absent project or unmeasurable layout', () => {
-    expect(getPlanetOrbitHighlightAngle(undefined, orbit)).toBeNull()
-    expect(getPlanetOrbitHighlightAngle(centered(900, 180), { ...orbit, width: 0 })).toBeNull()
-    expect(getPlanetOrbitHighlightAngle(centered(900, 180, 0), orbit)).toBeNull()
-    expect(getPlanetOrbitHighlightAngle(centered(500, 180), orbit)).toBeNull()
-    expect(getPlanetOrbitHighlightAngle(centered(Number.NaN, 180), orbit)).toBeNull()
-  })
-})
-
 describe('hero planet attention lifecycle', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
-
-  it('aligns the highlight with the selected project through focus, hover, pause and mobile changes', () => {
-    const orbit = { left: 100, top: 80, width: 800, height: 200 }
-    const bounds = {
-      vite: { left: 846, top: 126, width: 108, height: 108 },
-      panda: { left: 446, top: 226, width: 108, height: 108 },
-      rezor: { left: 46, top: 126, width: 108, height: 108 },
-    }
-    let angle: number | null = null
-    const controller = createPlanetController(Object.keys(bounds), (state) => {
-      const planet = state.activeId ? bounds[state.activeId as keyof typeof bounds] : undefined
-      angle = getPlanetOrbitHighlightAngle(planet, orbit)
-    }, desktop)
-    expect(angle).toBeNull()
-    vi.advanceTimersByTime(3000)
-    expect(angle).toBe(90)
-    controller.setPaused(true)
-    vi.advanceTimersByTime(60000)
-    expect(angle).toBe(90)
-    controller.setHover('panda')
-    expect(angle).toBe(180)
-    controller.setFocus('rezor')
-    expect(angle).toBe(270)
-    controller.setFocus(null)
-    expect(angle).toBe(180)
-    controller.setHover(null)
-    expect(angle).toBe(90)
-    controller.setEnvironment({ desktop: false })
-    expect(angle).toBeNull()
-    controller.destroy()
-  })
 
   it('keeps the opening stationary with independent pause controls and starts only after reveal', () => {
     const { controller, current } = setup({ ...desktop, revealed: false })
@@ -99,7 +31,7 @@ describe('hero planet attention lifecycle', () => {
     vi.advanceTimersByTime(2999)
     expect(current().activeId).toBeNull()
     vi.advanceTimersByTime(1)
-    expect(current()).toMatchObject({ activeId: 'vite', orbitRunning: false })
+    expect(current()).toMatchObject({ activeId: 'vite', orbitRunning: true })
     controller.destroy()
   })
 
@@ -152,7 +84,7 @@ describe('hero planet attention lifecycle', () => {
     vi.advanceTimersByTime(2999)
     expect(current().activeId).toBeNull()
     vi.advanceTimersByTime(1)
-    expect(current()).toMatchObject({ activeId: 'vite', orbitRunning: false })
+    expect(current()).toMatchObject({ activeId: 'vite', orbitRunning: true })
     vi.advanceTimersByTime(4000)
     expect(current()).toMatchObject({ activeId: null, orbitRunning: true })
     vi.advanceTimersByTime(3000)
@@ -166,18 +98,39 @@ describe('hero planet attention lifecycle', () => {
     const { controller, current } = setup()
     vi.advanceTimersByTime(3000)
     controller.setHover('panda')
-    expect(current()).toMatchObject({ activeId: 'panda', orbitRunning: false })
+    expect(current()).toMatchObject({ activeId: 'panda', orbitRunning: true })
     controller.setFocus('rezor')
     vi.advanceTimersByTime(30000)
-    expect(current().activeId).toBe('rezor')
+    expect(current()).toMatchObject({ activeId: 'rezor', orbitRunning: true })
     controller.setHover(null)
-    expect(current().activeId).toBe('rezor')
+    expect(current()).toMatchObject({ activeId: 'rezor', orbitRunning: true })
     controller.setFocus(null)
     expect(current()).toMatchObject({ activeId: null, orbitRunning: true })
     vi.advanceTimersByTime(2999)
     expect(current().activeId).toBeNull()
     vi.advanceTimersByTime(1)
     expect(current().activeId).toBe('panda')
+    controller.destroy()
+  })
+
+  it.each([
+    ['offscreen', { visible: false }, { visible: true }],
+    ['background', { pageHidden: true }, { pageHidden: false }],
+    ['reduced motion', { reducedMotion: true }, { reducedMotion: false }],
+  ] as const)('stops a manually selected orbit only while %s and retains the selected project', (_name, paused, resumed) => {
+    const { controller, current } = setup()
+    controller.setFocus('rezor')
+    controller.setHover('panda')
+    expect(current()).toMatchObject({ activeId: 'rezor', orbitRunning: true })
+    controller.setEnvironment(paused)
+    expect(current()).toMatchObject({ activeId: 'rezor', orbitRunning: false })
+    expect(vi.getTimerCount()).toBe(0)
+    vi.advanceTimersByTime(60000)
+    controller.setEnvironment(resumed)
+    expect(current()).toMatchObject({ activeId: 'rezor', orbitRunning: true })
+    expect(vi.getTimerCount()).toBe(0)
+    controller.setFocus(null)
+    expect(current()).toMatchObject({ activeId: 'panda', orbitRunning: true })
     controller.destroy()
   })
 
@@ -236,11 +189,11 @@ describe('hero planet attention lifecycle', () => {
     controller.destroy()
   })
 
-  it('keeps mobile interaction stationary and reduced-motion desktop captions available', () => {
+  it('keeps mobile interaction moving and reduced-motion desktop captions available', () => {
     const { controller, current } = setup({ ...desktop, desktop: false })
     expect(current()).toMatchObject({ activeId: null, orbitRunning: true, controlsVisible: true })
     controller.setFocus('rezor')
-    expect(current()).toMatchObject({ activeId: null, orbitRunning: false })
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true })
     controller.setEnvironment({ desktop: true, reducedMotion: true })
     expect(current()).toMatchObject({ activeId: 'rezor', orbitRunning: false, controlsVisible: false })
     expect(vi.getTimerCount()).toBe(0)
@@ -289,6 +242,75 @@ describe('hero planet attention lifecycle', () => {
     controller.destroy()
   })
 
+  it('replays the catalog from its first project and clears automatic and manual selection', () => {
+    const { controller, current } = setup()
+    vi.advanceTimersByTime(10000)
+    expect(current().activeId).toBe('panda')
+    controller.setHover('rezor')
+    controller.setFocus('panda')
+    controller.replay()
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true, userPaused: false })
+    expect(vi.getTimerCount()).toBe(1)
+    vi.advanceTimersByTime(2999)
+    expect(current().activeId).toBeNull()
+    vi.advanceTimersByTime(1)
+    expect(current()).toMatchObject({ activeId: 'vite', orbitRunning: true })
+    vi.advanceTimersByTime(7000)
+    expect(current().activeId).toBe('panda')
+    controller.destroy()
+  })
+
+  it('does not count replay attention before the stage is revealed', () => {
+    const { controller, current } = setup()
+    vi.advanceTimersByTime(10000)
+    controller.setEnvironment({ revealed: false })
+    controller.replay()
+    controller.setFocus('rezor')
+    controller.setHover('panda')
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false })
+    expect(vi.getTimerCount()).toBe(0)
+    vi.advanceTimersByTime(60000)
+    controller.setEnvironment({ revealed: true })
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: true })
+    vi.advanceTimersByTime(2999)
+    expect(current().activeId).toBeNull()
+    vi.advanceTimersByTime(1)
+    expect(current().activeId).toBe('vite')
+    controller.destroy()
+  })
+
+  it('keeps replay subject to the shared pause intent and starts fresh when resumed', () => {
+    const { controller, current } = setup()
+    vi.advanceTimersByTime(10000)
+    controller.setPaused(true)
+    controller.setFocus('rezor')
+    controller.replay()
+    expect(current()).toMatchObject({ activeId: null, orbitRunning: false, userPaused: true })
+    expect(vi.getTimerCount()).toBe(0)
+    vi.advanceTimersByTime(60000)
+    controller.setPaused(false)
+    vi.advanceTimersByTime(2999)
+    expect(current().activeId).toBeNull()
+    vi.advanceTimersByTime(1)
+    expect(current().activeId).toBe('vite')
+    controller.destroy()
+  })
+
+  it('repeated replay cancels the earlier delay instead of duplicating automatic highlights', () => {
+    const { controller, current } = setup()
+    vi.advanceTimersByTime(1000)
+    controller.replay()
+    vi.advanceTimersByTime(2000)
+    controller.replay()
+    expect(vi.getTimerCount()).toBe(1)
+    vi.advanceTimersByTime(2999)
+    expect(current().activeId).toBeNull()
+    vi.advanceTimersByTime(1)
+    expect(current().activeId).toBe('vite')
+    expect(vi.getTimerCount()).toBe(1)
+    controller.destroy()
+  })
+
   it('waits for every environment blocker to clear before starting an initial cycle', () => {
     const { controller, current } = setup({ desktop: false, visible: false, pageHidden: true, reducedMotion: true, revealed: true })
     expect(vi.getTimerCount()).toBe(0)
@@ -306,14 +328,14 @@ describe('hero planet attention lifecycle', () => {
     controller.destroy()
   })
 
-  it('keeps the focused project stationary across background and breakpoint changes', () => {
+  it('resumes the orbit with the focused project after background and breakpoint changes', () => {
     const { controller, current } = setup()
     controller.setFocus('rezor')
     controller.setEnvironment({ pageHidden: true, desktop: false })
     expect(current()).toMatchObject({ activeId: null, orbitRunning: false })
     controller.setEnvironment({ pageHidden: false, desktop: true })
     vi.advanceTimersByTime(60000)
-    expect(current()).toMatchObject({ activeId: 'rezor', orbitRunning: false })
+    expect(current()).toMatchObject({ activeId: 'rezor', orbitRunning: true })
     expect(vi.getTimerCount()).toBe(0)
     controller.setFocus(null)
     vi.advanceTimersByTime(3000)
@@ -332,6 +354,7 @@ describe('hero planet attention lifecycle', () => {
     controller.setEnvironment(desktop)
     controller.togglePause()
     controller.setPaused(false)
+    controller.replay()
     vi.advanceTimersByTime(60000)
     expect(present).toHaveBeenCalledTimes(calls)
   })
