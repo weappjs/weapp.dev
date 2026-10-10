@@ -235,23 +235,26 @@ for (const path of ['/', '/en/']) {
       const toggle = page.locator('[data-planet-toggle]')
       const screen = page.locator('.home-hero-screen')
       const canvas = page.locator('.home-hero-particle-canvas')
+      const resizeDesktop = async (width: number) => {
+        const previousWidth = await canvas.evaluate((element: HTMLCanvasElement) => element.width)
+        await page.setViewportSize({ width, height: 900 })
+        // Classic scrollbars can make the stage narrower than the viewport.
+        // Wait for a changed drawing buffer fitted to the real stage so the
+        // observer has run before checking focus and caption continuity.
+        await expect.poll(() => canvas.evaluate((element: HTMLCanvasElement, oldWidth) => {
+          const stage = element.closest<HTMLElement>('.home-hero-screen')!
+          return element.width !== oldWidth && element.width === Math.floor(stage.clientWidth * Math.min(1.75, devicePixelRatio))
+        }, previousWidth)).toBe(true)
+      }
       for (const paused of [false, true]) {
         if (paused) {
-          await page.setViewportSize({ width: 1440, height: 900 })
-          await expect.poll(() => canvas.evaluate((element: HTMLCanvasElement) => element.width === Math.floor(1440 * Math.min(1.75, devicePixelRatio)))).toBe(true)
+          await resizeDesktop(1440)
           await toggle.click()
         }
         await planet.focus()
         await expectSpotlight(page, 2)
         await expect(toggle).toHaveAttribute('aria-pressed', String(paused))
-        const previousWidth = await canvas.evaluate((element: HTMLCanvasElement) => element.width)
-        await page.setViewportSize({ width: 1280, height: 900 })
-        // A resized drawing buffer confirms the real observer has run before
-        // checking focus continuity; an immediate assertion could miss a blur.
-        await expect.poll(() => canvas.evaluate((element: HTMLCanvasElement, oldWidth) => {
-          const stage = element.closest<HTMLElement>('.home-hero-screen')!
-          return element.width !== oldWidth && element.width === Math.floor(stage.clientWidth * Math.min(1.75, devicePixelRatio))
-        }, previousWidth)).toBe(true)
+        await resizeDesktop(1280)
         await expect(screen).toHaveAttribute('data-hero-phase', 'ready')
         await expect(screen).toHaveAttribute('data-particles-active', '')
         await expect(planet).toBeFocused()
