@@ -1,0 +1,4 @@
+weapp@0.1.0:
+  dir: packages/weapp
+  intents:
+    - weapp-cli-launch
