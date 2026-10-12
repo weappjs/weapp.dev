@@ -25,7 +25,7 @@ def exercise(name, args, events, width=90, height=28, expected=0, command=None):
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', height, width, 0, 0))
     environment = dict(os.environ, TERM='xterm-256color', LANG='en_US.UTF-8', NO_COLOR='1')
     environment.pop('CI', None)
-    executable = command or ['node', str(ROOT / 'bin/weapp.js')]
+    executable = command or ['node', str(ROOT / 'dist/cli.js')]
     child = subprocess.Popen([*executable, '--lang', 'en', *args], stdin=slave, stdout=slave, stderr=slave, env=environment)
     chunks = []
     start = time.monotonic()
@@ -114,7 +114,7 @@ with tempfile.TemporaryDirectory(prefix='weapp-pty-') as temporary:
     results['wizard-summary-preview'] = len(preview)
 
     harness = parent / 'upstream.mjs'
-    cli_url = (ROOT / 'dist/src/index.js').as_uri()
+    cli_url = (ROOT / 'dist/index.js').as_uri()
     upstream = r"""
       const { createInterface } = require('node:readline');
       const { mkdirSync, writeFileSync } = require('node:fs');
@@ -157,7 +157,7 @@ process.exitCode = code
     results['inherited-upstream-input-and-resume'] = len(inherited)
 
     exception_harness = parent / 'exception.mjs'
-    session_url = (ROOT / 'dist/src/terminal/session.js').as_uri()
+    session_url = (ROOT / 'dist/terminal.js').as_uri()
     exception_harness.write_text(f"""
 import process from 'node:process'
 import {{ TerminalSession }} from {json.dumps(session_url)}

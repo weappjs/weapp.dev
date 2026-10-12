@@ -1,0 +1,42 @@
+import { defineConfig } from 'tsdown'
+
+export default defineConfig([
+  {
+    name: 'cli',
+    entry: { cli: 'src/cli.ts', index: 'src/index.ts', terminal: 'src/terminal/session.ts' },
+    outDir: 'dist',
+    platform: 'node',
+    target: 'node18',
+    format: 'esm',
+    outExtensions: () => ({ js: '.js' }),
+    clean: false,
+    dts: false,
+    exports: false,
+    outputOptions: { chunkFileNames: '[name]-[hash].js' },
+  },
+  {
+    name: 'lab',
+    tsconfig: 'tsconfig.browser.json',
+    entry: { app: 'lab/app.ts' },
+    outDir: 'dist/lab',
+    platform: 'browser',
+    target: 'es2022',
+    format: 'esm',
+    outExtensions: () => ({ js: '.js' }),
+    clean: false,
+    dts: false,
+    exports: false,
+  },
+  {
+    name: 'artifact-smoke',
+    entry: { 'artifact-smoke': 'scripts/artifact-smoke.ts' },
+    outDir: '.cache/validation',
+    platform: 'node',
+    target: 'node18',
+    format: 'esm',
+    outExtensions: () => ({ js: '.mjs' }),
+    clean: true,
+    dts: false,
+    exports: false,
+  },
+])

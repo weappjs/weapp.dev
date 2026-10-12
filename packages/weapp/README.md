@@ -89,12 +89,15 @@ Generated from the repository's neutral public project catalog during builds.
 
 ```bash
 pnpm --filter weapp build
+pnpm --filter weapp check
 pnpm --filter weapp lint
 pnpm --filter weapp test
 pnpm --filter weapp test:e2e
 pnpm --filter weapp test:pack
-node packages/weapp/bin/weapp.js
+node packages/weapp/dist/cli.js
 ```
+
+The CLI, lab, tests, and validation scripts are written in strict TypeScript. `tsdown` bundles the Node CLI for Node 18 and the browser lab separately; the artifact smoke script is also compiled so it can run directly on Node 18. `check` validates the Node/tooling and browser types. Static catalog snapshots, logos, fonts, and licenses are copied alongside the bundles.
 
 The published tarball contains runtime JavaScript, an embedded catalog and Logo point cloud, and the lab's licensed assets. It does not depend on the monorepo, Astro, or either website. `test:pack` installs the actual tarball in a temporary directory and runs artifact smoke checks. Release tags use `weapp@<version>`; legacy `weapp-v<version>` tags remain accepted.
 
@@ -150,6 +153,8 @@ npx weapp palette '#07c160' --output colors.css --format css
 实验室默认进入生态星系并选中 weapp-vite，打包真实 Logo、字体和固定资源表，离线可用。选中项目同步更新成熟度、能力、配色和操作；weapp-vite 可复制创建命令，其他已发布项目可复制官方开始命令，浏览器不会执行本地脚手架。规划项目没有安装或创建操作。粒子场景在 WEAPP 与项目标识之间变形，保留指针流场与拖拽；重播保留项目和控制设置，重置动画与偏移。支持手机、减少动态效果、后台暂停、Canvas 降级与 PNG 下载。`weapp play snake` 和专属帮助仍可使用，游戏从主大厅和总帮助隐藏。
 
 每个项目保留自己的仓库、发布节奏和 API 边界。安装依赖不代表已经完成接入。weapp-sqlite 仍在规划中：**当前还没有安装命令。**
+
+开发代码、实验室、测试和验收脚本统一使用严格 TypeScript，`pnpm --filter weapp check` 检查 Node／工具脚本和浏览器类型。`tsdown` 分别打包 Node 18 CLI、浏览器实验室及可直接在 Node 18 执行的 artifact smoke。运行 `pnpm --filter weapp build` 后可执行 `node packages/weapp/dist/cli.js`；npm 包只交付 JavaScript bundles 与目录、Logo、字体和许可证等静态资源。
 
 构建后执行 `pnpm --filter weapp preflight` 可本地检查包身份、Node 18、公开访问、版本未发布和打包资源；它不会检查 CI OIDC，也不证明发布权限。`publish-weapp.yml` 手动运行默认 `mode=preflight`、`tag=main`：在 GitHub 托管 runner 上安装并测试同一 tarball，显式请求 GitHub JWT 并调用 npm OIDC exchange。凭据缺失或 exchange 失败即终止；JWT 与 token 仅掩码后丢弃，不落盘、不交给发布命令。交换成功只证明该交换完成，预检上传验证后的 tarball，整个模式不会发布 npm 包。
 

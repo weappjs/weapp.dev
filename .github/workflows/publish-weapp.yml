@@ -62,13 +62,13 @@ jobs:
 
       - name: Verify release tag
         if: github.event_name == 'release' || inputs.mode == 'publish'
-        run: node packages/weapp/scripts/check-release.mjs
+        run: pnpm --filter weapp exec tsx scripts/check-release.ts
 
       - name: Verify generated catalog
         run: pnpm --filter weapp exec tsx scripts/build.ts --check-readme
 
       - name: Test the package
-        run: pnpm check:boundaries && pnpm --filter weapp lint && pnpm --filter weapp lint:styles && pnpm --filter weapp test
+        run: pnpm check:boundaries && pnpm --filter weapp check && pnpm --filter weapp lint && pnpm --filter weapp lint:styles && pnpm --filter weapp test
 
       - name: Verify the package contents
         working-directory: packages/weapp
@@ -77,7 +77,7 @@ jobs:
       - name: Preflight identity, unpublished version, exact artifact, and OIDC exchange
         id: preflight
         working-directory: packages/weapp
-        run: node scripts/preflight.mjs --artifact
+        run: pnpm exec tsx scripts/preflight.ts --artifact
 
       - name: Preserve the validated artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.1

@@ -58,7 +58,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:boundaries
       - run: pnpm --filter weapp exec tsx scripts/build.ts --check-readme
-      - run: pnpm --filter weapp lint && pnpm --filter weapp lint:styles && pnpm --filter weapp test
+      - run: pnpm --filter weapp check && pnpm --filter weapp lint && pnpm --filter weapp lint:styles && pnpm --filter weapp test
       - run: pnpm --filter weapp exec playwright install --with-deps chromium
       - run: pnpm --filter weapp test:e2e
       - run: python3 packages/weapp/scripts/pty-test.py
@@ -68,7 +68,7 @@ jobs:
         run: |
           mkdir -p ../../.cache/weapp-artifact
           npm pack --ignore-scripts --pack-destination ../../.cache/weapp-artifact
-          cp scripts/artifact-smoke.mjs ../../.cache/weapp-artifact/
+          cp .cache/validation/artifact-smoke.mjs ../../.cache/weapp-artifact/
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: weapp-tarball

@@ -22,7 +22,7 @@
     "repo:new": "repo new",
     "release:plan": "repo release plan",
     "release:prepare": "repo release ci --mode prepare",
-    "release:verify": "pnpm check:boundaries && pnpm --filter weapp lint && pnpm --filter weapp lint:styles && pnpm --filter weapp test && pnpm --filter weapp test:pack",
+    "release:verify": "pnpm check:boundaries && pnpm --filter weapp check && pnpm --filter weapp lint && pnpm --filter weapp lint:styles && pnpm --filter weapp test && pnpm --filter weapp test:pack",
     "release:build": "pnpm --filter weapp build",
     "test": "turbo run test",
     "prepare": "husky",
