@@ -706,11 +706,13 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       centerY: orbitBox ? orbitBox.top + orbitBox.height / 2 - canvasBox.top : 0,
       radiusX: orbitBox ? orbitBox.width / 2 : 0,
       radiusY: orbitBox ? orbitBox.height / 2 : 0,
-      viewportWidth: cssWidth,
+      // Match CSS media-query breakpoints, including classic scrollbar space.
+      // The canvas and ellipse still use their actual rendered content boxes.
+      viewportWidth: window.innerWidth,
     }
     const planetSize = Math.max(0, ...[...screen.querySelectorAll<HTMLElement>('.home-hero-planet')]
       .map(planet => Number.parseFloat(getComputedStyle(planet).width) || 0))
-    const key = `${cssWidth}:${cssHeight}:${dpr}:${titleStyle.fontSize}:${titleStyle.fontFamily}:${titleStyle.fontWeight}:${titleStyle.letterSpacing}:${centerX}:${centerY}:${logoSize}:${orbitRx}:${orbitRy}:${haloGeometry.centerX}:${haloGeometry.centerY}:${planetSize}`
+    const key = `${cssWidth}:${cssHeight}:${dpr}:${titleStyle.fontSize}:${titleStyle.fontFamily}:${titleStyle.fontWeight}:${titleStyle.letterSpacing}:${centerX}:${centerY}:${logoSize}:${orbitRx}:${orbitRy}:${haloGeometry.centerX}:${haloGeometry.centerY}:${haloGeometry.viewportWidth}:${planetSize}`
     if (key === layoutKey) {
       return true
     }

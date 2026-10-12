@@ -126,6 +126,48 @@ for (const viewport of geometryCases) {
   })
 }
 
+for (const viewport of [{ width: 640, count: 384 }, { width: 1024, count: 960 }]) {
+  test(`retains the ${viewport.count}-point viewport budget at ${viewport.width}px when the hero is 16px narrower`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'The explicit breakpoint regression runs once across browser scrollbar implementations')
+    await page.setViewportSize({ width: viewport.width, height: 800 })
+    await prepareHalo(page)
+    await revealHalo(page)
+    const before = await particleState(page)
+    // Classic scrollbars reduce clientWidth without changing CSS media query
+    // breakpoints. Constrain the real container to the same width on every OS
+    // instead of relying on the browser's scrollbar appearance or mocks.
+    await page.addStyleTag({ content: '.home-hero-screen { width: calc(100vw - 16px); }' })
+    await expect.poll(() => page.locator('.home-hero-screen').evaluate(element => element.clientWidth)).toBe(viewport.width - 16)
+    await page.clock.runFor(320)
+    await expect.poll(() => page.evaluate(() => {
+      const screen = document.querySelector<HTMLElement>('.home-hero-screen')!
+      const canvas = screen.querySelector<HTMLCanvasElement>('.home-hero-particle-canvas')!
+      return canvas.width === Math.floor(screen.clientWidth * Math.min(1.75, devicePixelRatio))
+    }), { message: 'The real ResizeObserver must rebuild the drawing buffer for the constrained hero' }).toBe(true)
+    await page.clock.runFor(160)
+    expect(await page.evaluate(() => innerWidth), 'The CSS media query viewport must remain at the breakpoint').toBe(viewport.width)
+    await expectPrivateHalo(page, viewport.count)
+    expect((await particleState(page)).haloDraws, 'The constrained geometry must be checked after actual new halo draws').toBeGreaterThan(before.haloDraws)
+    const geometry = await orbitGeometry(page)
+    expect(geometry.width).toBe(viewport.width - 16)
+    const halo = await haloState(page)
+    expect(halo.positions).toHaveLength(viewport.count * 2)
+    for (let index = 0; index < viewport.count; index++) {
+      const dx = halo.positions[index * 2]! / geometry.scale - geometry.cx
+      const dy = halo.positions[index * 2 + 1]! / geometry.scale - geometry.cy
+      const ellipse = (dx / geometry.rx) ** 2 + (dy / geometry.ry) ** 2
+      const normal = 2 * Math.hypot(dx / geometry.rx ** 2, dy / geometry.ry ** 2)
+      expect(Math.abs(ellipse - 1) / normal, 'The viewport budget must still follow the constrained container’s actual ellipse').toBeLessThanOrEqual(2.1)
+    }
+    const rendered = await captureParticleSurface(page)
+    expect(rendered.visible, 'The constrained hero must retain a real rendered halo').toBeGreaterThan(viewport.count)
+    for (const edge of ['left', 'top', 'right', 'bottom'] as const) {
+      expect(Math.abs(rendered.bounds[edge] / geometry.scale - geometry[edge]), `The real resized halo framebuffer must follow the ${edge} ellipse edge`).toBeLessThan(8)
+    }
+    await testInfo.attach('halo-viewport-budget', { body: JSON.stringify({ viewportWidth: viewport.width, clientWidth: geometry.width, count: viewport.count, geometry, rendered }, null, 2), contentType: 'application/json' })
+  })
+}
+
 test('scintillates the real halo within bounded brightness while every dust position stays fixed', async ({ page }) => {
   await prepareHalo(page)
   await revealHalo(page)
