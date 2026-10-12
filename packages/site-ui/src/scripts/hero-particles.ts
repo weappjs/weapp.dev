@@ -1,6 +1,7 @@
 import type { HeroLogoPoint } from './hero-logo'
 import { createHeroLogo, HERO_LOGO_PALETTE } from './hero-logo'
 import { readHeroReplayVersion, subscribeHeroMotionPaused, subscribeHeroReplay } from './hero-motion'
+import { createHeroOrbitHalo } from './hero-orbit-halo'
 import { loadWordmarkFont } from './hero-particle-font'
 import { createActiveClock, glyphSafeRadii, particleFrameInterval, smoothValue } from './hero-particle-motion'
 import { heroEntranceState, setHeroPhase } from './hero-phase'
@@ -577,6 +578,15 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     return null
   }
   gl.useProgram(program)
+  const vao = gl.createVertexArray()
+  if (!vao) {
+    gl.useProgram(null)
+    gl.deleteProgram(program)
+    gl.deleteShader(vertex)
+    gl.deleteShader(fragment)
+    return null
+  }
+  gl.bindVertexArray(vao)
   gl.enable(gl.BLEND)
   gl.blendFunc(gl.ONE, gl.ONE)
   gl.disable(gl.DEPTH_TEST)
@@ -624,6 +634,10 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   }
 
   let count = 0
+  let mainFrameValidated = false
+  let halo: ReturnType<typeof createHeroOrbitHalo> | undefined
+  let haloNeedsRebuild = true
+  let haloGeometry = { centerX: 0, centerY: 0, radiusX: 0, radiusY: 0, viewportWidth: 0 }
   let entranceSettled = heroEntranceState(elapsed).settled
   const clock = createActiveClock(elapsed)
   clock.setRunning(false, performance.now())
@@ -661,6 +675,8 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   }
 
   const rebuild = () => {
+    gl.useProgram(program)
+    gl.bindVertexArray(vao)
     const cssWidth = Math.max(1, screen.clientWidth)
     const cssHeight = Math.max(1, screen.clientHeight)
     dpr = Math.min(dprCap, window.devicePixelRatio || 1)
@@ -685,9 +701,16 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const orbitBox = orbitElement?.getBoundingClientRect()
     const orbitRx = (orbitBox?.width ?? cssWidth) / 2
     const orbitRy = (orbitBox?.height ?? cssHeight) / 2
+    haloGeometry = {
+      centerX: orbitBox ? orbitBox.left + orbitBox.width / 2 - canvasBox.left : 0,
+      centerY: orbitBox ? orbitBox.top + orbitBox.height / 2 - canvasBox.top : 0,
+      radiusX: orbitBox ? orbitBox.width / 2 : 0,
+      radiusY: orbitBox ? orbitBox.height / 2 : 0,
+      viewportWidth: cssWidth,
+    }
     const planetSize = Math.max(0, ...[...screen.querySelectorAll<HTMLElement>('.home-hero-planet')]
       .map(planet => Number.parseFloat(getComputedStyle(planet).width) || 0))
-    const key = `${cssWidth}:${cssHeight}:${dpr}:${titleStyle.fontSize}:${titleStyle.fontFamily}:${titleStyle.fontWeight}:${titleStyle.letterSpacing}:${centerX}:${centerY}:${logoSize}:${orbitRx}:${orbitRy}:${planetSize}`
+    const key = `${cssWidth}:${cssHeight}:${dpr}:${titleStyle.fontSize}:${titleStyle.fontFamily}:${titleStyle.fontWeight}:${titleStyle.letterSpacing}:${centerX}:${centerY}:${logoSize}:${orbitRx}:${orbitRy}:${haloGeometry.centerX}:${haloGeometry.centerY}:${planetSize}`
     if (key === layoutKey) {
       return true
     }
@@ -811,16 +834,26 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     bindFloat(buffers.radius, loc.radius, radius, 1)
     bindFloat(buffers.flow, loc.flow, flow, 1)
     bindFloat(buffers.sourceStyle, loc.sourceStyle, sourceStyle, 4)
+    // Validate the existing renderer's resize upload before optional resources
+    // check their own GL errors. The opening still uses its first-frame gate.
+    if (mainFrameValidated && gl.getError() !== gl.NO_ERROR) {
+      return false
+    }
+    haloNeedsRebuild = true
     layoutKey = key
     return true
   }
 
   const releaseGL = () => {
+    halo?.dispose()
+    halo = null
+    gl.bindVertexArray(null)
     gl.useProgram(null)
     for (const buffer of Object.values(buffers)) {
       gl.deleteBuffer(buffer)
     }
     gl.deleteProgram(program)
+    gl.deleteVertexArray(vao)
     gl.deleteShader(vertex)
     gl.deleteShader(fragment)
   }
@@ -847,6 +880,25 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   }
   let syncPlayback: () => void
 
+  const prepareHalo = () => {
+    if (halo === undefined) {
+      halo = createHeroOrbitHalo(gl)
+    }
+    if (halo && haloNeedsRebuild) {
+      if (!halo.rebuild(haloGeometry, dpr)) {
+        halo.dispose()
+        halo = null
+      }
+      haloNeedsRebuild = false
+    }
+  }
+  const drawHalo = (activeElapsed: number, reveal: number) => {
+    if (halo && !halo.draw(canvas.width, canvas.height, activeElapsed / 1000, reveal)) {
+      halo.dispose()
+      halo = null
+    }
+  }
+
   const draw = (activeElapsed: number) => {
     const entrance = heroEntranceState(activeElapsed)
     const progress = entrance.progress
@@ -872,7 +924,14 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     gl.viewport(0, 0, canvas.width, canvas.height)
     gl.clearColor(0, 0, 0, 0)
     gl.clear(gl.COLOR_BUFFER_BIT)
+    // Initialize optional decoration only after this engine's original first
+    // frame succeeds, so its error checks cannot mask a failed Logo handoff.
+    if (mainFrameValidated) {
+      prepareHalo()
+      drawHalo(activeElapsed, entrance.reveal)
+    }
     gl.useProgram(program)
+    gl.bindVertexArray(vao)
     gl.uniform2f(loc.resolution, canvas.width, canvas.height)
     gl.uniform1f(loc.time, activeElapsed / 1000)
     gl.uniform1f(loc.progress, progress)
@@ -892,7 +951,16 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       syncPlayback()
       return
     }
+    if (!mainFrameValidated) {
+      prepareHalo()
+      // A paused reconnect has one static frame. Add its restored halo after
+      // validation; additive blending keeps the result independent of order.
+      drawHalo(activeElapsed, entrance.reveal)
+      gl.useProgram(program)
+      gl.bindVertexArray(vao)
+    }
     screen.dataset.particlesActive = ''
+    mainFrameValidated = true
     needsStaticDraw = false
     hasValidFrame = true
     entranceSettled = entrance.settled

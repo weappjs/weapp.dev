@@ -103,16 +103,25 @@
   border-radius: 50%;
   pointer-events: none;
   translate: -50% -50%;
+
+  --orbit-halo-spread: 8px;
 }
-.home-hero-orbit::before {
+.home-hero-orbit::before,
+.home-hero-orbit::after {
   position: absolute;
   inset: 0;
   content: '';
-  border: 1px solid rgb(237 245 240 / 17%);
   border-radius: inherit;
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 50%), rgb(0 0 0 / 70%) 40%, #000 80%);
 }
 .home-hero-orbit::before {
-  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 18%), rgb(0 0 0 / 45%) 40%, #000 80%);
+  border: 1px solid rgb(237 245 240 / 55%);
+}
+.home-hero-orbit::after {
+  border: 1px solid rgb(215 232 229 / 25%);
+  box-shadow:
+    0 0 var(--orbit-halo-spread) 1px rgb(215 232 229 / 28%),
+    inset 0 0 var(--orbit-halo-spread) rgb(215 232 229 / 12%);
 }
 
 .home-hero-planet,
@@ -345,10 +354,6 @@
 }
 
 @media (max-width: 1023px) {
-  .home-hero-orbit::before {
-    border-color: rgb(237 245 240 / 9%);
-    mask-image: none;
-  }
   .home-hero-planet-body {
     background: radial-gradient(circle at 28% 20%, #dce2df, #87988f 48%, #34453c);
     box-shadow:
@@ -358,6 +363,12 @@
   }
   .home-hero-controls {
     right: 16px;
+  }
+}
+
+@media (max-width: 639px) {
+  .home-hero-orbit {
+    --orbit-halo-spread: 6px;
   }
 }
 
