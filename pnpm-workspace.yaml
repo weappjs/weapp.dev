@@ -2,6 +2,15 @@ packages:
   - apps/*
   - packages/*
   - examples/*
+versioning:
+  ignore:
+    - weapp.dev
+    - '@weapp-io/web'
+    - '@weapp-io/open-source'
+    - '@weapp-io/project-catalog'
+    - '@weapp-io/site-ui'
+  changelog:
+    storage: repository
 allowBuilds:
   esbuild: true
   msgpackr-extract: true

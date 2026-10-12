@@ -54,13 +54,21 @@ pnpm metrics:sync
 
 ## CI 与发布
 
+版本由 repoctl 5.10.2 和 pnpm 原生 versioning 管理。功能或修复在开发分支记录 `pnpm change weapp --bump minor --summary "变更说明"`（修复使用 `patch`），提交 `.changeset/*.md` 后合入 `main`。这只是 pnpm 的 change intent 目录，不使用 Changesets CLI 或 action。`pnpm release:plan --json` 只读预览版本和 release notes，`pnpm change check` 检查 intent。`pnpm-workspace.yaml` 的 `versioning.ignore` 使用精确包名，排除私有 root 与四个 `@weapp-io/*` workspace；该字段不支持通配符，新增私有包时必须同步名单。
+
+`.github/workflows/version-packages.yml` 在 `main` push 或手动运行时调用 `repo release ci --mode prepare`，创建或更新 `release/pnpm-version` → `main` 的版本 PR。repoctl 执行 `release:verify`，pnpm 消费 intent、升版、生成包内 `CHANGELOG.md` 和 `.changeset/ledger.yaml`，然后 `afterVersion` 构建最新版本的 CLI 快照。自动任务禁用开发者 Git hooks，使用显式质量脚本和 PR 的 CLI CI。版本 PR 不自动合并，prepare job 没有 OIDC 权限且不会发布 npm。
+
+仓库允许 GitHub Actions 创建 PR，但默认 token 权限仍为 read；只有 prepare job 授予 contents / pull-requests / actions write。它使用内置 `GITHUB_TOKEN`，不需要 PAT 或 npm token，并显式 dispatch 版本分支的 CLI CI 和 `publish-weapp.yml` 的 preflight，以便检查真正待合并的版本。后者的 `--ref` 与 `tag` 输入均为 `release/pnpm-version`。首次接入以 npm 已发布的 `0.0.1` 为 main 基线，初始 minor intent 让 PR 提议既定的 `0.1.0`。
+
 weapp CLI 单独由 `.github/workflows/weapp-cli.yml` 验证：目录与 Logo 构建、双语命令/只读诊断/脚手架适配单测、真实 PTY 恢复、后台浏览器实验室及独立 tarball。Node 18 的兼容任务只安装真实 tarball 并运行 plain ESM smoke，不运行要求新 Node 的 Vitest。CLI 开发与命令说明见 `packages/weapp/README.md`，新增项目能力应从中立 catalog 生成，不另写手工名单。
 
 CLI 发布与预检共用 `.github/workflows/publish-weapp.yml` 和 GitHub 托管 runner，`id-token: write` 仅授予其 publish job，不新增 environment。手动运行默认 `mode=preflight`、`tag=main`，tag 字段此时可为 Git ref。预检检查 manifest 的 weapp 身份、仓库、Node 18、public access、npm 版本未发布及 tarball 的运行时与实验室资源，安装并 smoke 测试同一 tarball 后上传产物。构建后本地 `pnpm --filter weapp preflight` 仅执行 npm metadata 与 pack dry-run，明确不检查 CI OIDC。
 
 CI 预检使用 GitHub ID token endpoint 显式请求 `audience=npm:registry.npmjs.org` JWT，再向 npm package OIDC exchange endpoint 发起无 body 的 POST；任何请求失败、非成功状态或缺少 token 均使工作流失败。JWT 与 token 掩码后丢弃，错误只报告阶段与 HTTP 状态，不写凭据文件、不把交换 token 传给发布命令。交换成功仅说明交换完成，不能单独证明允许发布；npm 页面上的 trusted publisher 配置与历史实际发布可辅助核对。`npm publish --dry-run` 无凭据时也可能仅警告，不作为认证验收。
 
-只有明确 `mode=publish` 或 `release: published` 才执行 npm 发布。发布标签必须是已存在的 `weapp-v<packages/weapp/package.json 的版本>` Git tag，其解引用提交必须等于检出的 HEAD；工作流的 `GITHUB_REF` 必须为同一 `refs/tags/...`，`GITHUB_SHA` 也必须等于 HEAD，以免 provenance 记录手动 dispatch 的另一个来源提交。版本仍须未发布。发布同一验证过的 tarball，禁用 lifecycle scripts，npm 自行获取 trusted-publishing 凭据。预检用 `gh workflow run publish-weapp.yml --ref main -f mode=preflight -f tag=main`；只有获准发布并创建正确 tag 后，才用 `gh workflow run publish-weapp.yml --ref weapp-v0.1.0 -f mode=publish -f tag=weapp-v0.1.0`。npm trusted publisher 应匹配 owner `weappjs`、repository `weapp.dev`、workflow filename `publish-weapp.yml` 与当前空 environment；不要为预检创建 release/tag 或调用实际 publish。
+合并版本 PR 后，正式发布使用 repoctl 的 canonical 标签 `weapp@<packages/weapp/package.json 的版本>`，指向该 PR 的合并提交；创建并发布同名 GitHub Release 才触发 npm 发布。旧 `weapp-v<version>` 仍接受用于兼容，但 repoctl 后续消费新 intent 前要求上一版本的 npm 包、canonical tag 和非 draft GitHub Release 均完成，因此新的自动版本流程应使用 canonical 名称。main 尚处于已发布基线时，npm 预检会按预期拒绝重复版本，应预检待发布的版本分支。
+
+只有明确 `mode=publish` 或 `release: published` 才执行 npm 发布。标签的解引用提交必须等于检出的 HEAD；工作流的 `GITHUB_REF` 必须为同一 `refs/tags/...`，`GITHUB_SHA` 也必须等于 HEAD，以免 provenance 记录手动 dispatch 的另一个来源提交。版本仍须未发布。发布同一验证过的 tarball，禁用 lifecycle scripts，npm 自行获取 trusted-publishing 凭据。预检用 `gh workflow run publish-weapp.yml --ref release/pnpm-version -f mode=preflight -f tag=release/pnpm-version`；只有获准发布并创建正确 tag 后，才用 `gh workflow run publish-weapp.yml --ref weapp@0.1.0 -f mode=publish -f tag=weapp@0.1.0`。仅手动 dispatch 发布 npm 时还须补齐 canonical GitHub Release，才能开始下一轮版本 PR。npm trusted publisher 应匹配 owner `weappjs`、repository `weapp.dev`、workflow filename `publish-weapp.yml` 与当前空 environment；不要为预检创建 release/tag 或调用实际 publish。
 
 Commercial CI 和 Open source CI 独立验证、部署和并发控制。各应用路径改动只触发自身流程；共享包、锁文件、根配置和边界检查工具变更触发两站。单站失败不阻塞另一站。按新的工作流检查名称更新 GitHub branch protection；路径过滤的工作流不应被设为对所有 PR 无条件必需的检查。
 

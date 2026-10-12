@@ -8,12 +8,16 @@ on:
       - 'packages/project-catalog/**'
       - 'packages/site-ui/**'
       - 'scripts/check-boundaries*'
+      - scripts/release-versioning.test.mjs
+      - '.changeset/**'
+      - repoctl.config.ts
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - eslint.config.js
       - .github/workflows/weapp-cli.yml
       - .github/workflows/publish-weapp.yml
+      - .github/workflows/version-packages.yml
   push:
     branches: [main]
     paths:
@@ -21,12 +25,16 @@ on:
       - 'packages/project-catalog/**'
       - 'packages/site-ui/**'
       - 'scripts/check-boundaries*'
+      - scripts/release-versioning.test.mjs
+      - '.changeset/**'
+      - repoctl.config.ts
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - eslint.config.js
       - .github/workflows/weapp-cli.yml
       - .github/workflows/publish-weapp.yml
+      - .github/workflows/version-packages.yml
   workflow_dispatch:
 
 permissions:

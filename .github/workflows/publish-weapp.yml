@@ -12,7 +12,7 @@ on:
         type: choice
         options: [preflight, publish]
       tag:
-        description: Git ref for preflight; publish requires weapp-v<package version>
+        description: Git ref for preflight; publish requires weapp@<version> (legacy weapp-v<version> accepted)
         required: true
         default: main
         type: string
@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   publish:
-    if: github.repository == 'weappjs/weapp.dev' && (github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'weapp-v'))
+    if: github.repository == 'weappjs/weapp.dev' && (github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'weapp@') || startsWith(github.event.release.tag_name, 'weapp-v'))
     name: Validate weapp and optionally publish
     runs-on: ubuntu-24.04
     timeout-minutes: 15

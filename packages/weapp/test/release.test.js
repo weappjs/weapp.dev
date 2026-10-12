@@ -119,7 +119,7 @@ describe('weapp publication identity and artifact boundaries', () => {
   it('rejects existing versions and a different registry identity', () => {
     expect(() =>
       validateRegistryMetadata(
-        { name: 'weapp', versions: { '0.0.1': {} } },
+        { name: 'weapp', versions: { '0.0.0': {} } },
         manifest,
       ),
     ).not.toThrow()
@@ -143,7 +143,7 @@ describe('weapp publication identity and artifact boundaries', () => {
 
   it('queries npm metadata without credentials and fails closed on network or status errors', async () => {
     const fetcher = vi.fn(async () =>
-      response({ name: 'weapp', versions: { '0.0.1': {} } }),
+      response({ name: 'weapp', versions: { '0.0.0': {} } }),
     )
     await verifyUnpublished(manifest, fetcher)
     expect(fetcher.mock.calls[0][0]).toBe('https://registry.npmjs.org/weapp')
@@ -170,20 +170,21 @@ describe('weapp publication identity and artifact boundaries', () => {
     expect(body).not.toHaveBeenCalled()
   })
 
-  it('requires a real matching tag and the same checked-out commit', () => {
+  it.each(['weapp@', 'weapp-v'])('requires a real matching %s tag and the same checked-out commit', (prefix) => {
     const sha = 'a'.repeat(40)
-    const releaseEnv = { WEAPP_RELEASE_TAG: `weapp-v${manifest.version}`, GITHUB_REF: `refs/tags/weapp-v${manifest.version}`, GITHUB_SHA: sha }
+    const releaseTag = `${prefix}${manifest.version}`
+    const releaseEnv = { WEAPP_RELEASE_TAG: releaseTag, GITHUB_REF: `refs/tags/${releaseTag}`, GITHUB_SHA: sha }
     const git = vi.fn(() => sha)
-    validateReleaseTag(manifest, releaseEnv, git)
+    expect(validateReleaseTag(manifest, releaseEnv, git)).toBe(releaseTag)
     expect(git.mock.calls[0][0]).toEqual([
       'show-ref',
       '--verify',
       '--hash',
-      `refs/tags/weapp-v${manifest.version}`,
+      `refs/tags/${releaseTag}`,
     ])
     expect(git.mock.calls[1][0]).toEqual([
       'rev-parse',
-      `refs/tags/weapp-v${manifest.version}^{commit}`,
+      `refs/tags/${releaseTag}^{commit}`,
     ])
     expect(() =>
       validateReleaseTag(manifest, { WEAPP_RELEASE_TAG: 'main' }, git),
@@ -197,6 +198,27 @@ describe('weapp publication identity and artifact boundaries', () => {
     ).toThrow('checked-out commit')
     expect(() => validateReleaseTag(manifest, { ...releaseEnv, GITHUB_REF: 'refs/heads/main' }, git)).toThrow('workflow must run from the actual release tag')
     expect(() => validateReleaseTag(manifest, { ...releaseEnv, GITHUB_SHA: 'b'.repeat(40) }, git)).toThrow('workflow provenance commit')
+  })
+
+  it('rejects tag lookalikes, mismatched versions, and mixed canonical/legacy provenance', () => {
+    const sha = 'a'.repeat(40)
+    const git = vi.fn(() => sha)
+    for (const tag of [
+      `weapp@v${manifest.version}`,
+      `weapp-vv${manifest.version}`,
+      `weapp@${manifest.version}-other`,
+      `weapp-v${manifest.version}-other`,
+      `refs/tags/weapp@${manifest.version}`,
+      `weapp@${manifest.version}/extra`,
+      'other@0.1.0',
+      'weapp@99.99.99',
+    ]) {
+      expect(() => validateReleaseTag(manifest, { WEAPP_RELEASE_TAG: tag, GITHUB_REF: `refs/tags/${tag}`, GITHUB_SHA: sha }, git), tag).toThrow('tag must match')
+    }
+    expect(git).not.toHaveBeenCalled()
+    for (const [tag, workflowTag] of [[`weapp@${manifest.version}`, `weapp-v${manifest.version}`], [`weapp-v${manifest.version}`, `weapp@${manifest.version}`]]) {
+      expect(() => validateReleaseTag(manifest, { WEAPP_RELEASE_TAG: tag, GITHUB_REF: `refs/tags/${workflowTag}`, GITHUB_SHA: sha }, git)).toThrow('workflow must run from the actual release tag')
+    }
   })
 })
 
@@ -354,6 +376,8 @@ describe('publication workflow mode boundaries', () => {
       /tag:\n\s+description:[^\n]+\n\s+required: true\n\s+default: main/,
     )
     expect(workflow).toMatch(/release:\n\s+types: \[published\]/)
+    expect(workflow).toContain('startsWith(github.event.release.tag_name, \'weapp@\')')
+    expect(workflow).toContain('startsWith(github.event.release.tag_name, \'weapp-v\')')
     expect(workflow).toContain(
       `WEAPP_PREFLIGHT_MODE: \${{ github.event_name == 'release' && 'publish' || inputs.mode }}`,
     )

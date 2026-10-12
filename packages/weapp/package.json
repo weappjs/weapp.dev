@@ -1,7 +1,7 @@
 {
   "name": "weapp",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "An offline-first mini-app developer toolkit with terminal effects, games, and a visual lab.",
   "author": "ice breaker <1324318532@qq.com>",
   "license": "MIT",
@@ -36,6 +36,7 @@
     "weapp": "bin/weapp.js"
   },
   "files": [
+    "CHANGELOG.md",
     "README.md",
     "bin",
     "dist"

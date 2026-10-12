@@ -296,9 +296,10 @@ function execute(command, args, cwd, stage) {
 }
 
 export function validateReleaseTag(manifest, env, executeGit) {
-  const expected = `weapp-v${manifest.version}`
+  const accepted = [`weapp@${manifest.version}`, `weapp-v${manifest.version}`]
+  const expected = env.WEAPP_RELEASE_TAG
   requireCheck(
-    env.WEAPP_RELEASE_TAG === expected,
+    accepted.includes(expected),
     'release',
     'release tag must match the package version',
   )
@@ -325,6 +326,7 @@ export function validateReleaseTag(manifest, env, executeGit) {
   )
   requireCheck(env.GITHUB_REF === `refs/tags/${expected}`, 'release', 'workflow must run from the actual release tag')
   requireCheck(env.GITHUB_SHA === head, 'release', 'workflow provenance commit must match the checked-out tag commit')
+  return expected
 }
 
 async function verifyArtifact(artifact, manifest) {
