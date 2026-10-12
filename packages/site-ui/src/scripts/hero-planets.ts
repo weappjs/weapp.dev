@@ -193,20 +193,6 @@ export function defineHeroPlanets() {
       orbitAnimation.pause()
       orbitAnimation.currentTime = this.#orbitTime
       let orbitRunning = false
-      let selectedPlanet: HTMLAnchorElement | undefined
-      const updateHighlight = () => {
-        const progress = Number.parseFloat(selectedPlanet?.style.getPropertyValue('--orbit-p') ?? '')
-        const highlighted = Number.isFinite(progress) && progress >= 0 && progress < 1
-        this.toggleAttribute('data-planets-highlight', highlighted)
-        if (highlighted) {
-          // The SVG dash and every planet inherit one animated orbit phase.
-          // A selection only changes its fixed equal-distance path origin.
-          this.style.setProperty('--orbit-highlight-p', String(progress))
-        }
-        else {
-          this.style.removeProperty('--orbit-highlight-p')
-        }
-      }
       const caption = screen.querySelector<HTMLElement>('[data-planet-caption]')
       const captionName = screen.querySelector<HTMLElement>('[data-planet-caption-name]')
       const captionTagline = screen.querySelector<HTMLElement>('[data-planet-caption-tagline]')
@@ -221,7 +207,7 @@ export function defineHeroPlanets() {
       const controller = createPlanetController(
         planets.map(planet => planet.dataset.analyticsProject!).filter(Boolean),
         (state) => {
-          selectedPlanet = undefined
+          let selectedPlanet: HTMLAnchorElement | undefined
           for (const planet of planets) {
             const active = planet.dataset.analyticsProject === state.activeId
             planet.toggleAttribute('data-planet-active', active)
@@ -239,7 +225,6 @@ export function defineHeroPlanets() {
               orbitAnimation.pause()
             }
           }
-          updateHighlight()
           if (caption) {
             caption.hidden = !selectedPlanet
           }
@@ -323,7 +308,6 @@ export function defineHeroPlanets() {
         this.inert = !revealed
         if (revealed) {
           this.removeAttribute('aria-hidden')
-          updateHighlight()
         }
         else {
           this.setAttribute('aria-hidden', 'true')
@@ -360,8 +344,6 @@ export function defineHeroPlanets() {
         replay?.removeEventListener('click', onReplay)
         this.removeAttribute('data-planets-ready')
         this.removeAttribute('data-planets-orbit-running')
-        selectedPlanet = undefined
-        updateHighlight()
         this.inert = true
         this.setAttribute('aria-hidden', 'true')
         for (const planet of planets) {

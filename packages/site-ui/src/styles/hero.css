@@ -114,29 +114,6 @@
 .home-hero-orbit::before {
   mask-image: linear-gradient(to bottom, rgb(0 0 0 / 18%), rgb(0 0 0 / 45%) 40%, #000 80%);
 }
-.home-hero-orbit-highlight {
-  position: absolute;
-  top: var(--hero-center-y);
-  left: 50%;
-  width: calc(var(--orbit-rx) * 2);
-  height: calc(var(--orbit-ry) * 2);
-  overflow: visible;
-  fill: none;
-  pointer-events: none;
-  translate: -50% -50%;
-  opacity: 0;
-}
-.home-hero-orbit-highlight ellipse {
-  stroke: rgb(237 245 240 / 64%);
-  stroke-width: 1.25px;
-  stroke-linecap: round;
-  stroke-dasharray: 5 95;
-  stroke-dashoffset: calc(2.5 - (var(--orbit-highlight-p, 0) + var(--orbit-turn)) * 100);
-  vector-effect: non-scaling-stroke;
-}
-.home-hero-constellation[data-planets-highlight] .home-hero-orbit-highlight {
-  opacity: 1;
-}
 
 .home-hero-planet,
 .home-hero-planet-name {
@@ -371,9 +348,6 @@
   .home-hero-orbit::before {
     border-color: rgb(237 245 240 / 9%);
     mask-image: none;
-  }
-  .home-hero-orbit-highlight {
-    display: none;
   }
   .home-hero-planet-body {
     background: radial-gradient(circle at 28% 20%, #dce2df, #87988f 48%, #34453c);

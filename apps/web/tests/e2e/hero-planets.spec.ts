@@ -170,6 +170,9 @@ for (const path of ['/', '/en/']) {
     expect(target!.width).toBeGreaterThanOrEqual(44)
     expect(target!.height).toBeGreaterThanOrEqual(44)
     await expect(planet.locator('xpath=following-sibling::*[1]')).toBeHidden()
+    const screenshot = testInfo.outputPath('mobile-planets.png')
+    await page.screenshot({ path: screenshot })
+    await testInfo.attach('mobile-planets', { path: screenshot, contentType: 'image/png' })
     await page.clock.fastForward(60000)
     await expect(page.locator(activePlanet)).toHaveCount(0)
     await planet.focus()
@@ -271,7 +274,7 @@ for (const path of ['/', '/en/']) {
       await expectFreshDelay(page, 0)
     })
 
-    test('keeps the shared-phase highlight attached to moving automatic, focused and hovered planets', async ({ page }, testInfo) => {
+    test('emphasizes only planet visuals during moving automatic, focused and hovered spotlights', async ({ page }, testInfo) => {
       // Natural animation time proves that selection keeps the physical
       // orbit moving; a fake clock cannot provide its native layout evidence.
       await page.emulateMedia({ reducedMotion: 'no-preference' })
@@ -279,7 +282,32 @@ for (const path of ['/', '/en/']) {
       const scope = page.locator(constellation)
       await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
       await expect.poll(() => page.locator('.home-hero-screen').evaluate(element => Number.parseFloat(getComputedStyle(element).getPropertyValue('--hero-planet-reveal')))).toBe(1)
-      for (const [interaction, index] of [['focus', 2], ['hover', 7], ['automatic', 0]] as const) {
+      await expect(page.locator(activePlanet)).toHaveCount(0)
+      await expect.poll(() => scope.locator('.home-hero-planet-visual').evaluateAll(elements => elements.every((element) => {
+        const scale = getComputedStyle(element).scale
+        return scale === 'none' || Number.parseFloat(scale) === 1
+      }))).toBe(true)
+      await expect(scope.locator('.home-hero-orbit-highlight, [data-planet-highlight]')).toHaveCount(0)
+      const baseline = await scope.evaluate((element) => {
+        const orbit = getComputedStyle(element.querySelector('.home-hero-orbit')!, '::before')
+        return {
+          orbit: {
+            border: orbit.border,
+            borderRadius: orbit.borderRadius,
+            maskImage: orbit.maskImage,
+            opacity: orbit.opacity,
+            background: orbit.background,
+            boxShadow: orbit.boxShadow,
+            filter: orbit.filter,
+          },
+          targets: [...element.querySelectorAll('.home-hero-planet')].map((planet) => {
+            const link = planet.getBoundingClientRect()
+            const visual = planet.querySelector('.home-hero-planet-visual')!.getBoundingClientRect()
+            return { width: link.width, height: link.height, visualWidth: visual.width, visualHeight: visual.height }
+          }),
+        }
+      })
+      for (const [interaction, index] of [['automatic', 0], ['focus', 2], ['hover', 7]] as const) {
         let selectedIndex: number = index
         if (interaction === 'automatic') {
           await expect(page.locator(activePlanet)).toHaveCount(1)
@@ -297,25 +325,22 @@ for (const path of ['/', '/en/']) {
           await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
         }
         await expectSpotlight(page, selectedIndex)
-        await expect(scope).toHaveAttribute('data-planets-highlight', '')
-        const alignment = await planet.evaluate(async (element) => {
+        const expectedScale = await planet.evaluate(element => Number.parseFloat(getComputedStyle(element).getPropertyValue('--planet-scale')))
+        await expect.poll(() => planet.locator('.home-hero-planet-visual').evaluate(element => Number.parseFloat(getComputedStyle(element).scale))).toBeCloseTo(expectedScale, 4)
+        await expect.poll(() => scope.locator('.home-hero-planet:not([data-planet-active]) .home-hero-planet-visual').evaluateAll(elements => elements.map((element) => {
+          const scale = getComputedStyle(element).scale
+          return scale === 'none' ? 1 : Number.parseFloat(scale)
+        }))).toEqual(Array.from({ length: baseline.targets.length - 1 }).fill(1))
+        await expect(scope).not.toHaveAttribute('data-planets-highlight', '')
+        const observation = await planet.evaluate(async (element) => {
           const constellation = element.closest<HTMLElement>('hero-planets')!
           const animations = constellation.getAnimations()
           await Promise.all(animations.map(animation => animation.ready))
           const measure = (frameTime: number) => {
             const link = element.getBoundingClientRect()
-            const ellipse = constellation.querySelector<SVGEllipseElement>('[data-planet-highlight]')!
-            const dash = getComputedStyle(ellipse).strokeDashoffset
-            const resolved = dash.match(/^(?:calc\()?\s*(-?[\d.]+)(?:px)?\s*\)?$/)
-            if (!resolved) {
-              throw new Error(`The actual SVG dash offset must resolve to one scalar, received ${dash}`)
-            }
-            const offset = Number(resolved[1])
-            const along = ((2.5 - offset) / 100 % 1 + 1) % 1
-            const point = ellipse.getPointAtLength(along * ellipse.getTotalLength()).matrixTransform(ellipse.getScreenCTM()!)
             const style = getComputedStyle(constellation)
             const phase = Number.parseFloat(style.getPropertyValue('--orbit-turn'))
-            const selected = Number.parseFloat(style.getPropertyValue('--orbit-highlight-p'))
+            const orbit = getComputedStyle(constellation.querySelector('.home-hero-orbit')!, '::before')
             const animationTime = animations[0]?.currentTime
             return {
               sampledAt: performance.now(),
@@ -325,10 +350,34 @@ for (const path of ['/', '/en/']) {
               active: element.hasAttribute('data-planet-active'),
               x: link.left + link.width / 2,
               y: link.top + link.height / 2,
-              error: Math.hypot(point.x - link.left - link.width / 2, point.y - link.top - link.height / 2),
               phase,
-              selected,
-              offset,
+              orbit: {
+                border: orbit.border,
+                borderRadius: orbit.borderRadius,
+                maskImage: orbit.maskImage,
+                opacity: orbit.opacity,
+                background: orbit.background,
+                boxShadow: orbit.boxShadow,
+                filter: orbit.filter,
+              },
+              highlightCount: constellation.querySelectorAll('.home-hero-orbit-highlight, [data-planet-highlight]').length,
+              highlightAttribute: constellation.hasAttribute('data-planets-highlight'),
+              highlightPhase: style.getPropertyValue('--orbit-highlight-p').trim(),
+              planets: [...constellation.querySelectorAll('.home-hero-planet')].map((planet) => {
+                const link = planet.getBoundingClientRect()
+                const visual = planet.querySelector('.home-hero-planet-visual')!
+                const visualBounds = visual.getBoundingClientRect()
+                const scale = getComputedStyle(visual).scale
+                return {
+                  active: planet.hasAttribute('data-planet-active'),
+                  width: link.width,
+                  height: link.height,
+                  visualWidth: visualBounds.width,
+                  visualHeight: visualBounds.height,
+                  scale: scale === 'none' ? 1 : Number.parseFloat(scale),
+                  linkScale: getComputedStyle(planet).scale,
+                }
+              }),
             }
           }
           const readFrame = () => new Promise<ReturnType<typeof measure>>((resolve, reject) => requestAnimationFrame((timestamp) => {
@@ -353,25 +402,41 @@ for (const path of ['/', '/en/']) {
             animationCount: animations.length,
             running: animations.every(animation => !animation.pending && animation.playState === 'running'),
             movement: Math.hypot(second.x - first.x, second.y - first.y),
-            selectedPosition: Number.parseFloat((element as HTMLElement).style.getPropertyValue('--orbit-p')),
           }
         })
-        await testInfo.attach(`${interaction}-orbit-observation`, { body: JSON.stringify(alignment, null, 2), contentType: 'application/json' })
-        expect(alignment.elapsed, 'Observe at least 100ms of natural animation time').toBeGreaterThanOrEqual(100)
-        expect(alignment.second.frameTime - alignment.first.frameTime).toBeGreaterThanOrEqual(100)
-        expect(alignment.first.animationTime).not.toBeNull()
-        expect(alignment.second.animationTime).toBeGreaterThan(alignment.first.animationTime!)
-        const phaseAdvance = (alignment.second.phase - alignment.first.phase + 1) % 1
+        await testInfo.attach(`${interaction}-orbit-observation`, { body: JSON.stringify({ baseline, expectedScale, ...observation }, null, 2), contentType: 'application/json' })
+        expect(observation.elapsed, 'Observe at least 100ms of natural animation time').toBeGreaterThanOrEqual(100)
+        expect(observation.second.frameTime - observation.first.frameTime).toBeGreaterThanOrEqual(100)
+        expect(observation.first.animationTime).not.toBeNull()
+        expect(observation.second.animationTime).toBeGreaterThan(observation.first.animationTime!)
+        const phaseAdvance = (observation.second.phase - observation.first.phase + 1) % 1
         expect(phaseAdvance, 'The inherited phase must advance with the native timeline').toBeGreaterThan(0)
-        expect(phaseAdvance).toBeCloseTo((alignment.second.animationTime! - alignment.first.animationTime!) / 240000, 5)
-        expect(alignment.animationCount, 'A single real parent animation must drive both the projects and the highlight').toBe(1)
-        expect(alignment.running, 'Selection must preserve native orbit playback').toBe(true)
-        expect(alignment.movement, `${interaction} must keep the selected link moving`).toBeGreaterThan(0.01)
-        for (const sample of [alignment.first, alignment.second]) {
+        expect(phaseAdvance).toBeCloseTo((observation.second.animationTime! - observation.first.animationTime!) / 240000, 5)
+        expect(observation.animationCount, 'A single real parent animation must drive the projects').toBe(1)
+        expect(observation.running, 'Selection must preserve native orbit playback').toBe(true)
+        expect(observation.movement, `${interaction} must keep the selected link moving`).toBeGreaterThan(0.01)
+        for (const sample of [observation.first, observation.second]) {
           expect(sample.active, 'The same project must stay selected throughout the observation').toBe(true)
-          expect(sample.selected).toBeCloseTo(alignment.selectedPosition, 4)
-          expect(sample.offset, 'The bright arc must use the same inherited phase as its selected project').toBeCloseTo(2.5 - (sample.selected + sample.phase) * 100, 3)
-          expect(sample.error, `${interaction}: the actual SVG arc midpoint must coincide with its moving link center`).toBeLessThanOrEqual(1)
+          expect(sample.planets.filter(planet => planet.active), 'A spotlight must emphasize only one project').toHaveLength(1)
+          expect(sample.orbit, 'Selection must preserve the dim orbit paint').toEqual(baseline.orbit)
+          expect(sample.highlightCount, 'A spotlight must not render an extra orbit arc').toBe(0)
+          expect(sample.highlightAttribute).toBe(false)
+          expect(sample.highlightPhase).toBe('')
+          sample.planets.forEach((planet, index) => {
+            const initial = baseline.targets[index]!
+            const scale = planet.active ? expectedScale : 1
+            expect(planet.scale, 'Only the selected inner visual may scale').toBeCloseTo(scale, 4)
+            expect(['none', '1']).toContain(planet.linkScale)
+            expect(planet.width, 'Selection must keep the link target width stable').toBeCloseTo(initial.width, 3)
+            expect(planet.height, 'Selection must keep the link target height stable').toBeCloseTo(initial.height, 3)
+            expect(planet.visualWidth).toBeCloseTo(initial.visualWidth * scale, 2)
+            expect(planet.visualHeight).toBeCloseTo(initial.visualHeight * scale, 2)
+          })
+        }
+        if (interaction === 'automatic') {
+          const screenshot = testInfo.outputPath('planet-only-spotlight.png')
+          await page.screenshot({ path: screenshot })
+          await testInfo.attach('planet-only-spotlight', { path: screenshot, contentType: 'image/png' })
         }
         await planet.evaluate((element: HTMLAnchorElement) => element.blur())
         await page.mouse.move(0, 0)
