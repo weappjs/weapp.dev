@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { projectLogoFiles, projectLogos } from '../lab/project-logos.js'
 import { runLab, startLab } from '../src/lab.js'
 
 const labs = []
@@ -88,9 +89,31 @@ describe('offline visual lab', () => {
       motion: false,
       catalog: ctx.catalog,
       logo: ctx.logo,
+      projectLogos,
     })
     expect(new URL(lab.url).searchParams.get('lang')).toBe('zh-CN')
     expect(new URL(lab.url).searchParams.get('motion')).toBe('0')
+  })
+
+  it('serves eleven real project logos offline and explicitly identifies the planned fallback', async () => {
+    const lab = await start()
+    const { projectLogos: logos } = await (await fetch(new URL('/data.json', lab.url))).json()
+    expect(Object.keys(logos)).toHaveLength(11)
+    expect(logos['weapp-sqlite']).toEqual({ url: '/logos/miniprogram.svg', fallback: true })
+    expect(Object.values(logos).filter(logo => logo.fallback)).toHaveLength(1)
+    for (const [slug, logo] of Object.entries(logos)) {
+      const response = await fetch(new URL(logo.url, lab.url))
+      expect(response.status, slug).toBe(200)
+      expect(response.headers.get('content-type'), slug).toBe(projectLogoFiles[slug].endsWith('.png') ? 'image/png' : 'image/svg+xml')
+      const body = new Uint8Array(await response.arrayBuffer())
+      expect(body.byteLength, slug).toBeGreaterThan(500)
+      if (projectLogoFiles[slug].endsWith('.png')) {
+        expect([...body.slice(0, 4)]).toEqual([137, 80, 78, 71])
+      }
+      else {
+        expect(new TextDecoder().decode(body), slug).toContain('<svg')
+      }
+    }
   })
 
   it('uses a closed route table and never serves arbitrary files', async () => {
@@ -102,6 +125,10 @@ describe('offline visual lab', () => {
       '/.env',
       '/src/lab.js',
       '/app.js/extra',
+      '/logos/../../package.json',
+      '/logos/%2e%2e%2fsrc/lab.js',
+      '/logos/react.svg',
+      '/logos/unknown.svg',
     ]) {
       const response = await fetch(new URL(path, lab.url))
       expect(response.status, path).toBe(404)

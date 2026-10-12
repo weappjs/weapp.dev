@@ -2,7 +2,7 @@
   "name": "weapp",
   "type": "module",
   "version": "0.1.0",
-  "description": "An offline-first mini-app developer toolkit with terminal effects, games, and a visual lab.",
+  "description": "A project-driven mini-app workbench with animated terminal navigation and an offline ecosystem lab.",
   "author": "ice breaker <1324318532@qq.com>",
   "license": "MIT",
   "homepage": "https://weapp.js.org/",

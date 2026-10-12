@@ -1,10 +1,37 @@
 import { EventEmitter } from 'node:events'
+import { mkdtemp, rm } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
 import { PassThrough } from 'node:stream'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { runFx, runHub, runSnake, selectProjects } from '../src/terminal/index.js'
+import { runCreateWizard, runFx, runHub, runSnake, selectProjects } from '../src/terminal/index.js'
 import { EFFECTS, renderScene } from '../src/terminal/scenes.js'
 import { clipLine, TerminalSession } from '../src/terminal/session.js'
 import { createSnake, resizeSnake, tickSnake, turnSnake } from '../src/terminal/snake.js'
+import { Workbench } from '../src/terminal/workbench.js'
+
+const escape = String.fromCharCode(27)
+const positionPattern = new RegExp(`${escape}\\[(\\d+);1H([\\s\\S]*?)${escape}\\[K`, 'g')
+const colorPattern = new RegExp(`${escape}\\[[\\d;]*m`, 'g')
+const framePattern = new RegExp(`${escape}\\[\\d+;1H`)
+const alternateCount = output => output.text.split(`${escape}[?1049h`).length - 1
+const temporary = []
+const fakeClock = () => vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
+
+function catalog() {
+  return [...['weapp-vite', 'weapp-tailwindcss', 'weapp-ui', 'weapp-repl', 'weapp-worker', 'weapp-sqlite'], ...['vue-mini', 'rezor', 'vite-plugin-taro', 'uni-helper', 'tarojs']].map((slug, index) => ({
+    slug,
+    ecosystem: index < 6 ? 'weapp' : 'other',
+    status: index === 5 ? 'planned' : 'stable',
+    installCommand: `npm install ${slug}`,
+    ...(index === 0 ? { quickStart: { command: 'npm create weapp-vite@latest' } } : {}),
+    locales: {
+      'en': { name: slug, tagline: `Build with ${slug}`, description: `Project ${index} description`, audience: 'Mini-app developers', capabilities: ['Fast builds', 'Component tooling'] },
+      'zh-CN': { name: slug, tagline: '小程序工具', description: `项目 ${index} 的介绍`, audience: '小程序开发者', capabilities: ['构建', '组件'] },
+    },
+    keywords: index === 5 ? ['query', 'sqlite'] : [],
+  }))
+}
 
 function terminal({ raw = false, paused = true, motion = true, width = 80, height = 24 } = {}) {
   const input = new PassThrough()
@@ -24,17 +51,37 @@ function terminal({ raw = false, paused = true, motion = true, width = 80, heigh
   output.rows = height
   output.isTTY = true
   output.text = ''
+  const rows = []
   output.write = vi.fn((value) => {
     output.text += value
+    if (value.includes('\u001B[2J')) {
+      rows.length = 0
+    }
+    for (const match of value.matchAll(positionPattern)) {
+      rows[Number(match[1]) - 1] = match[2].replace(colorPattern, '')
+    }
+    return true
   })
+  output.frame = () => rows.join('\n')
+  output.frames = () => output.write.mock.calls.map(([value]) => value).filter(value => framePattern.test(value))
   const signals = new EventEmitter()
-  const ctx = { lang: 'en', stdin: input, stdout: output, stderr: output, color: false, motion, interactive: true, catalog: [] }
+  const ctx = { lang: 'en', stdin: input, stdout: output, stderr: output, color: false, motion, interactive: true, catalog: catalog(), resources: {} }
   const key = (name, value = '', extra = {}) => input.emit('keypress', value, { name, ...extra })
   return { input, output, signals, ctx, key }
 }
 
-afterEach(() => {
+async function nextFrame() {
+  await vi.advanceTimersByTimeAsync(50)
+}
+
+async function waitScreen(io, title) {
+  await vi.waitFor(() => expect(io.ctx.resources.workbench.screen.title).toBe(title))
+  await nextFrame()
+}
+
+afterEach(async () => {
   vi.useRealTimers()
+  await Promise.all(temporary.splice(0).map(directory => rm(directory, { recursive: true, force: true })))
 })
 
 describe('terminal ownership', () => {
@@ -58,17 +105,20 @@ describe('terminal ownership', () => {
     expect(io.output.text).toContain('\u001B[?25h\u001B[?1049l')
   })
 
-  it('preserves a previously raw, flowing stream', async () => {
+  it('queues a pre-open frame without writing and preserves a raw flowing stream', async () => {
     const io = terminal({ raw: true, paused: false })
     const session = new TerminalSession(io.ctx, { signals: io.signals })
-    const result = session.run({ key: (value, key, finish) => finish(0) })
+    session.render(['Waiting for input ownership'])
+    expect(io.output.write).not.toHaveBeenCalled()
+    const result = session.run({ key: (value, key, finish) => finish(0), render: owner => owner.render(['Ready']) })
+    expect(io.output.frame()).toContain('Ready')
     io.key('escape')
     await result
     expect(io.input.isRaw).toBe(true)
     expect(io.input.isPaused()).toBe(false)
   })
 
-  it('keeps initially idle stdin from consuming an inherited child input', async () => {
+  it('keeps initially idle stdin from consuming inherited child input', async () => {
     const io = terminal()
     const input = new PassThrough()
     input.isRaw = false
@@ -76,7 +126,6 @@ describe('terminal ownership', () => {
       input.isRaw = value
     }
     expect(input.readableFlowing).toBeNull()
-    expect(input.isPaused()).toBe(false)
     const session = new TerminalSession({ ...io.ctx, stdin: input }, { signals: io.signals })
     const result = session.run({ key: (value, key, finish) => finish(0) })
     input.emit('keypress', '', { name: 'return' })
@@ -85,7 +134,7 @@ describe('terminal ownership', () => {
   })
 
   it('cleans timers and listeners on Ctrl+C and process signals', async () => {
-    vi.useFakeTimers()
+    fakeClock()
     for (const event of ['keypress', 'SIGINT', 'SIGTERM']) {
       const io = terminal()
       const session = new TerminalSession(io.ctx, { signals: io.signals })
@@ -107,8 +156,8 @@ describe('terminal ownership', () => {
     }
   })
 
-  it('restores the terminal when a controller fails and never exceeds 20 FPS', async () => {
-    vi.useFakeTimers()
+  it('restores the terminal on controller failures and delayed output failures', async () => {
+    fakeClock()
     const io = terminal()
     const session = new TerminalSession(io.ctx, { signals: io.signals })
     let ticks = 0
@@ -124,19 +173,111 @@ describe('terminal ownership', () => {
     expect(io.input.isRaw).toBe(false)
     expect(io.input.isPaused()).toBe(true)
     expect(vi.getTimerCount()).toBe(0)
+
+    const delayed = new TerminalSession(io.ctx, { signals: io.signals })
+    const pending = delayed.run({ render: owner => owner.render(['Initial']) })
+    const reject = expect(pending).rejects.toThrow('output failed')
+    delayed.render(['Next'])
+    io.output.write.mockImplementation(() => {
+      throw new Error('output failed')
+    })
+    await nextFrame()
+    await reject
+    expect(io.input.listenerCount('keypress')).toBe(0)
+    expect(io.input.isRaw).toBe(false)
+    expect(vi.getTimerCount()).toBe(0)
   })
 
-  it('clips wide text and redraws in the new viewport after resize', async () => {
+  it('caps every frame path at 20 FPS and coalesces keys and resize', async () => {
+    fakeClock()
     const io = terminal({ width: 12, height: 3 })
     const session = new TerminalSession(io.ctx, { signals: io.signals })
-    const result = session.run({ render: owner => owner.render(['绿色工具箱 / WEAPP']), key: (value, key, finish) => finish(0) })
-    expect(io.output.text).not.toContain('WEAPP')
-    io.output.columns = 40
-    io.output.emit('resize')
-    expect(io.output.text).toContain('绿色工具箱 / WEAPP')
+    let selection = 0
+    const render = owner => owner.render([`绿色工具箱 / WEAPP ${selection}`])
+    const result = session.run({ render, key: (value, key, finish) => {
+      if (key.name === 'escape') {
+        finish(0)
+      }
+      else {
+        selection++
+        render(session)
+      }
+    } })
+    expect(io.output.frame()).not.toContain('WEAPP')
+    for (let index = 0; index < 50; index++) {
+      io.key('down')
+      io.output.columns = 40
+      io.output.emit('resize')
+    }
+    expect(io.output.frames()).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(49)
+    expect(io.output.frames()).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(io.output.frames()).toHaveLength(2)
+    expect(io.output.frame()).toContain('绿色工具箱 / WEAPP 50')
     io.key('escape')
     await result
+    expect(io.input.isRaw).toBe(false)
     expect(clipLine('\u001B[32m绿色weapp\u001B[0m', 6)).toBe('\u001B[32m绿色we\u001B[0m')
+  })
+
+  it('only updates changed rows and clears obsolete rows', async () => {
+    fakeClock()
+    const io = terminal()
+    const session = new TerminalSession(io.ctx, { signals: io.signals })
+    const result = session.run({ render: owner => owner.render(['Same', 'Old']), key: (value, key, finish) => finish(0) })
+    session.render(['Same', 'New'])
+    await nextFrame()
+    expect(io.output.frames().at(-1)).toBe('\u001B[2;1HNew\u001B[K')
+    session.render(['Same'])
+    await nextFrame()
+    expect(io.output.frames().at(-1)).toBe('\u001B[2;1H\u001B[K')
+    expect(io.output.frame()).toBe('Same\n')
+    io.key('escape')
+    await result
+  })
+
+  it('waits for drain and writes only the newest frame under backpressure', async () => {
+    fakeClock()
+    const io = terminal()
+    const write = io.output.write.getMockImplementation()
+    io.output.write.mockImplementation(value => write(value) && !value.includes('Initial'))
+    const session = new TerminalSession(io.ctx, { signals: io.signals })
+    const result = session.run({ render: owner => owner.render(['Initial']), key: (value, key, finish) => finish(0) })
+    session.render(['Discard this intermediate frame'])
+    session.render(['Newest'])
+    await vi.advanceTimersByTimeAsync(250)
+    expect(io.output.frames()).toHaveLength(1)
+    expect(io.output.listenerCount('drain')).toBe(1)
+    io.output.emit('drain')
+    expect(io.output.frames()).toHaveLength(2)
+    expect(io.output.frame()).toBe('Newest')
+    io.key('escape')
+    await result
+    expect(io.output.listenerCount('drain')).toBe(0)
+  })
+
+  it('restores input when a delayed drain flush throws', async () => {
+    fakeClock()
+    const io = terminal()
+    const write = io.output.write.getMockImplementation()
+    io.output.write.mockImplementation(value => write(value) && !value.includes('Initial'))
+    const session = new TerminalSession(io.ctx, { signals: io.signals })
+    const result = session.run({ render: owner => owner.render(['Initial']) })
+    const assertion = expect(result).rejects.toThrow('drain failed')
+    session.render(['Pending'])
+    await vi.advanceTimersByTimeAsync(250)
+    io.output.write.mockImplementation(() => {
+      throw new Error('drain failed')
+    })
+    expect(() => io.output.emit('drain')).not.toThrow()
+    await assertion
+    expect(session.closed).toBe(true)
+    expect(io.input.isRaw).toBe(false)
+    expect(io.input.isPaused()).toBe(true)
+    expect(io.input.listenerCount('keypress')).toBe(0)
+    expect(io.output.listenerCount('drain')).toBe(0)
+    expect(io.signals.eventNames()).toEqual([])
   })
 
   it('is safe to close an unopened session', () => {
@@ -150,87 +291,374 @@ describe('terminal ownership', () => {
   })
 })
 
-describe('terminal interactions', () => {
-  it('skips the opening, dispatches with normal input, then returns to the hall', async () => {
+describe('live workbench', () => {
+  it('skips the opening, prioritizes creation, and keeps one input owner', async () => {
+    fakeClock()
     const io = terminal()
     const dispatch = vi.fn(async (argv) => {
-      expect(argv).toEqual(['fx'])
-      expect(io.input.isRaw).toBe(false)
-      expect(io.input.isPaused()).toBe(true)
-      expect(io.input.listenerCount('keypress')).toBe(0)
+      expect(argv).toEqual(['create'])
+      expect(io.input.isRaw).toBe(true)
+      expect(io.input.listenerCount('keypress')).toBe(1)
       return 0
     })
     const result = runHub(io.ctx, dispatch)
+    expect(io.output.frame()).toContain('Press any key')
     io.key('space', ' ')
-    await new Promise(resolve => setImmediate(resolve))
-    expect(io.output.text).toContain('THE HALL')
+    await nextFrame()
+    expect(io.output.frame()).toContain('WORKBENCH')
+    expect(io.output.frame()).toContain('Create with weapp-vite')
+    expect(io.output.frame()).not.toMatch(/snake|game/i)
     io.key('return')
-    await new Promise(resolve => setImmediate(resolve))
+    await nextFrame()
     expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(alternateCount(io.output)).toBe(1)
     io.key('q', 'q')
     expect(await result).toBe(0)
     expect(io.input.isRaw).toBe(false)
   })
 
-  it('passes flag-like QR content literally from the hall', async () => {
+  it('animates idle frames, pauses, and resumes without elapsed-time jumps', async () => {
+    fakeClock()
+    const io = terminal()
+    const result = runHub(io.ctx, vi.fn())
+    io.key('x', 'x')
+    await nextFrame()
+    const initial = io.output.frame()
+    await vi.advanceTimersByTimeAsync(300)
+    expect(io.output.frame()).not.toBe(initial)
+    io.key('space', ' ')
+    await nextFrame()
+    const paused = io.output.frame()
+    const time = io.ctx.resources.workbench.time
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(io.output.frame()).toBe(paused)
+    expect(io.ctx.resources.workbench.time).toBe(time)
+    io.key('space', ' ')
+    await nextFrame()
+    expect(io.ctx.resources.workbench.time - time).toBeLessThanOrEqual(0.05)
+    io.key('q', 'q')
+    await result
+  })
+
+  it('updates project focus immediately while decorative motion is paused', async () => {
+    fakeClock()
+    const io = terminal()
+    const result = runHub(io.ctx, vi.fn())
+    io.key('x', 'x')
+    io.key('down')
+    io.key('return')
+    await nextFrame()
+    const workbench = io.ctx.resources.workbench
+    workbench.paused = true
+    const frozenTime = workbench.time
+    io.key('down')
+    await nextFrame()
+    expect(workbench.focus).toBe(1)
+    expect(workbench.time).toBe(frozenTime)
+    workbench.paused = false
+    await nextFrame()
+    expect(workbench.focus).toBe(1)
+    io.key('escape')
+    io.key('q', 'q')
+    await result
+  })
+
+  it('shares one alternate screen across hall, project details, and a nested wizard', async () => {
+    fakeClock()
     const io = terminal({ motion: false })
-    const dispatch = vi.fn(async () => 0)
+    const dispatch = vi.fn(() => runCreateWizard(io.ctx))
     const result = runHub(io.ctx, dispatch)
-    await new Promise(resolve => setImmediate(resolve))
-    // QR is the tenth entry; navigating upward twice wraps to it.
-    io.key('up')
+    io.key('down')
+    io.key('return')
+    io.key('return')
+    await nextFrame()
+    expect(io.output.frame()).toContain('Capabilities')
+    io.key('escape')
+    io.key('escape')
     io.key('up')
     io.key('return')
-    await new Promise(resolve => setImmediate(resolve))
-    expect(io.output.text).toContain('QR CONTENT')
+    await nextFrame()
+    expect(io.output.frame()).toContain('NEW PROJECT DIRECTORY')
+    expect(alternateCount(io.output)).toBe(1)
+    io.key('escape')
+    await nextFrame()
+    expect(io.output.frame()).toContain('WORKBENCH')
+    io.key('q', 'q')
+    await result
+  })
+
+  it('uses a stable no-motion frame and includes narrow project facts', async () => {
+    fakeClock()
+    const io = terminal({ motion: false, width: 44, height: 18 })
+    const result = runHub(io.ctx, vi.fn())
+    expect(vi.getTimerCount()).toBe(0)
+    const stable = io.output.frame()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(io.output.frame()).toBe(stable)
+    io.key('down')
+    io.key('return')
+    await nextFrame()
+    expect(io.output.frame()).toContain('weapp-vite')
+    expect(io.output.frame()).toContain('Status: stable')
+    expect(io.output.frame()).toContain('npm create weapp-vite@latest')
+    io.key('return')
+    await nextFrame()
+    expect(io.output.frame()).toContain('Capabilities: Fast builds')
+    io.key('escape')
+    io.key('escape')
+    io.key('q', 'q')
+    await result
+  })
+
+  it('passes flag-like QR content literally and captures command output', async () => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const dispatch = vi.fn(async () => {
+      io.ctx.stdout.write('QR generated\n')
+      return 0
+    })
+    const result = runHub(io.ctx, dispatch)
+    io.key('up')
+    io.key('return')
+    await nextFrame()
+    expect(io.output.frame()).toContain('MORE TOOLS')
+    expect(io.output.frame()).not.toMatch(/snake|game/i)
+    io.key('down')
+    io.key('return')
+    await nextFrame()
+    expect(io.output.frame()).toContain('QR CONTENT')
     io.key('text', '--lang=en')
     io.key('return')
-    await new Promise(resolve => setImmediate(resolve))
+    await nextFrame()
     expect(dispatch).toHaveBeenCalledWith(['qr', '--', '--lang=en'])
+    expect(io.output.frame()).toContain('QR generated')
+    expect(alternateCount(io.output)).toBe(1)
     io.key('return')
-    await new Promise(resolve => setImmediate(resolve))
+    io.key('escape')
     io.key('q', 'q')
-    expect(await result).toBe(0)
+    await result
   })
 
-  it('searches both languages, permits q in search, and selects the project', async () => {
-    const io = terminal()
-    const projects = [
-      { slug: 'vite', locales: { 'en': { name: 'Vite', tagline: 'Build' }, 'zh-CN': { description: '构建' } } },
-      { slug: 'sqlite', keywords: ['query'], locales: { en: { name: 'SQLite', tagline: 'Database' } } },
-    ]
-    const result = selectProjects(io.ctx, projects)
-    io.key('q', 'q')
-    expect(io.output.text).toContain('SQLite')
+  it('defaults to six family projects, supports Tab, and honors explicit filters', async () => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const result = selectProjects(io.ctx, io.ctx.catalog)
+    const workbench = io.ctx.resources.workbench
+    expect(workbench.entries()).toHaveLength(6)
+    expect(workbench.entries().map(entry => entry.value.ecosystem)).toEqual(Array.from({ length: 6 }).fill('weapp'))
+    io.key('tab')
+    await nextFrame()
+    expect(workbench.entries()).toHaveLength(11)
+    io.key('text', 'vue')
     io.key('return')
-    expect(await result).toBe(projects[1])
+    expect(await result).toBe(io.ctx.catalog[6])
+    expect(io.input.isRaw).toBe(false)
+
+    const filtered = selectProjects(io.ctx, [io.ctx.catalog[6]], { all: true, filtered: true })
+    io.key('tab')
+    expect(io.ctx.resources.workbench.entries()).toHaveLength(1)
+    io.key('return')
+    expect(await filtered).toBe(io.ctx.catalog[6])
+  })
+
+  it('permits q in project search and handles an empty result', async () => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const result = selectProjects(io.ctx, io.ctx.catalog)
+    io.key('q', 'q')
+    await nextFrame()
+    expect(io.output.frame()).toContain('weapp-sqlite')
+    io.key('x', 'x')
+    await nextFrame()
+    expect(io.output.frame()).toContain('No matching projects')
+    io.key('backspace')
+    io.key('return')
+    expect(await result).toBe(io.ctx.catalog[5])
+  })
+
+  it.each(['success', 'error'])('releases inherited input around external %s and restores the same screen', async (kind) => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const workbench = new Workbench(io.ctx, vi.fn())
+    const running = workbench.run()
+    const original = workbench.screen
+    let release
+    const callback = vi.fn(() => {
+      expect(io.input.isRaw).toBe(false)
+      expect(io.input.isPaused()).toBe(true)
+      expect(io.input.listenerCount('keypress')).toBe(0)
+      return new Promise((resolve, reject) => {
+        release = kind === 'error' ? () => reject(new Error('upstream')) : () => resolve(42)
+      })
+    })
+    const pending = workbench.external(callback)
+    const assertion = kind === 'error' ? expect(pending).rejects.toThrow('upstream') : expect(pending).resolves.toBe(42)
+    expect(callback).toHaveBeenCalledTimes(1)
+    release()
+    await assertion
+    expect(io.input.isRaw).toBe(true)
+    expect(io.input.listenerCount('keypress')).toBe(1)
+    expect(workbench.screen).toBe(original)
+    expect(alternateCount(io.output)).toBe(2)
+    io.key('q', 'q')
+    await running
+  })
+
+  it.each(['q', 'ctrl+c'])('aborts pending operations on %s and refuses external callbacks after exit', async (key) => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    let release
+    let signal
+    const dispatch = vi.fn(() => {
+      signal = io.ctx.operationSignal
+      return new Promise((resolve) => {
+        release = resolve
+      })
+    })
+    const result = runHub(io.ctx, dispatch)
+    const workbench = io.ctx.resources.workbench
+    io.key('return')
+    expect(signal.aborted).toBe(false)
+    io.key(key === 'q' ? 'q' : 'c', key === 'q' ? 'q' : '\u0003', { ctrl: key !== 'q' })
+    expect(await result).toBe(key === 'q' ? 0 : 130)
+    expect(signal.aborted).toBe(true)
+    const execute = vi.fn()
+    await expect(workbench.external(execute)).rejects.toMatchObject({ name: 'AbortError' })
+    expect(execute).not.toHaveBeenCalled()
+    release(0)
+    await nextFrame()
+    expect(io.input.listenerCount('keypress')).toBe(0)
+    expect(io.ctx.resources.workbench).toBeUndefined()
+  })
+
+  it('propagates Ctrl+C from an effect back through the hall', async () => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const dispatch = vi.fn(() => runFx({ ...io.ctx }, ['orbit']))
+    const result = runHub(io.ctx, dispatch)
+    io.key('up')
+    io.key('return')
+    await nextFrame()
+    io.key('up')
+    io.key('return')
+    await nextFrame()
+    expect(dispatch).toHaveBeenCalledWith(['fx'])
+    io.key('c', '\u0003', { ctrl: true })
+    expect(await result).toBe(130)
+    expect(io.ctx.cancelledCode).toBe(130)
+    expect(io.ctx.resources.workbench).toBeUndefined()
+    expect(io.input.isRaw).toBe(false)
+    expect(io.input.listenerCount('keypress')).toBe(0)
+  })
+})
+
+describe('interactive creation wizard', () => {
+  async function directory() {
+    const parent = await mkdtemp(path.join(os.tmpdir(), 'weapp-wizard-'))
+    temporary.push(parent)
+    return path.join(parent, 'my-app')
+  }
+
+  it('collects directory, template, and official command summary in one session', async () => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const target = await directory()
+    const result = runCreateWizard(io.ctx)
+    expect(io.output.frame()).toContain('NEW PROJECT DIRECTORY')
+    io.key('text', target)
+    io.key('return')
+    await waitScreen(io, 'CHOOSE A TEMPLATE')
+    expect(io.output.frame()).toContain('CHOOSE A TEMPLATE')
+    expect(io.output.frame()).toContain('Native mini-app pages')
+    io.key('down')
+    io.key('return')
+    await waitScreen(io, 'READY TO CREATE')
+    expect(io.output.frame()).toContain('READY TO CREATE')
+    expect(io.output.frame()).toContain('Template: wevu')
+    expect(io.output.frame()).toContain('create-weapp-vite@latest')
+    io.key('return')
+    expect(await result).toEqual({ args: ['weapp-vite', target], options: { template: 'wevu' } })
+    expect(alternateCount(io.output)).toBe(1)
+    expect(io.input.isRaw).toBe(false)
+    expect(io.ctx.resources.workbench).toBeUndefined()
+  })
+
+  it('preserves defaults and directory when stepping back, and cancels without execution', async () => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const target = await directory()
+    const result = runCreateWizard(io.ctx)
+    io.key('text', target)
+    io.key('return')
+    await waitScreen(io, 'CHOOSE A TEMPLATE')
+    expect(io.ctx.resources.workbench.screen.entries[io.ctx.resources.workbench.screen.selected].value).toBe('default')
+    io.key('escape')
+    await nextFrame()
+    expect(io.ctx.resources.workbench.screen.value).toBe(target)
+    io.key('escape')
+    expect(await result).toBeNull()
+    expect(io.input.listenerCount('keypress')).toBe(0)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('keeps validation errors editable and restores the terminal on Ctrl+C', async () => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const result = runCreateWizard(io.ctx)
+    io.key('text', './invalid name')
+    io.key('return')
+    await nextFrame()
+    expect(io.output.frame()).toContain('NEW PROJECT DIRECTORY')
+    expect(io.output.frame()).toContain('directory name')
+    io.key('c', '\u0003', { ctrl: true })
+    expect(await result).toBeNull()
+    expect(io.ctx.cancelledCode).toBe(130)
     expect(io.input.isRaw).toBe(false)
   })
 
-  it('pauses and switches effects; no-motion keeps a static view without a timer', async () => {
-    vi.useFakeTimers()
+  it.each(['selector', 'wizard'])('rejects an output failure during a pending %s without hanging', async (kind) => {
+    const io = terminal({ motion: false })
+    io.output.write.mockImplementation(() => {
+      throw new Error('broken terminal')
+    })
+    const result = kind === 'wizard' ? runCreateWizard(io.ctx) : selectProjects(io.ctx, io.ctx.catalog)
+    await expect(result).rejects.toThrow('broken terminal')
+    expect(io.ctx.resources.workbench).toBeUndefined()
+    expect(io.input.isRaw).toBe(false)
+    expect(io.input.listenerCount('keypress')).toBe(0)
+    expect(io.output.listenerCount('resize')).toBe(0)
+  })
+})
+
+describe('effects and gameplay interactions', () => {
+  it('switches static effects without starting an animation timer', async () => {
+    fakeClock()
     const io = terminal({ motion: false })
     const result = runFx(io.ctx, ['logo'])
     expect(vi.getTimerCount()).toBe(0)
     io.key('space', ' ')
-    expect(io.output.text).not.toContain('LIVE')
+    await nextFrame()
+    expect(io.output.frame()).not.toContain('LIVE')
     io.key('right')
-    expect(io.output.text).toContain('ORBIT')
+    await nextFrame()
+    expect(io.output.frame()).toContain('ORBIT')
     io.key('r', 'r')
     io.key('q', 'q')
     expect(await result).toBe(0)
   })
 
   it('pauses gameplay on resize and closes on interruption', async () => {
-    vi.useFakeTimers()
+    fakeClock()
     const io = terminal()
     const result = runSnake(io.ctx, ['snake'])
     io.output.columns = 30
     io.output.emit('resize')
-    expect(io.output.text).toContain('PAUSED')
+    await nextFrame()
+    expect(io.output.frame()).toContain('PAUSED')
     io.output.columns = 10
     io.output.emit('resize')
-    expect(io.output.text).toContain('Window')
+    await nextFrame()
+    expect(io.output.frame()).toContain('Window')
     io.key('c', '\u0003', { ctrl: true })
     expect(await result).toBe(130)
     expect(vi.getTimerCount()).toBe(0)
@@ -238,7 +666,7 @@ describe('terminal interactions', () => {
   })
 
   it.each(['snake', 'matrix'])('%s keeps its speed through repeated input and wall-clock changes', async (kind) => {
-    vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
+    fakeClock()
     async function frameAfter({ repeat = false, jump = false } = {}) {
       const io = terminal()
       const result = kind === 'snake' ? runSnake(io.ctx, ['snake'], { seed: 123 }) : runFx(io.ctx, ['matrix'], { seed: 123 })
@@ -252,7 +680,7 @@ describe('terminal interactions', () => {
         }
         await vi.advanceTimersByTimeAsync(1)
       }
-      const frame = io.output.write.mock.calls.map(([value]) => value).filter(value => value.startsWith('\u001B[H')).at(-1)
+      const frame = io.output.frame()
       io.key('q', 'q')
       expect(await result).toBe(0)
       return frame
@@ -264,6 +692,16 @@ describe('terminal interactions', () => {
 })
 
 describe('deterministic effect frames', () => {
+  it('blends focused project colors smoothly and retains focus cues without color', () => {
+    const options = { width: 90, height: 24, time: 2, catalog: [{ slug: 'first', accent: '#ff0000' }, { slug: 'second', accent: '#0000ff' }], logo: { palette: Array.from({ length: 4 }).fill('#00ff00') }, color: true }
+    const rgb = new RegExp(`${escape}\\[38;2;(\\d+);(\\d+);(\\d+)m`, 'g')
+    const colors = focus => [...renderScene('orbit', { ...options, focus }).join('').matchAll(rgb)].map(match => match.slice(1).map(Number))
+    expect(colors(0).some(([red, green, blue]) => red > 0 && blue === 0)).toBe(true)
+    expect(colors(1).some(([red, green, blue]) => blue > 0 && red === 0)).toBe(true)
+    expect(colors(0.5).some(([red, green, blue]) => red > 0 && red === blue)).toBe(true)
+    expect(renderScene('orbit', { ...options, color: false, focus: 0 })).not.toEqual(renderScene('orbit', { ...options, color: false, focus: 1 }))
+  })
+
   it.each(EFFECTS)('%s replays the same seed and respects narrow dimensions', (effect) => {
     const first = renderScene(effect, { width: 19, height: 7, seed: 123, time: 2 })
     expect(first).toEqual(renderScene(effect, { width: 19, height: 7, seed: 123, time: 2 }))

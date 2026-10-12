@@ -1,12 +1,12 @@
 # weapp
 
-A playful, offline-first toolkit for mini-app developers. Run a particle wordmark in your terminal, explore a local visual lab, find projects, or create a real mini-app with an official scaffold.
+A project-driven, offline-first workbench for mini-app developers. Create weapp-vite first, explore six weapp projects through a living particle stage, and open the same ecosystem in a local browser lab.
 
 ```bash
-npx weapp                     # short opening → interactive hub
+npx weapp                     # particle opening → animated workbench
 npx weapp fx fireworks        # terminal fireworks
-npx weapp play snake          # arrow keys / WASD
-npx weapp lab                 # offline browser lab
+npx weapp create              # directory → template → creation summary
+npx weapp lab                 # offline ecosystem galaxy, weapp-vite selected
 npx weapp projects vue
 npx weapp info tw
 npx weapp create weapp-vite my-app --template wevu
@@ -19,22 +19,25 @@ Node.js 18 or newer is supported by the toolkit. Each upstream scaffold may requ
 
 ## Commands
 
-| Command                               | What it does                                                                                                                                                          |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fx [logo\|orbit\|matrix\|fireworks]` | Terminal effects; Space pauses, R replays, Left/Right switches, Q/Esc exits. `--seed 42`, `--duration 5` (seconds).                                                   |
-| `play snake`                          | Snake with arrows/WASD, Space pause, R restart. Scores stay in memory.                                                                                                |
-| `lab`                                 | Particles, a draggable galaxy, and pointer flow. Adjust density, speed, palette, pause, replay, or download PNG. `--no-open` prints the local URL without opening it. |
-| `projects [query]`                    | Search all eleven projects; `--ecosystem weapp\|taro\|vue-mini\|rezor\|uni-app`, `--status stable\|beta\|planned`, `--json`.                                          |
-| `info <project>`                      | Purpose, scope, platforms, official quick start, and related projects; `--json`.                                                                                      |
-| `docs <project>` / `repo <project>`   | Print the official link; `--open` opens it.                                                                                                                           |
-| `create <route> <directory>`          | Create a new project through an official scaffold; `--dry-run` prints an offline execution plan.                                                                      |
-| `doctor [directory]`                  | Read-only environment, manifest, lockfile, installed-dependency, and mini-app configuration checks; `--json`. Never loads project config or runs project scripts.     |
-| `qr <text\|->`                        | Scannable terminal QR, or SVG with `--output file.svg`. `-` reads stdin.                                                                                              |
-| `palette <hex>`                       | Five shades and black/white text contrast. `--format css`, `--json`, or `--output file`.                                                                              |
+| Command                               | What it does                                                                                                                                                                                                               |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fx [logo\|orbit\|matrix\|fireworks]` | Terminal effects; Space pauses, R replays, Left/Right switches, Q/Esc exits. `--seed 42`, `--duration 5` (seconds).                                                                                                        |
+| `lab`                                 | Six-project galaxy with original logos, project actions, morphing particles, and pointer flow. Toggle all ecosystems, adjust controls, or download PNG. `--no-open` prints the local URL without opening it.               |
+| `projects [query]`                    | Interactive browsing starts with six weapp projects; Tab or `--all` shows all eleven. Queries and JSON search all eleven; `--ecosystem weapp\|taro\|vue-mini\|rezor\|uni-app`, `--status stable\|beta\|planned`, `--json`. |
+| `info <project>`                      | Purpose, scope, platforms, official quick start, and related projects; `--json`.                                                                                                                                           |
+| `docs <project>` / `repo <project>`   | Print the official link; `--open` opens it.                                                                                                                                                                                |
+| `create [route] [directory]`          | Guided weapp-vite setup when a directory is omitted in a TTY; explicit route/directory remains supported. `--dry-run` previews offline.                                                                                    |
+| `doctor [directory]`                  | Read-only environment, manifest, lockfile, installed-dependency, and mini-app configuration checks; `--json`. Never loads project config or runs project scripts.                                                          |
+| `qr <text\|->`                        | Scannable terminal QR, or SVG with `--output file.svg`. `-` reads stdin.                                                                                                                                                   |
+| `palette <hex>`                       | Five shades and black/white text contrast. `--format css`, `--json`, or `--output file`.                                                                                                                                   |
 
 Global options: `--lang zh-CN|en`, `--no-color`, `--no-motion`, `--help`, `--version`. Language follows `LC_ALL`, `LC_MESSAGES`, or `LANG`, with Chinese as fallback. `NO_COLOR` is honored. `--no-motion` removes decorative animation; snake movement remains part of gameplay. Redirected output, CI, and `TERM=dumb` get bounded static output; JSON never contains terminal control sequences. Use `--force` to overwrite an exported QR/palette file; existing files are preserved otherwise.
 
-The hub uses arrow keys and Enter; Esc returns and Q exits. The opening can be skipped with any key. Effects and games restore the original terminal state on exit. The lab listens only on a random loopback port and stops when this CLI exits; no project directory is served.
+The workbench starts on **Create weapp-vite**. Its other entries are weapp ecosystem, project doctor, visual lab, and more tools. Arrow keys and Enter select; Tab switches the ecosystem scope, Space pauses, Esc returns, and Q exits outside text entry. Any key skips the 1.2-second opening without rebuilding the terminal session. Wide windows use two columns; smaller windows stack the stage, and narrow windows prioritize actions and project status. `--no-motion` freezes the same layout. Frames are limited to 20 FPS, changed lines are written separately, and output backpressure drops intermediate frames. Official scaffolds temporarily receive the terminal input; returning restores the page and focus.
+
+The lab defaults to the ecosystem galaxy with weapp-vite selected. Project selection changes the stage palette, focus, maturity, capabilities, and official actions. The particle scene morphs between WEAPP and the selected original project mark. Commands are copied, never executed in the browser. Replay preserves the project and controls while resetting animation and drag offsets. All logos and licensed fonts ship in the package. The lab listens only on a random loopback port and stops when this CLI exits; no project directory is served.
+
+`weapp play snake` and `weapp play --help` remain available as a hidden extra; scores stay in memory.
 
 ## Official scaffolds
 
@@ -46,7 +49,17 @@ The hub uses arrow keys and Enter; Esc returns and Q exits. The opening can be s
 | `uni`        | `create-uni`        | `@dcloudio/uni-app`         |
 | `taro`       | `create-vite-taro`  | `vite-plugin-taro`          |
 
-`weapp-vite --template` supports `default` (the default), `wevu`, `react`, `tailwindcss`, and `multi-platform-sfc`. Other creators retain their own prompts. A target must not exist and its parent must exist. The CLI resolves the latest creator version, checks its Node requirement, executes that exact version, and verifies the generated manifest and dependency before reporting success. It does not install project dependencies or initialize an existing project. Partial output remains available if an upstream creator fails.
+`weapp create` and `weapp create weapp-vite` open the same directory → template → summary wizard. Non-interactive use requires both route and directory and fails without network access if either is missing. The default is the official `default` template. `--template` is supported only for weapp-vite:
+
+| Template             | Purpose                                                      |
+| -------------------- | ------------------------------------------------------------ |
+| `default`            | Native mini-app with Vite                                    |
+| `wevu`               | Vue-style reactivity and single-file components with Wevu    |
+| `react`              | React components for mini-apps                               |
+| `tailwindcss`        | Native mini-app with Tailwind CSS integration                |
+| `multi-platform-sfc` | Single-file components targeting multiple mini-app platforms |
+
+Other creators retain their own prompts. A target must not exist and its parent must exist. The CLI resolves the latest creator version, checks its Node requirement, executes that exact version, and verifies the generated manifest and dependency before reporting success. It does not install project dependencies or initialize an existing project. Partial output remains available if an upstream creator fails.
 
 Each ecosystem project keeps its own release cadence and API. An install command is not a complete integration. Planned SQLite has no install command or production API: **No install command is available yet.**
 
@@ -85,7 +98,7 @@ node packages/weapp/bin/weapp.js
 
 The published tarball contains runtime JavaScript, an embedded catalog and Logo point cloud, and the lab's licensed assets. It does not depend on the monorepo, Astro, or either website. `test:pack` installs the actual tarball in a temporary directory and runs artifact smoke checks. Release tags use `weapp@<version>`; legacy `weapp-v<version>` tags remain accepted.
 
-Versions and changelogs are prepared by repoctl using pnpm's native change intents. Record `pnpm change weapp --bump patch --summary "Describe the fix"` on your development branch, commit the intent, and merge it into `main`. Use `minor` for new features and `pnpm release:plan --json` for a read-only preview. The Version Packages workflow creates or updates `release/pnpm-version`, then runs CLI CI and OIDC preflight on that PR. Private workspaces are excluded explicitly. The first intent proposes `0.0.1` → `0.1.0`; version PRs are reviewed and merged separately from publication.
+Versions and changelogs are prepared by repoctl using pnpm's native change intents. Record `pnpm change weapp --bump patch --summary "Describe the fix"` on your development branch, commit the intent, and merge it into `main`. Use `minor` for new features and `pnpm release:plan --json` for a read-only preview. The Version Packages workflow creates or updates `release/pnpm-version`, then runs CLI CI and OIDC preflight on that PR. Private workspaces are excluded explicitly. The next minor intent after the published `0.1.0` baseline prepares `0.2.0`; version PRs are reviewed and merged separately from publication.
 
 ## Release preflight
 
@@ -111,12 +124,13 @@ MIT
 
 ## 中文说明
 
-`weapp` 是面向小程序开发者的工具箱：终端里能看粒子、玩贪吃蛇，浏览器里能体验离线视觉实验室，也能搜索生态、检查项目、调用官方脚手架、生成二维码与配色。
+`weapp` 是以项目为核心的小程序动态工作台。默认优先创建 weapp-vite；终端与离线浏览器实验室由项目选择驱动粒子、星轨、配色与能力信息。二维码、配色、项目体检和官方脚手架保留独立命令。
 
-直接运行 `npx weapp`，约 1.2 秒的粒子 Logo 开场后进入交互大厅；任意按键跳过。方向键与 Enter 选择，Esc 返回，Q 退出。管道、CI 与不支持交互的终端输出静态命令清单。
+直接运行 `npx weapp`，约 1.2 秒的 Braille 粒子 Logo 开场直接收拢到持续动态的工作台；任意按键跳过。默认焦点为「创建 weapp-vite」，其后是 weapp 生态、项目体检、视觉实验室和更多工具。方向键与 Enter 选择，Tab 切换全部生态，空格暂停，Esc 返回，非文本输入页按 Q 退出。宽窗口双栏、普通窗口上下排列、窄窗口优先保留操作与状态。统一最高 20 FPS，按行差分输出并处理背压；脚手架期间释放终端输入，返回后恢复页面和焦点。管道、CI 与不支持交互的终端输出静态命令清单。
 
 ```bash
 npx weapp --lang zh-CN
+npx weapp create
 npx weapp fx orbit --seed 42
 npx weapp lab --no-open
 npx weapp projects --status stable --json
@@ -129,13 +143,17 @@ npx weapp palette '#07c160' --output colors.css --format css
 
 默认无遥测，无账号或 API key。除主动创建项目和访问外部链接外，功能均离线可用。`--no-color` / `NO_COLOR` 禁用颜色，`--no-motion` 禁用装饰动画（贪吃蛇仍保留游戏移动），`--lang en` 切换英文。二维码和配色文件默认不覆盖，明确传 `--force` 才覆盖。
 
-创建支持 weapp-vite、Vue Mini、Rezor、Uni Helper 和 VPT 的官方入口。新目录必须不存在且父目录已存在；运行前核验 Node 要求、固定解析版本，运行后检查 manifest 和框架依赖。上游选项仍由官方工具询问，依赖安装按其说明执行。`doctor` 只读取文件，不执行配置或脚本。已有项目的接入请参考 `info` 与官方文档。
+交互运行 `weapp create` 或 `weapp create weapp-vite` 直接进入「目录 → 模板 → 创建摘要」，默认官方 `default` 模板；非 TTY 缺目录报用法错误，不联网。五个模板分别用于原生 Vite、Wevu 单文件组件、React、Tailwind CSS 和多平台单文件组件。显式 `create <路线> <目录>` 与离线 `--dry-run` 保持兼容。创建支持 weapp-vite、Vue Mini、Rezor、Uni Helper 和 VPT 的官方入口。新目录必须不存在且父目录已存在；运行前核验 Node 要求、固定解析版本，运行后检查 manifest 和框架依赖。上游选项仍由官方工具询问，依赖安装按其说明执行。`doctor` 只读取文件，不执行配置或脚本。已有项目的接入请参考 `info` 与官方文档。
+
+交互浏览默认展示 weapp-vite、weapp-tailwindcss、weapp-pandacss、weapp-stylex、Varo 和 weapp-sqlite 六项；Tab 或 `projects --all` 展示全部十一项。关键词搜索、JSON 与精确项目查询始终覆盖十一项。
+
+实验室默认进入生态星系并选中 weapp-vite，打包真实 Logo、字体和固定资源表，离线可用。选中项目同步更新成熟度、能力、配色和操作；weapp-vite 可复制创建命令，其他已发布项目可复制官方开始命令，浏览器不会执行本地脚手架。规划项目没有安装或创建操作。粒子场景在 WEAPP 与项目标识之间变形，保留指针流场与拖拽；重播保留项目和控制设置，重置动画与偏移。支持手机、减少动态效果、后台暂停、Canvas 降级与 PNG 下载。`weapp play snake` 和专属帮助仍可使用，游戏从主大厅和总帮助隐藏。
 
 每个项目保留自己的仓库、发布节奏和 API 边界。安装依赖不代表已经完成接入。weapp-sqlite 仍在规划中：**当前还没有安装命令。**
 
 构建后执行 `pnpm --filter weapp preflight` 可本地检查包身份、Node 18、公开访问、版本未发布和打包资源；它不会检查 CI OIDC，也不证明发布权限。`publish-weapp.yml` 手动运行默认 `mode=preflight`、`tag=main`：在 GitHub 托管 runner 上安装并测试同一 tarball，显式请求 GitHub JWT 并调用 npm OIDC exchange。凭据缺失或 exchange 失败即终止；JWT 与 token 仅掩码后丢弃，不落盘、不交给发布命令。交换成功只证明该交换完成，预检上传验证后的 tarball，整个模式不会发布 npm 包。
 
-版本与 changelog 由 repoctl 和 pnpm 原生 change intents 管理。在开发分支运行 `pnpm change weapp --bump patch --summary "修复说明"`，提交 intent 并合入 main；新功能使用 `minor`，`pnpm release:plan --json` 可只读预览。Version Packages 工作流维护 `release/pnpm-version` → main 的版本 PR，主动运行该分支的 CLI CI 和 OIDC 预检，明确排除私有 workspace。首个 intent 提议 `0.0.1` → `0.1.0`；main 仍为已发布基线时，应预检版本分支，而不是重复预检 main。版本 PR 需要单独审查、合并，不会自动发布。
+版本与 changelog 由 repoctl 和 pnpm 原生 change intents 管理。在开发分支运行 `pnpm change weapp --bump patch --summary "修复说明"`，提交 intent 并合入 main；新功能使用 `minor`，`pnpm release:plan --json` 可只读预览。Version Packages 工作流维护 `release/pnpm-version` → main 的版本 PR，主动运行该分支的 CLI CI 和 OIDC 预检，明确排除私有 workspace。已发布 `0.1.0` 后的下一份 minor intent 准备 `0.2.0`；main 仍为已发布基线时，应预检版本分支，而不是重复预检 main。版本 PR 需要单独审查、合并，不会自动发布。
 
 合并版本 PR 后，发布 `weapp@<version>` 的 GitHub Release，标签指向合并提交，再由既有工作流发布 npm。旧 `weapp-v<version>` 标签保持兼容；新的自动版本流程使用 canonical 名称，因为 repoctl 消费下一批 intent 前要求上一版本的 npm、canonical tag 和 GitHub Release 完整。手动发布仍须明确 `mode=publish`，使用 `--ref weapp@0.1.0 -f mode=publish -f tag=weapp@0.1.0`；仅手动发布 npm 时还须补齐 canonical Release。GitHub ref、provenance SHA、检出的 HEAD 与 tag 对应提交必须一致。npm trusted publisher 应匹配 `weappjs/weapp.dev`、`publish-weapp.yml` 及当前空 environment。`npm publish --dry-run` 不能作为 OIDC 认证证明。
 

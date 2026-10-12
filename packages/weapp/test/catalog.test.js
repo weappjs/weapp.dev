@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { findProject, searchProjects } from '../src/catalog.js'
+import { findProject, mainProjects, searchProjects } from '../src/catalog.js'
 import { parseArgs } from '../src/registry.js'
 import { detectLanguage, isInteractive, sanitize } from '../src/shared.js'
 
@@ -24,6 +24,20 @@ describe('catalog discovery', () => {
     expect(searchProjects(catalog, '', { ecosystem: 'uni-app', status: 'stable' }).map(project => project.slug)).toEqual(['uni-helper', 'wot-ui'])
     expect(searchProjects(catalog, 'not-a-project')).toEqual([])
     expect(() => searchProjects(catalog, '', { status: 'released' })).toThrow('Unknown status')
+  })
+
+  it('uses the ecosystem field for six main projects while preserving full searches', () => {
+    expect(mainProjects(catalog).map(project => project.slug)).toEqual([
+      'weapp-vite',
+      'weapp-tailwindcss',
+      'weapp-pandacss',
+      'weapp-stylex',
+      'varo',
+      'weapp-sqlite',
+    ])
+    expect(searchProjects(catalog)).toHaveLength(11)
+    expect(searchProjects(catalog, 'vue')).toContainEqual(findProject(catalog, 'vue'))
+    expect(parseArgs(['projects', '--all']).options.all).toBe(true)
   })
 })
 

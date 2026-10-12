@@ -36,6 +36,6 @@ See [maintenance](docs/maintenance.md), [product boundaries](PRODUCT.md), and [c
 
 ## weapp CLI
 
-`npx weapp` opens a terminal toolkit with particle effects, snake, an offline browser lab, ecosystem discovery, project diagnostics, official scaffolds, QR codes and palettes. See [the CLI commands](packages/weapp/README.md). For local development, run `pnpm --filter weapp build` then `node packages/weapp/bin/weapp.js`.
+`npx weapp` opens an animated project workbench, focused on creating weapp-vite. Six weapp projects drive the terminal stage and offline browser galaxy; all eleven remain searchable. Guided official scaffolds, read-only diagnostics, QR codes and palettes share the CLI. See [the CLI commands](packages/weapp/README.md). For local development, run `pnpm --filter weapp build` then `node packages/weapp/bin/weapp.js`.
 
 [MIT](LICENSE) © 2026 sonofmagic

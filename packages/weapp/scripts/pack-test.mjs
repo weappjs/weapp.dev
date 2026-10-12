@@ -18,7 +18,7 @@ try {
   execute('pnpm', ['build'])
   const packed = JSON.parse(execute('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', temp]))[0]
   const paths = packed.files.map(file => file.path)
-  for (const path of ['bin/weapp.js', 'dist/src/index.js', 'dist/data/catalog.json', 'dist/data/logo.json', 'dist/data/meta.json', 'dist/lab/index.html']) {
+  for (const path of ['bin/weapp.js', 'dist/src/index.js', 'dist/src/templates.js', 'dist/data/catalog.json', 'dist/data/logo.json', 'dist/data/project-logos.json', 'dist/data/meta.json', 'dist/lab/index.html']) {
     assert.ok(paths.includes(path), `Missing published file: ${path}`)
   }
   assert.ok(!paths.some(path => path.startsWith('src/') || path.startsWith('test/') || path.startsWith('scripts/')))

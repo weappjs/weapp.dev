@@ -29,6 +29,20 @@ describe('weapp CLI', () => {
     expect(result.status).toBe(0)
     expect(result.stdout).toMatch(/Usage:/)
     expect(result.stdout).toMatch(/npx weapp/)
+    expect(result.stdout).not.toContain('play snake')
+  })
+
+  it('keeps the game reachable through its dedicated help', () => {
+    const result = run('play', '--help', '--lang', 'en')
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('play snake')
+  })
+
+  it.each([[], ['weapp-vite']])('requires a directory without an interactive terminal: create %j', (...args) => {
+    const result = run('create', ...args, '--dry-run', '--lang', 'en')
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('Usage: weapp create')
+    expect(result.stdout).toBe('')
   })
 
   it('--version reports the package version', () => {

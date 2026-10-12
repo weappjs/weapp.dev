@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import spawn from 'cross-spawn'
 // eslint-disable-next-line e18e/ban-dependencies -- Match the npm-compatible engine/version checks used by official scaffolds.
 import semver from 'semver'
+import { projectLogoFiles } from '../lab/project-logos.js'
 
 const registry = 'https://registry.npmjs.org'
 const repository = 'weappjs/weapp.dev'
@@ -20,16 +21,21 @@ export const requiredPaths = Object.freeze([
   'dist/src/index.js',
   'dist/src/shared.js',
   'dist/src/lab.js',
+  'dist/src/templates.js',
   'dist/data/catalog.json',
   'dist/data/logo.json',
+  'dist/data/project-logos.json',
   'dist/data/meta.json',
   'dist/lab/index.html',
   'dist/lab/style.css',
   'dist/lab/app.js',
+  'dist/lab/project-logos.js',
   'dist/lab/syne-latin-700-normal.woff2',
   'dist/lab/geist-latin-wght-normal.woff2',
   'dist/lab/OFL-Syne.txt',
   'dist/lab/OFL-Geist.txt',
+  'dist/lab/logos/ATTRIBUTION.md',
+  ...Object.values(projectLogoFiles).map(file => `dist/lab/logos/${file}`),
 ])
 
 export class PreflightError extends Error {

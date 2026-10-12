@@ -277,6 +277,10 @@ Content remains visible before observers run. The optional chapter entrance is a
 
 **The Visible Content Rule.** Entrance motion enhances content that is already visible; JavaScript, observers, and animation must not gate reading or navigation.
 
+### CLI workbench and visual lab
+
+The CLI translates the shared particle Logo and project orbit into a Braille stage beside stable terminal actions and facts. Its local visual lab keeps the green action family, neutral dark canvas, self-hosted Syne wordmark and Geist reading typography. The canvas leads; native project selectors, a flat project information rail and pill controls supply the task boundary. Actual project marks sit on pale faces with their original colors, and the planned SQLite project explicitly identifies its shared mini-program fallback. Selection connects the visual focus with the same project's facts and official actions. Desktop details use three columns, then stack on phones; controls and official links retain 44px targets with amber keyboard focus. Reduced motion keeps a static, selectable composition. Lab-specific surface tones, compact field corners and responsive dimensions remain local component choices. See `.impeccable/surfaces/weapp-cli.md` and `docs/weapp-0.2-validation.md` for this surface's state and evidence contract.
+
 ## Do's and Don'ts
 
 ### Do:

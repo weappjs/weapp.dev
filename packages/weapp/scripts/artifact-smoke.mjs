@@ -15,11 +15,18 @@ function run(args, extra = {}) {
 }
 assert.match(run([]), /weapp\.js\.org/)
 assert.match(run(['--help']), /Usage:/)
+assert.doesNotMatch(run(['--help']), /play snake/)
+assert.match(run(['play', '--help']), /play snake/)
 assert.equal(run(['--version']).trim(), manifest.version)
 const projects = JSON.parse(run(['projects', '--json']))
 assert.equal(projects.length, 11)
+assert.equal(projects.filter(project => project.ecosystem === 'weapp').length, 6)
+assert.equal(JSON.parse(run(['projects', '--all', '--json'])).length, 11)
 assert.equal(JSON.parse(run(['info', 'tw', '--json'])).slug, 'weapp-tailwindcss')
 assert.equal(JSON.parse(run(['info', 'weapp-sqlite', '--json'])).installCommand, undefined)
+for (const template of ['default', 'wevu', 'react', 'tailwindcss', 'multi-platform-sfc']) {
+  assert.match(run(['create', 'weapp-vite', `smoke-${template}`, '--template', template, '--dry-run']), /create-weapp-vite@latest/)
+}
 assert.equal(JSON.parse(run(['palette', '#000000', '--json'])).colors.length, 5)
 assert.match(run(['qr', '-'], { input: 'https://weapp.js.org/' }), /[█▀▄]/)
 for (const effect of ['logo', 'orbit', 'matrix', 'fireworks']) {
@@ -27,6 +34,11 @@ for (const effect of ['logo', 'orbit', 'matrix', 'fireworks']) {
 }
 assert.equal(spawnSync(process.execPath, [cli, '--unknown']).status, 1)
 assert.equal(spawnSync(process.execPath, [cli, 'play', 'snake']).status, 1)
+for (const args of [[], ['weapp-vite']]) {
+  const result = spawnSync(process.execPath, [cli, 'create', ...args, '--dry-run'], { encoding: 'utf8', timeout: 5000 })
+  assert.equal(result.status, 1)
+  assert.equal(result.stdout, '')
+}
 
 const child = spawn(process.execPath, [cli, 'lab', '--no-open', '--no-motion'], { stdio: ['ignore', 'pipe', 'pipe'] })
 let errorOutput = ''
@@ -60,6 +72,15 @@ try {
   const data = await (await fetch(new URL('/data.json', url))).json()
   assert.equal(data.catalog.length, 11)
   assert.equal(data.logo.points.length, 2400)
+  assert.equal(Object.keys(data.projectLogos).length, 11)
+  assert.equal(data.projectLogos['weapp-sqlite'].fallback, true)
+  for (const project of data.catalog) {
+    const logo = data.projectLogos[project.slug]
+    assert.ok(logo.url.startsWith('/logos/'), `Logo must use a fixed local route: ${project.slug}`)
+    const asset = await fetch(new URL(logo.url, url))
+    assert.equal(asset.status, 200, `Missing project logo: ${project.slug}`)
+    assert.ok((await asset.arrayBuffer()).byteLength > 100)
+  }
   assert.equal((await fetch(new URL('/package.json', url))).status, 404)
   assert.equal((await fetch(new URL('/%2e%2e/package.json', url))).status, 404)
 }

@@ -1,21 +1,14 @@
-import { sanitize, t, write, writeError } from '../shared.js'
+import { t, write, writeError } from '../shared.js'
 import { EFFECTS, renderScene } from './scenes.js'
 import { TerminalSession } from './session.js'
 import { createSnake, resizeSnake, snakeLines, tickSnake, turnSnake } from './snake.js'
+import { createWizard, selectProject, Workbench } from './workbench.js'
 
 export { renderScene } from './scenes.js'
 export { TerminalSession } from './session.js'
 export { createSnake, resizeSnake, tickSnake, turnSnake } from './snake.js'
 
 const exitKey = key => key.name === 'escape' || key.name === 'q'
-const projectId = project => project.slug || project.id || project.packageName
-const locale = (ctx, project) => project.locales?.[ctx.lang] || project.locales?.['zh-CN'] || {}
-function containsControl(value) {
-  return [...String(value)].some((character) => {
-    const code = character.codePointAt(0)
-    return code < 32 || (code >= 127 && code <= 159)
-  })
-}
 
 function status(ctx, code) {
   if (code === 130 || code === 143) {
@@ -182,238 +175,23 @@ export async function runSnake(ctx, args = ['snake'], options = {}) {
   }))
 }
 
-async function menu(ctx, title, entries, { search = false, subtitle = '' } = {}) {
-  let selected = 0
-  let query = ''
-  const session = new TerminalSession(ctx)
-  const filtered = () => entries.filter(entry => !query || entry.search?.toLowerCase().includes(query.toLowerCase()) || entry.label.toLowerCase().includes(query.toLowerCase()))
-  const render = () => {
-    const matches = filtered()
-    selected = Math.max(0, Math.min(selected, matches.length - 1))
-    const { height } = session.dimensions()
-    const rows = Math.max(1, height - (search ? 6 : 5))
-    const first = Math.max(0, Math.min(selected - Math.floor(rows / 2), matches.length - rows))
-    const lines = [` WEAPP / ${title}`, subtitle ? ` ${subtitle}` : '']
-    if (search) {
-      lines.push(` ${t(ctx, '搜索', 'Search')}: ${sanitize(query) || t(ctx, '直接输入关键词', 'Type to filter')}`)
-    }
-    lines.push('')
-    for (let index = first; index < Math.min(matches.length, first + rows); index++) {
-      const entry = matches[index]
-      const prefix = index === selected ? ' > ' : '   '
-      const line = `${prefix}${entry.label}`
-      lines.push(index === selected && ctx.color ? `\u001B[1;92m${line}\u001B[0m` : line)
-    }
-    if (!matches.length) {
-      lines.push(` ${t(ctx, '没有匹配项目', 'No matching projects')}`)
-    }
-    lines.push('', ` ${t(ctx, '↑/↓ 选择 · Enter 打开 · Esc 返回', '↑/↓ select · Enter open · Esc back')}`)
-    session.render(lines)
-  }
-  const result = await session.run({
-    render,
-    key(value, key, finish) {
-      const matches = filtered()
-      if (key.name === 'escape' || (!search && key.name === 'q')) {
-        return finish(null)
-      }
-      if (key.name === 'up') {
-        selected = (selected + Math.max(1, matches.length) - 1) % Math.max(1, matches.length)
-      }
-      else if (key.name === 'down') {
-        selected = (selected + 1) % Math.max(1, matches.length)
-      }
-      else if (key.name === 'return') {
-        if (matches[selected]) {
-          return finish(matches[selected].value)
-        }
-      }
-      else if (search && key.name === 'backspace') {
-        query = [...query].slice(0, -1).join('')
-        selected = 0
-      }
-      else if (search && value && !key.ctrl && !key.meta && !containsControl(value)) {
-        query = [...query + value].slice(0, 120).join('')
-        selected = 0
-      }
-      render()
-    },
-  })
-  return typeof result === 'number' ? (status(ctx, result), null) : result
+export function selectProjects(ctx, projects = ctx.catalog, options = {}) {
+  return selectProject(ctx, projects, options)
 }
 
-export function selectProjects(ctx, projects = ctx.catalog) {
-  return menu(ctx, t(ctx, '项目目录', 'PROJECTS'), projects.map(project => ({
-    label: `${sanitize(locale(ctx, project).name || projectId(project))}  /  ${sanitize(locale(ctx, project).tagline || project.status)}`,
-    search: JSON.stringify([project.slug, project.packageName, project.keywords, project.locales, project.ecosystem]),
-    value: project,
-  })), { search: true, subtitle: t(ctx, `${projects.length} 个项目，各有用处。`, `${projects.length} projects, each with a purpose.`) })
-}
-
-async function prompt(ctx, title, hint = '') {
-  let value = ''
-  const session = new TerminalSession(ctx)
-  const render = () => session.render([
-    ` WEAPP / ${title}`,
-    '',
-    ` ${hint}`,
-    '',
-    ` > ${sanitize(value)}_`,
-    '',
-    t(ctx, 'Enter 确认 · Esc 返回', 'Enter confirm · Esc back'),
-  ])
-  const result = await session.run({
-    render,
-    key(input, key, finish) {
-      if (key.name === 'escape') {
-        return finish(null)
-      }
-      if (key.name === 'return') {
-        if (value.trim()) {
-          return finish(value.trim())
-        }
-      }
-      else if (key.name === 'backspace') {
-        value = [...value].slice(0, -1).join('')
-      }
-      else if (input && !key.ctrl && !key.meta && !containsControl(input)) {
-        value = [...value + input].slice(0, 2048).join('')
-      }
-      render()
-    },
-  })
-  return typeof result === 'number' ? (status(ctx, result), null) : result
-}
-
-async function opening(ctx) {
-  if (!ctx.motion) {
-    return 0
-  }
-  let elapsed = 0
-  const start = performance.now()
-  const session = new TerminalSession(ctx)
-  return session.run({
-    start(finish) {
-      session.timeout(() => finish(0), 1200)
-    },
-    render() {
-      const { width, height } = session.dimensions()
-      session.render([
-        ...renderScene('logo', { width, height: Math.max(1, height - 3), time: elapsed, seed: 'weapp', logo: ctx.logo, color: ctx.color, opening: true }),
-        '',
-        ` ${t(ctx, '按任意键跳过', 'Press any key to skip')}`,
-      ])
-    },
-    tick() {
-      elapsed = (performance.now() - start) / 1000
-    },
-    key(value, key, finish) {
-      finish(0)
-    },
-  })
-}
-
-async function acknowledge(ctx) {
-  const session = new TerminalSession(ctx, { alternateScreen: false })
-  return session.run({
-    start() {
-      write(ctx, `\n${t(ctx, '按任意键返回大厅…', 'Press any key to return to the hall…')}`)
-    },
-    key(value, key, finish) {
-      finish(0)
-    },
-  })
+export function runCreateWizard(ctx, route = 'weapp-vite', options = {}) {
+  return createWizard(ctx, route, options)
 }
 
 export async function runHub(ctx, dispatch) {
-  const opened = await opening(ctx)
-  if (opened) {
-    return status(ctx, opened)
+  const workbench = new Workbench(ctx, dispatch, { opening: true })
+  ctx.resources ||= {}
+  ctx.resources.workbench = workbench
+  try {
+    return await workbench.run()
   }
-  const group = (zh, en, label) => `${t(ctx, zh, en)} / ${label}`
-  const entries = [
-    { label: group('玩一下', 'PLAY', t(ctx, '粒子与终端特效', 'Particle effects')), value: 'fx' },
-    { label: group('玩一下', 'PLAY', t(ctx, '贪吃蛇', 'Snake')), value: 'snake' },
-    { label: group('玩一下', 'PLAY', t(ctx, '浏览器视觉实验室', 'Visual lab')), value: 'lab' },
-    { label: group('做项目', 'BUILD', t(ctx, '创建新项目', 'Create a project')), value: 'create' },
-    { label: group('做项目', 'BUILD', t(ctx, '项目体检', 'Project doctor')), value: 'doctor' },
-    { label: group('找工具', 'TOOLS', t(ctx, '项目目录', 'Project catalog')), value: 'projects' },
-    { label: group('找工具', 'TOOLS', t(ctx, '了解一个项目', 'Project info')), value: 'info' },
-    { label: group('找工具', 'TOOLS', t(ctx, '打开官方文档', 'Official docs')), value: 'docs' },
-    { label: group('找工具', 'TOOLS', t(ctx, '打开源码仓库', 'Source repository')), value: 'repo' },
-    { label: group('找工具', 'TOOLS', t(ctx, '生成二维码', 'Generate QR code')), value: 'qr' },
-    { label: group('找工具', 'TOOLS', t(ctx, '生成配色', 'Build a palette')), value: 'palette' },
-  ]
-  while (!ctx.cancelled) {
-    const action = await menu(ctx, t(ctx, '交互大厅', 'THE HALL'), entries, { subtitle: t(ctx, '玩一下。做项目。找工具。', 'Play. Build. Find your tools.') })
-    if (!action) {
-      return ctx.cancelled ? (ctx.cancelledCode || 130) : 0
-    }
-    let argv = [action]
-    if (action === 'snake') {
-      argv = ['play', 'snake']
-    }
-    if (action === 'create') {
-      const route = await menu(ctx, t(ctx, '选择项目路线', 'CHOOSE A ROUTE'), [
-        ['weapp-vite', 'Vite / native mini-apps / Wevu / React'],
-        ['vue-mini', 'Vue for native mini-apps'],
-        ['rezor', 'Rezor'],
-        ['uni', 'uni-app'],
-        ['taro', 'Taro'],
-      ].map(([value, label]) => ({ value, label: `${value}  /  ${label}` })))
-      if (!route) {
-        continue
-      }
-      const directory = await prompt(ctx, t(ctx, '新项目目录', 'NEW PROJECT DIRECTORY'), t(ctx, '输入尚不存在的目录名，例如 my-app', 'Enter a new directory, for example my-app'))
-      if (!directory) {
-        continue
-      }
-      argv = ['create', route, directory]
-      if (route === 'weapp-vite') {
-        const template = await menu(ctx, t(ctx, '选择模板', 'CHOOSE A TEMPLATE'), ['default', 'wevu', 'react', 'tailwindcss', 'multi-platform-sfc'].map(value => ({ value, label: value })))
-        if (!template) {
-          continue
-        }
-        argv.push('--template', template)
-      }
-    }
-    else if (['info', 'docs', 'repo'].includes(action)) {
-      const project = await selectProjects(ctx)
-      if (!project) {
-        continue
-      }
-      argv.push(projectId(project))
-      if (action !== 'info') {
-        argv.push('--open')
-      }
-    }
-    else if (action === 'qr' || action === 'palette') {
-      const value = await prompt(ctx, action === 'qr' ? t(ctx, '二维码内容', 'QR CONTENT') : t(ctx, '配色基色', 'PALETTE COLOR'), action === 'qr' ? t(ctx, '输入链接或文本', 'Enter a URL or text') : '#2ba245')
-      if (!value) {
-        continue
-      }
-      argv.push('--', value)
-    }
-    else if (action === 'doctor') {
-      const directory = await prompt(ctx, t(ctx, '检查哪个项目', 'PROJECT TO CHECK'), t(ctx, '输入项目目录，用 . 检查当前目录', 'Enter a directory; use . for the current project'))
-      if (!directory) {
-        continue
-      }
-      argv.push(directory)
-    }
-    if (ctx.cancelled) {
-      return ctx.cancelledCode || 130
-    }
-    const code = await dispatch(argv)
-    if (code === 130 || code === 143 || ctx.cancelled) {
-      return status(ctx, code || 130)
-    }
-    if (action !== 'fx' && action !== 'snake') {
-      const acknowledged = await acknowledge(ctx)
-      if (acknowledged) {
-        return status(ctx, acknowledged)
-      }
-    }
+  finally {
+    workbench.cancel()
+    delete ctx.resources.workbench
   }
-  return ctx.cancelledCode || 130
 }

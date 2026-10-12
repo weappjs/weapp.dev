@@ -4,6 +4,11 @@ export const aliases = { vite: 'weapp-vite', tw: 'weapp-tailwindcss', vpt: 'vite
 const ecosystems = ['weapp', 'taro', 'vue-mini', 'rezor', 'uni-app']
 const statuses = ['stable', 'beta', 'planned']
 
+/** Human discovery starts with weapp; machine output retains the whole catalog. */
+export function mainProjects(catalog) {
+  return catalog.filter(project => project.ecosystem === 'weapp')
+}
+
 export function findProject(catalog, input) {
   const key = input.toLowerCase()
   return catalog.find(project => project.slug === (aliases[key] || key) || project.packageName.toLowerCase() === key || Object.values(project.locales).some(locale => locale.name.toLowerCase() === key))

@@ -6,8 +6,9 @@ import spawn from 'cross-spawn'
 // eslint-disable-next-line e18e/ban-dependencies -- Validate npm engines with the complete semver grammar on Node 18.
 import semver from 'semver'
 import { sanitize, t, write, writeError } from '../shared.js'
+import { TEMPLATES } from '../templates.js'
 
-export const TEMPLATES = Object.freeze(['default', 'wevu', 'react', 'tailwindcss', 'multi-platform-sfc'])
+export { TEMPLATES } from '../templates.js'
 export const CREATE_ADAPTERS = Object.freeze({
   'weapp-vite': { package: 'create-weapp-vite', bin: 'create-weapp-vite', dependency: 'weapp-vite' },
   'vue-mini': { package: 'create-vue-mini', bin: 'create-vue-mini', dependency: '@vue-mini/core' },
@@ -22,6 +23,16 @@ class CreateError extends Error {
     this.en = en
   }
 }
+function cancellationError() {
+  const error = new Error('Project creation cancelled.')
+  error.name = 'AbortError'
+  return error
+}
+function checkCancellation(operations) {
+  if (operations.signal?.aborted || operations.isCancelled?.()) {
+    throw cancellationError()
+  }
+}
 async function exists(filename) {
   try {
     await lstat(filename)
@@ -34,11 +45,10 @@ async function exists(filename) {
     throw error
   }
 }
-export async function scaffoldPlan(route, directory, options = {}) {
+function validateSelection(route, options) {
   if (!Object.hasOwn(CREATE_ADAPTERS, route)) {
     throw new CreateError(`未知创建路线：${route}。可选：${Object.keys(CREATE_ADAPTERS).join(', ')}`, `Unknown creation route: ${route}. Choose ${Object.keys(CREATE_ADAPTERS).join(', ')}`)
   }
-  const adapter = CREATE_ADAPTERS[route]
   if (options.template !== undefined && route !== 'weapp-vite') {
     throw new CreateError('--template 只适用于 weapp-vite。', '--template is only available for weapp-vite.')
   }
@@ -46,6 +56,11 @@ export async function scaffoldPlan(route, directory, options = {}) {
   if (!TEMPLATES.includes(template)) {
     throw new CreateError(`未知模板：${template}。可选：${TEMPLATES.join(', ')}`, `Unknown template: ${template}. Choose ${TEMPLATES.join(', ')}`)
   }
+  return template
+}
+export async function scaffoldPlan(route, directory, options = {}) {
+  const template = validateSelection(route, options)
+  const adapter = CREATE_ADAPTERS[route]
   if (typeof directory !== 'string' || !directory.trim() || [...directory].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) {
     throw new CreateError('请提供有效的新项目目录。', 'Provide a valid new project directory.')
   }
@@ -83,15 +98,36 @@ export function parseScaffolderMetadata(output) {
   // npm returns a JSON string when version is the only populated field.
   return typeof metadata === 'string' ? { version: metadata } : metadata
 }
-export function queryScaffolder(packageName, { timeout = 15000 } = {}) {
+export function queryScaffolder(packageName, { timeout = 15000, signal } = {}) {
   return new Promise((resolve, reject) => {
+    checkCancellation({ signal })
     const child = spawn('npm', ['view', `${packageName}@latest`, 'version', 'engines', '--json', '--registry=https://registry.npmjs.org/', '--fetch-retries=0', `--fetch-timeout=${timeout}`], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
     let output = ''
     let oversized = false
-    const timer = setTimeout(() => {
+    let settled = false
+    let timer
+    let abort
+    const finish = (callback, value) => {
+      if (settled) {
+        return
+      }
+      settled = true
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', abort)
+      callback(value)
+    }
+    abort = () => {
       child.kill()
-      reject(new CreateError('npm 元数据查询超时，请检查网络后重试。', 'The npm metadata query timed out. Check your connection and retry.'))
+      finish(reject, cancellationError())
+    }
+    timer = setTimeout(() => {
+      child.kill()
+      finish(reject, new CreateError('npm 元数据查询超时，请检查网络后重试。', 'The npm metadata query timed out. Check your connection and retry.'))
     }, timeout + 1000)
+    signal?.addEventListener('abort', abort, { once: true })
+    if (signal?.aborted) {
+      abort()
+    }
     child.stdout.on('data', (chunk) => {
       if (output.length < 1024 * 1024) {
         output += chunk
@@ -104,36 +140,61 @@ export function queryScaffolder(packageName, { timeout = 15000 } = {}) {
     // Registry errors can contain credentials from user configuration; never echo them.
     child.stderr.resume()
     child.on('error', () => {
-      clearTimeout(timer)
-      reject(new CreateError('无法运行 npm，请确认 npm 已安装且在 PATH 中。', 'Unable to run npm. Ensure npm is installed and on PATH.'))
+      finish(reject, signal?.aborted ? cancellationError() : new CreateError('无法运行 npm，请确认 npm 已安装且在 PATH 中。', 'Unable to run npm. Ensure npm is installed and on PATH.'))
     })
     child.on('close', (code) => {
-      clearTimeout(timer)
+      if (signal?.aborted) {
+        finish(reject, cancellationError())
+        return
+      }
       if (code !== 0 || oversized) {
-        return reject(new CreateError(`无法从官方 npm 源查询 ${packageName}，请检查网络后重试。`, `Unable to query ${packageName} from the official npm registry. Check your connection and retry.`))
+        finish(reject, new CreateError(`无法从官方 npm 源查询 ${packageName}，请检查网络后重试。`, `Unable to query ${packageName} from the official npm registry. Check your connection and retry.`))
+        return
       }
       try {
-        resolve(parseScaffolderMetadata(output))
+        finish(resolve, parseScaffolderMetadata(output))
       }
       catch {
-        reject(new CreateError('npm 返回了无效的元数据。', 'npm returned invalid metadata.'))
+        finish(reject, new CreateError('npm 返回了无效的元数据。', 'npm returned invalid metadata.'))
       }
     })
   })
 }
-export function executeScaffolder(plan, version) {
+export function executeScaffolder(plan, version, { signal } = {}) {
   return new Promise((resolve, reject) => {
+    checkCancellation({ signal })
     const child = spawn('npm', npmExecArgs(plan, version), { cwd: plan.cwd, stdio: 'inherit' })
-    child.on('error', () => reject(new CreateError('无法启动官方脚手架，请确认 npm 已安装。', 'Unable to start the official scaffolder. Ensure npm is installed.')))
-    child.on('close', (code, signal) => resolve({ code, signal }))
+    const abort = () => child.kill()
+    signal?.addEventListener('abort', abort, { once: true })
+    if (signal?.aborted) {
+      abort()
+    }
+    child.on('error', () => {
+      signal?.removeEventListener('abort', abort)
+      reject(signal?.aborted ? cancellationError() : new CreateError('无法启动官方脚手架，请确认 npm 已安装。', 'Unable to start the official scaffolder. Ensure npm is installed.'))
+    })
+    // Wait for inherited terminal input to be released before restoring the workbench.
+    child.on('close', (code, childSignal) => {
+      signal?.removeEventListener('abort', abort)
+      if (signal?.aborted) {
+        reject(cancellationError())
+      }
+      else {
+        resolve({ code, signal: childSignal })
+      }
+    })
   })
 }
 export async function createProject(route, directory, options = {}, operations = {}) {
+  checkCancellation(operations)
   const plan = await scaffoldPlan(route, directory, options)
+  checkCancellation(operations)
   if (options.dryRun) {
     return { plan, dryRun: true }
   }
-  const metadata = await (operations.query || queryScaffolder)(plan.package)
+  const operationOptions = operations.signal ? [{ signal: operations.signal }] : []
+  const metadata = await (operations.query || queryScaffolder)(plan.package, ...operationOptions)
+  checkCancellation(operations)
   if (!metadata || !semver.valid(metadata.version)) {
     throw new CreateError('脚手架版本元数据无效。', 'The scaffolder version metadata is invalid.')
   }
@@ -145,7 +206,9 @@ export async function createProject(route, directory, options = {}, operations =
   if (await exists(plan.directory)) {
     throw new CreateError(`目标在创建前已出现，不能覆盖：${plan.directory}`, `The target appeared before creation and cannot be overwritten: ${plan.directory}`)
   }
-  const result = await (operations.execute || executeScaffolder)(plan, metadata.version)
+  checkCancellation(operations)
+  const result = await (operations.execute || executeScaffolder)(plan, metadata.version, ...operationOptions)
+  checkCancellation(operations)
   const code = typeof result === 'number' ? result : result?.code
   if (code !== 0) {
     throw new CreateError(`官方脚手架未成功退出。已有文件保留在 ${plan.directory}，请检查后重试。`, `The official scaffolder did not finish successfully. Any generated files remain at ${plan.directory}; inspect them before retrying.`)
@@ -166,13 +229,45 @@ export async function createProject(route, directory, options = {}, operations =
   }
   return { plan, version: metadata.version, manifest }
 }
-export async function runCreate(ctx, args, options) {
-  if (args.length !== 2) {
-    writeError(ctx, t(ctx, '用法：weapp create <路线> <新目录> [--template 模板] [--dry-run]', 'Usage: weapp create <route> <new-directory> [--template template] [--dry-run]'))
+export async function runCreate(ctx, args, options = {}) {
+  if (args.length > 2) {
+    writeError(ctx, t(ctx, '用法：weapp create [路线] [新目录] [--template 模板] [--dry-run]', 'Usage: weapp create [route] [new-directory] [--template template] [--dry-run]'))
     return 1
   }
   try {
-    const result = await createProject(args[0], args[1], options)
+    let selectedArgs = args
+    let selectedOptions = options
+    const route = args[0] ?? 'weapp-vite'
+    validateSelection(route, options)
+    if (args.length < 2) {
+      if (!ctx.interactive || typeof ctx.createWizard !== 'function') {
+        throw new CreateError('非交互终端需要提供新项目目录。用法：weapp create <路线> <新目录>。', 'A non-interactive terminal requires a new project directory. Usage: weapp create <route> <new-directory>.')
+      }
+      const selection = await ctx.createWizard(route, options)
+      if (!selection) {
+        return ctx.cancelledCode || (ctx.cancelled ? 130 : 0)
+      }
+      selectedArgs = selection.args
+      selectedOptions = { ...options, ...selection.options }
+      if (!Array.isArray(selectedArgs) || selectedArgs.length !== 2) {
+        throw new CreateError('创建向导未提供有效的路线和目录。', 'The creation wizard did not provide a valid route and directory.')
+      }
+    }
+    const operations = {
+      ...ctx.createOperations,
+      signal: ctx.operationSignal || ctx.resources?.workbench?.abortSignal || ctx.createOperations?.signal,
+      isCancelled: () => ctx.cancelled || ctx.createOperations?.isCancelled?.(),
+    }
+    const execute = operations.execute || executeScaffolder
+    operations.execute = (plan, version, ...executionOptions) => {
+      const workbench = ctx.resources?.workbench
+      const callback = () => {
+        checkCancellation(operations)
+        return execute(plan, version, ...executionOptions)
+      }
+      return workbench ? workbench.external(callback) : callback()
+    }
+    const result = await createProject(selectedArgs[0], selectedArgs[1], selectedOptions, operations)
     if (result.dryRun) {
       write(ctx, `${t(ctx, '执行目录', 'Working directory')}: ${sanitize(result.plan.cwd)}\n${displayCommand(npmExecArgs(result.plan))}`)
       write(ctx, t(ctx, '实际运行会先检查官方版本和 Node 要求；此预览没有联网或写入文件。', 'Execution first checks the official version and Node requirements; this preview does not access the network or write files.'))
@@ -184,6 +279,9 @@ export async function runCreate(ctx, args, options) {
     return 0
   }
   catch (error) {
+    if (error.name === 'AbortError') {
+      return ctx.cancelledCode || 130
+    }
     writeError(ctx, sanitize(error.zh ? t(ctx, error.zh, error.en) : t(ctx, '无法创建项目，请检查目录权限。', 'Unable to create the project. Check directory permissions.')))
     return 1
   }

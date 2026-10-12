@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import process from 'node:process'
+import { projectLogoFiles, projectLogos } from '../lab/project-logos.js'
 
 // A closed route table is intentional: the lab never exposes the user's files.
 const assets = new Map([
@@ -19,6 +20,10 @@ const assets = new Map([
   ],
   ['/OFL-Syne.txt', ['OFL-Syne.txt', 'text/plain; charset=utf-8']],
   ['/OFL-Geist.txt', ['OFL-Geist.txt', 'text/plain; charset=utf-8']],
+  ...Object.values(projectLogoFiles).map(file => [
+    `/logos/${file}`,
+    [`logos/${file}`, file.endsWith('.png') ? 'image/png' : 'image/svg+xml'],
+  ]),
 ])
 
 function labData(ctx) {
@@ -26,6 +31,7 @@ function labData(ctx) {
     lang: ctx.lang === 'en' ? 'en' : 'zh-CN',
     motion: ctx.motion !== false,
     catalog: ctx.catalog || [],
+    projectLogos,
     logo: Array.isArray(ctx.logo)
       ? { points: ctx.logo }
       : ctx.logo || { points: [] },

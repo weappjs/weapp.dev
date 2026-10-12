@@ -10,7 +10,7 @@ import { runQr } from './commands/qr.js'
 import { runLab } from './lab.js'
 import { parseArgs, renderHelp } from './registry.js'
 import { detectLanguage, errorMessage, isInteractive, requestedLanguage, sanitize, t, write, writeError } from './shared.js'
-import { runFx, runHub, runSnake, selectProjects } from './terminal/index.js'
+import { runCreateWizard, runFx, runHub, runSnake, selectProjects } from './terminal/index.js'
 
 async function loadData(name) {
   return JSON.parse(await readFile(new URL(`../data/${name}.json`, import.meta.url), 'utf8'))
@@ -28,6 +28,7 @@ export async function dispatch(argv, ctx) {
   const parsed = parseArgs(argv)
   const { command, args, options } = parsed
   const current = { ...ctx, lang: options.lang || ctx.lang, color: ctx.color && !options.noColor, motion: ctx.motion && !options.noMotion }
+  current.createWizard = (route, wizardOptions) => runCreateWizard(current, route, wizardOptions)
   if (options.version) {
     write(current, current.version || (await loadData('meta')).version)
     return 0
@@ -68,7 +69,7 @@ export async function dispatch(argv, ctx) {
   if (command === 'projects') {
     const matches = searchProjects(current.catalog, args[0], options)
     if (current.interactive && !args.length && !options.json && matches.length) {
-      const project = await selectProjects(current, matches)
+      const project = await selectProjects(current, matches, { all: options.all || Boolean(options.ecosystem), filtered: Boolean(options.ecosystem || options.status) })
       if (project) {
         write(current, renderProject(current, project))
       }

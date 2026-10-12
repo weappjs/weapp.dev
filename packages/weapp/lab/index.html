@@ -26,19 +26,32 @@
       <section class="introduction" aria-labelledby="title">
         <div>
           <h1 id="title" data-copy="title">让灵感动起来。</h1>
-          <p data-copy="intro">一枚 Logo，十一颗星，一片由你牵动的流场。</p>
+          <p data-copy="intro">从一颗星出发，找到你下一次创作的工具。</p>
         </div>
         <fieldset class="scene-switch" aria-label="视觉场景">
           <legend class="sr-only" data-copy="scene">视觉场景</legend>
           <label
-            ><input type="radio" name="scene" value="particles" checked /><span data-copy="particles"
-              >粒子字标</span
-            ></label
+            ><input type="radio" name="scene" value="particles" /><span data-copy="particles">粒子字标</span></label
           >
-          <label><input type="radio" name="scene" value="orbit" /><span data-copy="orbit">生态星系</span></label>
+          <label
+            ><input type="radio" name="scene" value="orbit" checked /><span data-copy="orbit">生态星系</span></label
+          >
           <label><input type="radio" name="scene" value="flow" /><span data-copy="flow">指针流场</span></label>
         </fieldset>
       </section>
+      <div class="project-navigation">
+        <label class="scope-control"
+          ><span data-copy="scope">探索范围</span
+          ><select id="scope">
+            <option value="weapp" data-copy="scopeWeapp">weapp 生态 · 6</option>
+            <option value="all" data-copy="scopeAll">全部项目 · 11</option>
+          </select></label
+        >
+        <label class="project-control"
+          ><span data-copy="project">项目</span
+          ><select id="project-select" aria-label="选择项目"></select
+        ></label>
+      </div>
       <section class="stage" aria-label="交互画布">
         <canvas id="canvas" tabindex="0" aria-describedby="scene-hint" aria-label="weapp 粒子视觉场景"></canvas>
         <div class="stage-fallback" id="fallback" hidden>
@@ -52,15 +65,40 @@
           </div></noscript
         >
         <div class="stage-top">
-          <span class="stage-name" id="scene-name">WEAPP / PARTICLES</span
+          <span class="stage-name" id="scene-name">WEAPP / ECOSYSTEM</span
           ><span class="phase" id="phase" aria-live="polite"></span>
         </div>
         <div class="stage-bottom">
-          <p id="scene-hint" data-copy="particleHint">移动指针，让粒子轻轻散开。</p>
+          <p id="scene-hint" data-copy="orbitHint">拖拽一颗星，重新安排你的生态。方向键也可选星。</p>
           <span class="motion-notice" id="motion-notice" hidden data-copy="reduced">已减少动态效果</span>
         </div>
-        <div class="project-detail" id="project-detail" hidden>
-          <strong id="project-name"></strong><span id="project-tagline"></span>
+      </section>
+      <section class="project-detail" id="project-detail" aria-labelledby="project-name" hidden>
+        <div class="project-summary">
+          <img id="project-logo" src="/logos/weapp-vite.svg" width="48" height="48" alt="" />
+          <div>
+            <div class="project-heading">
+              <h2 id="project-name"></h2>
+              <span id="project-status"></span>
+            </div>
+            <p id="project-tagline"></p>
+            <p class="logo-note" id="logo-note" hidden data-copy="logoFallback">共享小程序标记 · 暂无独立项目 Logo</p>
+          </div>
+        </div>
+        <div class="project-facts">
+          <p id="project-description"></p>
+          <ul id="project-capabilities" aria-label="项目能力"></ul>
+        </div>
+        <div class="project-links">
+          <div class="command-action" id="command-action">
+            <code id="project-command"></code
+            ><button id="copy-command" type="button" data-copy="copyCommand">复制开始命令</button>
+          </div>
+          <p id="planned-notice" hidden data-copy="plannedNotice">规划中，暂无安装或创建命令。</p>
+          <div class="official-links">
+            <a id="project-docs" target="_blank" rel="noreferrer" data-copy="docs">官方文档</a
+            ><a id="project-repo" target="_blank" rel="noreferrer" data-copy="repo">源代码</a>
+          </div>
         </div>
       </section>
       <section class="toolbar" aria-label="场景控制">
@@ -84,6 +122,7 @@
           <label class="palette-control"
             ><span data-copy="palette">配色</span
             ><select id="palette">
+              <option value="project" data-copy="projectPalette" selected>项目配色</option>
               <option value="jade" data-copy="jade">玉绿</option>
               <option value="ice" data-copy="ice">冰蓝</option>
               <option value="amber" data-copy="amber">琥珀</option>

@@ -5,10 +5,11 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import jsQR from 'jsqr'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CREATE_ADAPTERS, createProject, npmExecArgs, parseScaffolderMetadata, scaffoldPlan } from '../src/commands/create.js'
+import { CREATE_ADAPTERS, createProject, npmExecArgs, parseScaffolderMetadata, runCreate, scaffoldPlan } from '../src/commands/create.js'
 import { diagnose, runDoctor } from '../src/commands/doctor.js'
 import { generatePalette, luminance, runPalette } from '../src/commands/palette.js'
 import { qrTerminal, readQrInput, runQr } from '../src/commands/qr.js'
+import { TEMPLATE_DETAILS, TEMPLATES } from '../src/templates.js'
 
 let directory
 beforeEach(async () => {
@@ -48,6 +49,16 @@ function fakeOperations(dependency, options = {}) {
   }
 }
 describe('official scaffold adapters', () => {
+  it('provides bilingual use cases for each official weapp-vite template', () => {
+    expect(TEMPLATES).toEqual(['default', 'wevu', 'react', 'tailwindcss', 'multi-platform-sfc'])
+    expect(Object.keys(TEMPLATE_DETAILS)).toEqual(TEMPLATES)
+    for (const template of TEMPLATES) {
+      expect(TEMPLATE_DETAILS[template].zh).toMatch(/[\u4E00-\u9FFF]/)
+      expect(TEMPLATE_DETAILS[template].en.length).toBeGreaterThan(20)
+      expect(Object.isFrozen(TEMPLATE_DETAILS[template])).toBe(true)
+    }
+    expect(Object.isFrozen(TEMPLATES)).toBe(true)
+  })
   it('normalizes npm JSON output with and without engines metadata', () => {
     expect(parseScaffolderMetadata('"2.17.1"')).toEqual({ version: '2.17.1' })
     expect(parseScaffolderMetadata('{"version":"1.4.5","engines":{"node":">=18"}}')).toEqual({ version: '1.4.5', engines: { node: '>=18' } })
@@ -117,6 +128,201 @@ describe('official scaffold adapters', () => {
     if (!options.noFiles) {
       expect(await readFile(path.join(directory, 'app', 'package.json'), 'utf8')).toBeTruthy()
     }
+  })
+})
+describe('interactive project creation', () => {
+  it('defaults to weapp-vite and preserves command options through the wizard', async () => {
+    const { ctx, output } = context()
+    ctx.interactive = true
+    ctx.createOperations = fakeOperations('weapp-vite')
+    ctx.createWizard = vi.fn(async () => ({ args: ['weapp-vite', path.join(directory, 'app')], options: { template: 'react' } }))
+    const options = { dryRun: true }
+    expect(await runCreate(ctx, [], options)).toBe(0)
+    expect(ctx.createWizard).toHaveBeenCalledWith('weapp-vite', options)
+    expect(output.stdout).toContain('app react --no-install-skills')
+    expect(output.stdout).toContain('does not access the network')
+    expect(output.stderr).toBe('')
+    expect(ctx.createOperations.query).not.toHaveBeenCalled()
+    expect(ctx.createOperations.execute).not.toHaveBeenCalled()
+    expect(options).toEqual({ dryRun: true })
+  })
+  it.each(['weapp-vite', 'vue-mini', 'rezor', 'uni', 'taro'])('opens the wizard for the explicit %s route', async (route) => {
+    const { ctx } = context()
+    ctx.interactive = true
+    ctx.createOperations = fakeOperations(CREATE_ADAPTERS[route].dependency)
+    ctx.createWizard = vi.fn(async () => ({ args: [route, path.join(directory, 'app')], options: {} }))
+    expect(await runCreate(ctx, [route], {})).toBe(0)
+    expect(ctx.createWizard).toHaveBeenCalledWith(route, {})
+    expect(ctx.createOperations.query).toHaveBeenCalledWith(CREATE_ADAPTERS[route].package)
+    expect(ctx.createOperations.execute).toHaveBeenCalledOnce()
+  })
+  it('skips the wizard when both route and directory are explicit', async () => {
+    const { ctx } = context()
+    ctx.interactive = true
+    ctx.createWizard = vi.fn()
+    ctx.createOperations = fakeOperations('weapp-vite')
+    expect(await runCreate(ctx, ['weapp-vite', path.join(directory, 'app')], {})).toBe(0)
+    expect(ctx.createWizard).not.toHaveBeenCalled()
+    expect(ctx.createOperations.execute).toHaveBeenCalledOnce()
+  })
+  it.each([{ args: [] }, { args: ['weapp-vite'] }, { args: ['uni'] }])('requires a directory in non-interactive terminals: %j', async ({ args }) => {
+    const { ctx, output } = context()
+    ctx.createWizard = vi.fn()
+    ctx.createOperations = fakeOperations('weapp-vite')
+    expect(await runCreate(ctx, args, {})).toBe(1)
+    expect(output.stderr).toContain('requires a new project directory')
+    expect(ctx.createWizard).not.toHaveBeenCalled()
+    expect(ctx.createOperations.query).not.toHaveBeenCalled()
+    expect(ctx.createOperations.execute).not.toHaveBeenCalled()
+  })
+  it.each(['my-app', 'vite', 'constructor', '__proto__'])('rejects non-whitelisted routes before prompting: %s', async (route) => {
+    const { ctx, output } = context()
+    ctx.interactive = true
+    ctx.createWizard = vi.fn()
+    ctx.createOperations = fakeOperations('weapp-vite')
+    expect(await runCreate(ctx, [route], {})).toBe(1)
+    expect(output.stderr).toContain('Unknown creation route')
+    expect(ctx.createWizard).not.toHaveBeenCalled()
+    expect(ctx.createOperations.query).not.toHaveBeenCalled()
+  })
+  it.each([
+    { args: [], options: { template: 'unknown' }, message: 'Unknown template' },
+    { args: ['uni'], options: { template: 'react' }, message: 'only available for weapp-vite' },
+  ])('validates supplied template options before opening the wizard: %j', async ({ args, options, message }) => {
+    const { ctx, output } = context()
+    ctx.interactive = true
+    ctx.createWizard = vi.fn()
+    expect(await runCreate(ctx, args, options)).toBe(1)
+    expect(output.stderr).toContain(message)
+    expect(ctx.createWizard).not.toHaveBeenCalled()
+  })
+  it.each([
+    { cancelled: false, expected: 0 },
+    { cancelled: true, expected: 130 },
+    { cancelled: true, cancelledCode: 143, expected: 143 },
+  ])('returns the wizard cancellation code without executing: %j', async ({ expected, ...state }) => {
+    const { ctx, output } = context()
+    Object.assign(ctx, { interactive: true, ...state })
+    ctx.createWizard = vi.fn(async () => null)
+    ctx.createOperations = fakeOperations('weapp-vite')
+    expect(await runCreate(ctx, [], {})).toBe(expected)
+    expect(output).toEqual({ stdout: '', stderr: '' })
+    expect(ctx.createOperations.query).not.toHaveBeenCalled()
+    expect(ctx.createOperations.execute).not.toHaveBeenCalled()
+  })
+  it.each([
+    { args: ['weapp-vite'] },
+    { args: ['my-app', 'app'] },
+    { args: ['weapp-vite', 'app'], options: { template: 'unsafe' } },
+  ])('rejects invalid wizard results before metadata lookup: %j', async (selection) => {
+    const { ctx, output } = context()
+    ctx.interactive = true
+    ctx.createWizard = vi.fn(async () => selection)
+    ctx.createOperations = fakeOperations('weapp-vite')
+    expect(await runCreate(ctx, [], {})).toBe(1)
+    expect(output.stderr).toBeTruthy()
+    expect(ctx.createOperations.query).not.toHaveBeenCalled()
+  })
+  it.each([0, 2])('releases and restores the workbench around upstream execution with exit %s', async (code) => {
+    const { ctx } = context()
+    const operations = fakeOperations('weapp-vite', { code })
+    const lifecycle = []
+    operations.query.mockImplementation(async () => {
+      lifecycle.push('query')
+      return { version: '1.2.3', engines: { node: '>=18' } }
+    })
+    const execute = operations.execute.getMockImplementation()
+    operations.execute.mockImplementation(async (...args) => {
+      lifecycle.push('execute')
+      return execute(...args)
+    })
+    const external = vi.fn(async (callback) => {
+      lifecycle.push('release')
+      try {
+        return await callback()
+      }
+      finally {
+        lifecycle.push('restore')
+      }
+    })
+    ctx.resources = { workbench: { external } }
+    ctx.createOperations = operations
+    expect(await runCreate(ctx, ['weapp-vite', path.join(directory, 'app')], {})).toBe(code === 0 ? 0 : 1)
+    expect(lifecycle).toEqual(['query', 'release', 'execute', 'restore'])
+    expect(external).toHaveBeenCalledOnce()
+    expect(operations.execute).toHaveBeenCalledWith(expect.objectContaining({ route: 'weapp-vite' }), '1.2.3')
+  })
+  it('does not suspend the workbench or query metadata for a dry-run', async () => {
+    const { ctx } = context()
+    const external = vi.fn()
+    ctx.resources = { workbench: { external } }
+    ctx.createOperations = fakeOperations('weapp-vite')
+    expect(await runCreate(ctx, ['weapp-vite', path.join(directory, 'app')], { dryRun: true })).toBe(0)
+    expect(external).not.toHaveBeenCalled()
+    expect(ctx.createOperations.query).not.toHaveBeenCalled()
+  })
+  it('does not start scaffolding when metadata resolves after a workbench cancellation', async () => {
+    const { ctx, output } = context()
+    const controller = new AbortController()
+    let resolveMetadata
+    let startedQuery
+    const querying = new Promise((resolve) => {
+      startedQuery = resolve
+    })
+    ctx.createOperations = fakeOperations('weapp-vite')
+    ctx.createOperations.query.mockImplementation(() => {
+      startedQuery()
+      return new Promise((resolve) => {
+        resolveMetadata = resolve
+      })
+    })
+    const external = vi.fn(callback => callback())
+    ctx.resources = { workbench: { external, abortSignal: controller.signal } }
+    const creating = runCreate(ctx, ['weapp-vite', path.join(directory, 'app')], {})
+    await querying
+    ctx.cancelledCode = 143
+    controller.abort()
+    resolveMetadata({ version: '1.2.3', engines: { node: '>=18' } })
+    expect(await creating).toBe(143)
+    expect(ctx.createOperations.query).toHaveBeenCalledWith('create-weapp-vite', { signal: controller.signal })
+    expect(ctx.createOperations.execute).not.toHaveBeenCalled()
+    expect(external).not.toHaveBeenCalled()
+    expect(output).toEqual({ stdout: '', stderr: '' })
+    await expect(readFile(path.join(directory, 'app', 'package.json'))).rejects.toHaveProperty('code', 'ENOENT')
+  })
+  it('stops a delayed metadata result after context cancellation even without an AbortSignal', async () => {
+    const { ctx, output } = context()
+    ctx.createOperations = fakeOperations('weapp-vite')
+    ctx.createOperations.query.mockImplementation(async () => {
+      ctx.cancelled = true
+      return { version: '1.2.3' }
+    })
+    expect(await runCreate(ctx, ['weapp-vite', path.join(directory, 'app')], {})).toBe(130)
+    expect(ctx.createOperations.execute).not.toHaveBeenCalled()
+    expect(output).toEqual({ stdout: '', stderr: '' })
+  })
+  it('refuses a pre-aborted creation before looking up metadata', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const operations = { ...fakeOperations('weapp-vite'), signal: controller.signal }
+    await expect(createProject('weapp-vite', path.join(directory, 'app'), {}, operations)).rejects.toHaveProperty('name', 'AbortError')
+    expect(operations.query).not.toHaveBeenCalled()
+    expect(operations.execute).not.toHaveBeenCalled()
+  })
+  it('rechecks cancellation when the workbench hands terminal input to the executor', async () => {
+    const { ctx, output } = context()
+    const controller = new AbortController()
+    ctx.operationSignal = controller.signal
+    ctx.createOperations = fakeOperations('weapp-vite')
+    const external = vi.fn(async (callback) => {
+      controller.abort()
+      return callback()
+    })
+    ctx.resources = { workbench: { external } }
+    expect(await runCreate(ctx, ['weapp-vite', path.join(directory, 'app')], {})).toBe(130)
+    expect(external).toHaveBeenCalledOnce()
+    expect(ctx.createOperations.execute).not.toHaveBeenCalled()
+    expect(output).toEqual({ stdout: '', stderr: '' })
   })
 })
 describe('read-only doctor', () => {

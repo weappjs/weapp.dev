@@ -2,12 +2,12 @@ const copy = {
   'zh-CN': {
     local: '本地 · 离线',
     title: '让灵感动起来。',
-    intro: '一枚 Logo，十一颗星，一片由你牵动的流场。',
+    intro: '从一颗星出发，找到你下一次创作的工具。',
     scene: '视觉场景',
     particles: '粒子字标',
     orbit: '生态星系',
     flow: '指针流场',
-    particleHint: '移动指针，让粒子轻轻散开。',
+    particleHint: 'WEAPP 与项目 Logo 交替聚合。移动指针，让粒子散开。',
     orbitHint: '拖拽一颗星，重新安排你的生态。方向键也可选星。',
     flowHint: '滑动指针，给这片流场一个方向。',
     density: '密度',
@@ -17,6 +17,7 @@ const copy = {
     ice: '冰蓝',
     amber: '琥珀',
     pearl: '珍珠',
+    projectPalette: '项目配色',
     pause: '暂停',
     resume: '继续',
     replay: '重播',
@@ -29,20 +30,35 @@ const copy = {
     saved: 'PNG 已保存。',
     exportFailed: '图片未能保存，请重试。',
     assembling: '正在聚合',
+    expanding: '正在展开',
     ready: '由你来玩',
     paused: '已暂停',
     static: '静态预览',
     canvas: 'weapp 交互视觉画布',
+    scope: '探索范围',
+    scopeWeapp: 'weapp 生态 · 6',
+    scopeAll: '全部项目 · 11',
+    project: '项目',
+    copyCommand: '复制开始命令',
+    copied: '开始命令已复制。',
+    copyFailed: '未能复制。请选中开始命令手动复制。',
+    docs: '官方文档',
+    repo: '源代码',
+    stable: '稳定',
+    beta: '测试中',
+    planned: '规划中',
+    plannedNotice: '规划中，暂无安装或创建命令。',
+    logoFallback: '共享小程序标记 · 暂无独立项目 Logo',
   },
   'en': {
     local: 'Local · offline',
     title: 'Make room for play.',
-    intro: 'One mark. Eleven stars. A flow field that follows your lead.',
+    intro: 'Start with one star. Find the tools for your next creation.',
     scene: 'Visual scene',
     particles: 'Particles',
     orbit: 'Ecosystem',
     flow: 'Flow field',
-    particleHint: 'Move your pointer to gently scatter the particles.',
+    particleHint: 'WEAPP morphs into the project mark. Move your pointer to scatter the particles.',
     orbitHint:
       'Drag a star to rearrange your ecosystem. Arrow keys select stars, too.',
     flowHint: 'Move your pointer to give the flow field a new direction.',
@@ -53,6 +69,7 @@ const copy = {
     ice: 'Ice',
     amber: 'Amber',
     pearl: 'Pearl',
+    projectPalette: 'Project colors',
     pause: 'Pause',
     resume: 'Resume',
     replay: 'Replay',
@@ -66,10 +83,25 @@ const copy = {
     saved: 'PNG saved.',
     exportFailed: 'Could not save the image. Try again.',
     assembling: 'Assembling',
+    expanding: 'Unfolding',
     ready: 'Yours to play',
     paused: 'Paused',
     static: 'Static preview',
     canvas: 'weapp interactive visual canvas',
+    scope: 'Explore',
+    scopeWeapp: 'weapp ecosystem · 6',
+    scopeAll: 'All projects · 11',
+    project: 'Project',
+    copyCommand: 'Copy start command',
+    copied: 'Start command copied.',
+    copyFailed: 'Could not copy. Select the start command and copy it manually.',
+    docs: 'Official docs',
+    repo: 'Source code',
+    stable: 'Stable',
+    beta: 'Beta',
+    planned: 'Planned',
+    plannedNotice: 'Planned. No install or create command is available yet.',
+    logoFallback: 'Shared mini-app mark · no independent project logo yet',
   },
 }
 const palettes = {
@@ -91,10 +123,11 @@ const query = new URLSearchParams(location.search)
 let lang = query.get('lang') === 'en' ? 'en' : 'zh-CN'
 let text = copy[lang]
 let data = { catalog: [], logo: { points: [] }, motion: true }
-let scene = 'particles'
+let scene = 'orbit'
+let scope = 'weapp'
 let density = 0.7
 let speed = 1
-let palette = 'jade'
+let palette = 'project'
 let paused = false
 let reduced = query.get('motion') === '0'
 const media = matchMedia('(prefers-reduced-motion: reduce)')
@@ -106,9 +139,13 @@ let frameId = 0
 let ready = false
 let source = []
 let targets = []
+let markTargets = []
 let flow = []
 let stars = []
 let projects = []
+let allProjects = []
+const images = new Map()
+const logoSamples = new Map()
 let orbitalNodes = []
 let selected = -1
 let dragging = -1
@@ -141,10 +178,36 @@ function localize() {
     lang === 'en' ? 'Scene controls' : '场景控制',
   )
   canvas.setAttribute('aria-label', text.canvas)
+  $('#project-select').setAttribute('aria-label', lang === 'en' ? 'Select a project' : '选择项目')
+  $('#project-capabilities').setAttribute('aria-label', lang === 'en' ? 'Project capabilities' : '项目能力')
   updateControls()
 }
 function status(message) {
   $('#status').textContent = message
+}
+function sceneColors() {
+  if (palette !== 'project') {
+    return palettes[palette]
+  }
+  const accent = projects[selected]?.accent || '#69c7a5'
+  const components = [1, 3, 5].map(index => Number.parseInt(accent.slice(index, index + 2), 16))
+  const tint = weight => `rgb(${components.map(value => Math.round(value + (255 - value) * weight)).join(',')})`
+  return [accent, tint(0.25), tint(0.55), '#d7e8e5']
+}
+function stageInk(color) {
+  const rgb = [1, 3, 5].map(index => Number.parseInt(color.slice(index, index + 2), 16))
+  const luminance = channels => channels.map((value) => {
+    const channel = value / 255
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+  }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0)
+  const background = luminance([4, 6, 7])
+  let ink = rgb
+  // Lift display lettering only. Official logo assets and catalog accents keep
+  // their source colors; 3.5 gives large text margin above the 3:1 minimum.
+  for (let tint = 0.02; (luminance(ink) + 0.05) / (background + 0.05) < 3.5; tint += 0.02) {
+    ink = rgb.map(channel => Math.round(channel + (255 - channel) * tint))
+  }
+  return `#${ink.map(channel => channel.toString(16).padStart(2, '0')).join('')}`
 }
 function updateControls() {
   $('#pause span').textContent = paused ? text.resume : text.pause
@@ -172,8 +235,8 @@ function updateControls() {
     ? text.static
     : paused
       ? text.paused
-      : scene === 'particles' && elapsed < 2.2
-        ? text.assembling
+      : scene !== 'flow' && elapsed < 2.2
+        ? scene === 'orbit' ? text.expanding : text.assembling
         : text.ready
   if ($('#phase').textContent !== phase) {
     $('#phase').textContent = phase
@@ -181,6 +244,58 @@ function updateControls() {
 }
 function count() {
   return Math.max(120, Math.round((width < 600 ? 1300 : 2400) * density))
+}
+function shuffle(points, seed) {
+  const rng = random(seed)
+  for (let i = points.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [points[i], points[j]] = [points[j], points[i]]
+  }
+  return points
+}
+function sampleLogo(project) {
+  if (!project) {
+    return []
+  }
+  let points = logoSamples.get(project.slug)
+  if (!points) {
+    const buffer = document.createElement('canvas')
+    buffer.width = buffer.height = 240
+    const ctx = buffer.getContext('2d')
+    const image = images.get(project.slug)
+    if (!ctx || !image) {
+      return []
+    }
+    const size = 224
+    const scale = size / Math.max(image.naturalWidth, image.naturalHeight)
+    const w = image.naturalWidth * scale
+    const h = image.naturalHeight * scale
+    ctx.drawImage(image, (240 - w) / 2, (240 - h) / 2, w, h)
+    const pixels = ctx.getImageData(0, 0, 240, 240).data
+    points = []
+    for (let y = 0; y < 240; y += 2) {
+      for (let x = 0; x < 240; x += 2) {
+        const index = (y * 240 + x) * 4
+        if (pixels[index + 3] > 150) {
+          const r = pixels[index]
+          const g = pixels[index + 1]
+          const b = pixels[index + 2]
+          // Very dark pixels remain visible on the dark canvas. Preserve the
+          // official mark itself unchanged in the orbit and information rail.
+          const color = Math.max(r, g, b) < 60 ? '#d7e8e5' : `rgb(${r},${g},${b})`
+          points.push({ x: x / 240 - 0.5, y: y / 240 - 0.5, color })
+        }
+      }
+    }
+    shuffle(points, 41)
+    logoSamples.set(project.slug, points)
+  }
+  const size = Math.min(width * 0.54, height * 0.64)
+  return points.map(point => ({
+    x: point.x * size + width / 2,
+    y: point.y * size + height / 2,
+    color: point.color,
+  }))
 }
 function sampleWord() {
   const buffer = document.createElement('canvas')
@@ -216,11 +331,7 @@ function sampleWord() {
     (height * 0.35) / (maxY - minY),
   )
   // Deterministic shuffle keeps every density uniformly distributed over the word.
-  const rng = random(73)
-  for (let i = points.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [points[i], points[j]] = [points[j], points[i]]
-  }
+  shuffle(points, 73)
   return points.map(p => ({
     x: (p.x - (minX + maxX) / 2) * scale + width / 2,
     y: (p.y - (minY + maxY) / 2) * scale + height / 2,
@@ -235,8 +346,9 @@ function rebuild() {
     alpha: 0.15 + rng() * 0.32,
   }))
   const points = data.logo?.points || []
-  source = points.slice(0, count())
   targets = sampleWord()
+  markTargets = sampleLogo(projects[selected])
+  source = Array.from({ length: Math.min(count(), Math.max(points.length, targets.length, markTargets.length)) }, (_, i) => points[i % points.length] || { brightness: 0.8, size: 0.007, colorIndex: i % 4 })
   particleOffsets = source.map(() => ({ x: 0, y: 0 }))
   const flowCount = Math.round((width < 600 ? 550 : 1050) * density)
   flow = Array.from({ length: flowCount }, (_, i) => ({
@@ -287,15 +399,18 @@ function backdrop() {
   context.globalAlpha = 1
 }
 function drawParticles(dt) {
-  const t = reduced ? 0 : Math.max(0, Math.min(1, (elapsed - 0.7) / 1.5))
-  const eased = 1 - (1 - t) ** 4
+  const beat = elapsed % 8
+  const t = reduced ? 1 : beat < 4 ? Math.max(0, Math.min(1, (beat - 0.7) / 1.5)) : 1 - Math.max(0, Math.min(1, (beat - 4.7) / 1.5))
+  const eased = t < 0.5 ? 8 * t ** 4 : 1 - 8 * (1 - t) ** 4
   const logoSize = Math.min(width * 0.47, height * 0.63)
-  const colors = palettes[palette]
+  const colors = sceneColors()
+  canvas.dataset.morph = eased > 0.95 ? 'project' : eased < 0.05 ? 'wordmark' : 'transition'
   for (let i = 0; i < source.length; i++) {
     const point = source[i]
-    const target = targets[i % targets.length]
-    const fromX = (point.x - 0.5) * logoSize + width / 2
-    const fromY = (point.y - 0.5) * logoSize + height / 2
+    const target = markTargets[i % markTargets.length]
+    const word = targets[i % targets.length]
+    const fromX = word?.x ?? ((point.x || 0.5) - 0.5) * logoSize + width / 2
+    const fromY = word?.y ?? ((point.y || 0.5) - 0.5) * logoSize + height / 2
     const spin = Math.sin(t * Math.PI) * 17
     let x
       = fromX
@@ -332,7 +447,8 @@ function drawParticles(dt) {
     const brightness
       = (point.brightness || 0.7)
         * (0.82 + Math.sin(i * 7.1 + elapsed * 0.55) * (reduced ? 0 : 0.12))
-    dot(x, y, radius, colors[point.colorIndex % 4 || 0], brightness)
+    const color = eased > 0.5 ? target?.color || colors[0] : colors[point.colorIndex % 4 || 0]
+    dot(x, y, radius, color, brightness)
     if (point.sparkle && radius > 1.1) {
       context.strokeStyle = colors[point.colorIndex % 4 || 0]
       context.lineWidth = 0.55
@@ -353,37 +469,58 @@ function drawParticles(dt) {
     context.fillText('WEAPP', width / 2, height / 2)
   }
 }
-function nodeBase(index) {
-  const angle
-    = (index / projects.length) * Math.PI * 2
-      - Math.PI / 2
-      + (reduced ? 0 : elapsed * 0.035)
-  const radiusX = width * (width < 600 ? 0.35 : 0.36)
-  const radiusY = height * 0.3
-  const tier = index % 3 === 0 ? 0.82 : 1
+function nodeBase(index, trail = 0) {
+  const outer = index >= 6
+  const ringCount = outer ? projects.length - 6 : Math.min(6, projects.length)
+  const ringIndex = outer ? index - 6 : index
+  const angle = ringIndex / ringCount * Math.PI * 2 - Math.PI / 2 + (outer ? 0.35 : 0) + (reduced ? 0 : Math.max(0, elapsed - 2.2) * (outer ? -0.03 : 0.045)) - trail
+  const radiusX = width * (outer ? 0.42 : projects.length > 6 ? 0.29 : 0.35)
+  const radiusY = height * (outer ? 0.34 : projects.length > 6 ? 0.22 : 0.3)
+  const depth = (Math.sin(angle) + 1) / 2
   return {
-    x: width / 2 + Math.cos(angle) * radiusX * tier,
-    y: height / 2 + Math.sin(angle) * radiusY * tier,
+    x: width / 2 + Math.cos(angle) * radiusX,
+    y: height / 2 + Math.sin(angle) * radiusY,
+    depth,
   }
 }
 function drawOrbit() {
+  const progress = reduced ? 1 : Math.max(0, Math.min(1, (elapsed - 0.55) / 1.65))
+  const unfolded = 1 - (1 - progress) ** 4
+  const reveal = reduced ? 1 : Math.max(0, Math.min(1, (elapsed - 1.4) / 0.8))
+  if (!reduced && elapsed < 2.2 && projects.length) {
+    const size = Math.min(width * 0.43, height * 0.59)
+    const colors = sceneColors()
+    for (let i = 0; i < source.length; i++) {
+      const point = source[i]
+      const node = nodeBase(i % projects.length)
+      const fromX = (point.x - 0.5) * size + width / 2
+      const fromY = (point.y - 0.5) * size + height / 2
+      const spread = 8 * progress
+      const x = fromX + (node.x + Math.cos(i * 2.31) * spread - fromX) * unfolded
+      const y = fromY + (node.y + Math.sin(i * 2.31) * spread - fromY) * unfolded
+      const color = progress < 0.45 ? colors[point.colorIndex % 4 || 0] : projects[i % projects.length].accent
+      dot(x, y, Math.max(0.7, Math.min(1.8, point.size * size * 0.32)), color, point.brightness * (1 - reveal))
+    }
+  }
   context.globalAlpha = 1
   context.strokeStyle = '#20352e'
   context.lineWidth = 0.8
-  for (const scale of [0.82, 1]) {
+  for (const outer of projects.length > 6 ? [false, true] : [false]) {
     context.beginPath()
     context.ellipse(
       width / 2,
       height / 2,
-      width * (width < 600 ? 0.35 : 0.36) * scale,
-      height * 0.3 * scale,
+      width * (outer ? 0.42 : projects.length > 6 ? 0.29 : 0.35) * unfolded,
+      height * (outer ? 0.34 : projects.length > 6 ? 0.22 : 0.3) * unfolded,
       0,
       0,
       Math.PI * 2,
     )
+    context.globalAlpha = progress
     context.stroke()
   }
-  context.fillStyle = palettes[palette][0]
+  context.globalAlpha = reveal
+  context.fillStyle = stageInk(sceneColors()[0])
   context.font = `700 ${width < 600 ? 43 : 64}px Syne`
   context.textAlign = 'center'
   context.textBaseline = 'middle'
@@ -392,46 +529,75 @@ function drawOrbit() {
   context.fillStyle = '#98aaa4'
   context.fillText(
     lang === 'en'
-      ? `${projects.length} projects · one ecosystem`
-      : `${projects.length} 个项目 · 一个生态`,
+      ? `${projects.length} projects · ${scope === 'weapp' ? 'weapp ecosystem' : 'mini-app tools'}`
+      : `${projects.length} 个项目 · ${scope === 'weapp' ? 'weapp 生态' : '小程序工具'}`,
     width / 2,
     height / 2 + 38,
   )
-  orbitalNodes = projects.map((project, index) => {
+  const nodes = projects.map((project, index) => {
     const base = nodeBase(index)
     const offset = offsets.get(project.slug) || { x: 0, y: 0 }
     const x = Math.max(
       22,
-      Math.min(width - 22, index === dragging ? pointer.x : base.x + offset.x),
+      Math.min(width - 22, index === dragging ? pointer.x : width / 2 + (base.x - width / 2) * unfolded + offset.x),
     )
     const y = Math.max(
       58,
-      Math.min(height - 64, index === dragging ? pointer.y : base.y + offset.y),
+      Math.min(height - 64, index === dragging ? pointer.y : height / 2 + (base.y - height / 2) * unfolded + offset.y),
     )
-    const radius = width < 600 ? 8 : 10
+    const radius = (width < 600 ? 16 : 22) * (0.78 + base.depth * 0.28) * (selected === index ? 1.2 : 1)
+    return { project, index, x, y, radius, depth: base.depth, offset }
+  })
+  orbitalNodes = reveal > 0.95 ? nodes.map(({ x, y, radius }) => ({ x, y, radius: Math.max(22, radius + 8) })) : []
+  for (const { project, index, x, y, radius, depth, offset } of nodes.sort((a, b) => a.depth - b.depth)) {
+    if (!reveal) {
+      continue
+    }
+    if (!reduced && dragging !== index && progress === 1) {
+      for (let segment = 0; segment < 12; segment++) {
+        const from = nodeBase(index, (segment + 1) * 0.012)
+        const to = nodeBase(index, segment * 0.012)
+        context.globalAlpha = (1 - segment / 12) * (selected === index ? 0.55 : 0.22)
+        context.strokeStyle = project.accent
+        context.lineWidth = (selected === index ? 2 : 1.2) * (0.7 + depth * 0.5)
+        context.beginPath()
+        context.moveTo(from.x + offset.x, from.y + offset.y)
+        context.lineTo(to.x + offset.x, to.y + offset.y)
+        context.stroke()
+      }
+    }
     if (selected === index) {
-      context.globalAlpha = 0.9
+      context.globalAlpha = 0.9 * reveal
       context.strokeStyle = project.accent
       context.lineWidth = 1
       context.beginPath()
       context.arc(x, y, radius + 7, 0, Math.PI * 2)
       context.stroke()
     }
-    dot(x, y, radius, project.accent, selected === index ? 1 : 0.8)
-    dot(x - radius * 0.22, y - radius * 0.24, radius * 0.32, '#fff', 0.35)
+    dot(x, y, radius, '#eff2ef', reveal * (selected === index ? 1 : 0.65 + depth * 0.23))
+    const image = images.get(project.slug)
+    if (image) {
+      context.globalAlpha = reveal * (selected === index ? 1 : 0.65 + depth * 0.23)
+      const size = radius * 1.38
+      const ratio = size / Math.max(image.naturalWidth, image.naturalHeight)
+      const w = image.naturalWidth * ratio
+      const h = image.naturalHeight * ratio
+      context.drawImage(image, x - w / 2, y - h / 2, w, h)
+    }
     if (width >= 600 || selected === index) {
-      context.globalAlpha = selected === index ? 1 : 0.78
+      context.globalAlpha = reveal * (selected === index ? 1 : 0.78)
       context.fillStyle = selected === index ? '#f5f5f7' : '#bec7c3'
       context.font = `${selected === index ? 550 : 450} ${width < 600 ? 11 : 12}px Geist Variable`
       context.textBaseline = 'top'
-      const labelX = Math.max(72, Math.min(width - 72, x))
+      const labelX = Math.max(82, Math.min(width - 82, x))
       context.fillText(project.name, labelX, y + radius + 10)
     }
-    return { x, y, radius: radius + 14 }
-  })
+  }
+  // Read-only geometry enables interaction tests without a second animation model.
+  canvas.dataset.nodes = JSON.stringify(orbitalNodes.map((node, index) => ({ slug: projects[index].slug, x: Math.round(node.x), y: Math.round(node.y) })))
 }
 function drawFlow(dt) {
-  const colors = palettes[palette]
+  const colors = sceneColors()
   context.lineWidth = width < 600 ? 1.1 : 1.3
   context.lineCap = 'round'
   for (let i = 0; i < flow.length; i++) {
@@ -535,10 +701,9 @@ function replay() {
   elapsed = 0
   paused = false
   offsets.clear()
-  selected = -1
   dragging = -1
+  dragPointer = null
   pointer.active = false
-  $('#project-detail').hidden = true
   rebuild()
   draw(0)
   updateControls()
@@ -554,21 +719,67 @@ function selectScene(value) {
   replay()
 }
 function selectProject(index) {
+  if (!projects[index]) {
+    return
+  }
   selected = index
   const project = projects[index]
-  $('#project-detail').hidden = !project
-  if (project) {
-    $('#project-name').textContent = project.name
-    $('#project-tagline').textContent = project.tagline
-    canvas.setAttribute(
-      'aria-label',
-      `${text.canvas}: ${project.name}. ${project.tagline}`,
-    )
+  $('#project-detail').hidden = false
+  $('#project-select').value = project.slug
+  $('#project-name').textContent = project.name
+  $('#project-tagline').textContent = project.tagline
+  $('#project-description').textContent = project.description
+  $('#project-status').textContent = text[project.status] || project.status
+  $('#project-status').dataset.status = project.status
+  $('#project-logo').src = data.projectLogos[project.slug].url
+  $('#project-logo').alt = `${project.name} Logo`
+  $('#logo-note').hidden = !data.projectLogos[project.slug].fallback
+  $('#project-capabilities').replaceChildren(...project.capabilities.map((capability) => {
+    const item = document.createElement('li')
+    item.textContent = capability
+    return item
+  }))
+  const command = project.status === 'planned' ? '' : project.slug === 'weapp-vite' ? 'npx weapp create weapp-vite my-app' : project.quickStart?.command || project.installCommand || ''
+  $('#project-command').textContent = command
+  $('#command-action').hidden = !command
+  $('#planned-notice').hidden = project.status !== 'planned'
+  for (const [id, url] of [['project-docs', project.docsUrl], ['project-repo', project.github && `https://github.com/${project.github}`]]) {
+    const link = $(`#${id}`)
+    // Catalog actions are external references; reject schemes with executable content.
+    link.hidden = !/^https:\/\//.test(url || '')
+    if (!link.hidden) {
+      link.href = url
+    }
+    else {
+      link.removeAttribute('href')
+    }
   }
-  else {
-    canvas.setAttribute('aria-label', text.canvas)
+  canvas.setAttribute('aria-label', `${text.canvas}: ${project.name}. ${project.tagline}`)
+  canvas.dataset.project = project.slug
+  markTargets = sampleLogo(project)
+  particleOffsets = source.map(() => ({ x: 0, y: 0 }))
+  if (scene === 'particles') {
+    elapsed = 0
   }
   draw(0)
+}
+function selectScope(value) {
+  const current = projects[selected]?.slug || 'weapp-vite'
+  scope = value === 'all' ? 'all' : 'weapp'
+  projects = allProjects.filter(project => scope === 'all' || project.ecosystem === 'weapp')
+  $('#project-select').replaceChildren(...projects.map((project) => {
+    const option = document.createElement('option')
+    option.value = project.slug
+    option.textContent = project.name
+    return option
+  }))
+  selected = Math.max(0, projects.findIndex(project => project.slug === current))
+  canvas.dataset.scope = scope
+  canvas.dataset.projectCount = String(projects.length)
+  if (projects.length) {
+    selectProject(selected)
+  }
+  replay()
 }
 function setReduced() {
   reduced
@@ -618,6 +829,19 @@ $('#pause').addEventListener('click', () => {
   schedule()
 })
 $('#replay').addEventListener('click', replay)
+$('#scope').addEventListener('change', event => selectScope(event.target.value))
+$('#project-select').addEventListener('change', (event) => {
+  selectProject(projects.findIndex(project => project.slug === event.target.value))
+})
+$('#copy-command').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('#project-command').textContent)
+    status(text.copied)
+  }
+  catch {
+    status(text.copyFailed)
+  }
+})
 $('#download').addEventListener('click', () => {
   canvas.toBlob((blob) => {
     if (!blob) {
@@ -733,10 +957,6 @@ resizeObserver.observe($('.stage'))
 localize()
 status(text.loading)
 async function initialize() {
-  if (!context) {
-    showFallback()
-    return
-  }
   try {
     const response = await fetch('/data.json')
     if (!response.ok) {
@@ -746,7 +966,8 @@ async function initialize() {
     if (!query.has('lang')) {
       lang = data.lang === 'en' ? 'en' : 'zh-CN'
     }
-    projects = (data.catalog || []).map(project => ({
+    allProjects = (data.catalog || []).filter(project => data.projectLogos?.[project.slug || project.id]).map(project => ({
+      ...project,
       slug: project.slug || project.id || project.packageName,
       name:
         project.locales?.[lang]?.name
@@ -754,9 +975,17 @@ async function initialize() {
         || project.slug
         || project.packageName,
       tagline: project.locales?.[lang]?.tagline || project.description || '',
+      description: project.locales?.[lang]?.description || '',
+      capabilities: project.locales?.[lang]?.capabilities || [],
       accent: /^#[0-9a-f]{6}$/i.test(project.accent)
         ? project.accent
         : '#69c7a5',
+    }))
+    await Promise.all(allProjects.map(async (project) => {
+      const image = new Image()
+      image.src = data.projectLogos[project.slug].url
+      await image.decode()
+      images.set(project.slug, image)
     }))
     // Fonts are shipped with the CLI; the scene has no remote startup dependency.
     await Promise.all([
@@ -765,8 +994,12 @@ async function initialize() {
     ])
     ready = true
     localize()
+    selectScope('weapp')
     resize()
     setReduced()
+    if (!context) {
+      showFallback()
+    }
     status('')
     document.documentElement.dataset.ready = 'true'
   }

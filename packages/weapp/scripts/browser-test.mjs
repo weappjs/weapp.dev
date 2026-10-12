@@ -15,10 +15,35 @@ const server = await startLab({ lang: 'zh-CN', motion: true, catalog, logo })
 let browser
 let context
 const failures = []
+const wordmarkContrasts = {}
+function contrastOnStage(color) {
+  const rgb = [1, 3, 5].map(index => Number.parseInt(color.slice(index, index + 2), 16))
+  const luminance = channels => channels.map((value) => {
+    const channel = value / 255
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+  }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0)
+  return (luminance(rgb) + 0.05) / (luminance([4, 6, 7]) + 0.05)
+}
 try {
   browser = await chromium.launch({ headless: true })
   context = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true })
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   const page = await context.newPage()
+  await page.addInitScript(() => {
+    window.__labFrames = 0
+    const request = window.requestAnimationFrame.bind(window)
+    window.requestAnimationFrame = callback => request((time) => {
+      window.__labFrames++
+      callback(time)
+    })
+    const fillText = CanvasRenderingContext2D.prototype.fillText
+    CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+      if (text === 'weapp') {
+        window.__labWordmarkColor = this.fillStyle
+      }
+      return fillText.call(this, text, ...args)
+    }
+  })
   page.on('pageerror', error => failures.push(error.message))
   page.on('console', (message) => {
     if (message.type() === 'error') {
@@ -28,13 +53,74 @@ try {
   page.on('request', (request) => {
     assert.equal(new URL(request.url()).hostname, '127.0.0.1', 'Lab must stay offline')
   })
+  const ready = () => page.waitForSelector('html[data-ready="true"]')
+  const screenshot = name => page.screenshot({ path: fileURLToPath(new URL(name, evidence)), fullPage: true })
+  const selected = slug => page.locator('#project-select').selectOption(slug)
+  const fact = slug => catalog.find(project => project.slug === slug)
+  const canvasImage = () => page.locator('#canvas').evaluate(canvas => canvas.toDataURL())
   await page.goto(server.url)
-  await page.waitForSelector('html[data-ready="true"]')
+  await ready()
+  assert.equal(await page.locator('#palette').inputValue(), 'project')
+  const entrance = await canvasImage()
   await page.waitForFunction(() => document.querySelector('#phase').textContent === '由你来玩')
+  assert.notEqual(await canvasImage(), entrance, 'Brand particles must unfold into the project orbits')
+  assert.equal(await page.locator('[name="scene"][value="orbit"]').isChecked(), true)
+  assert.equal(await page.locator('#scope').inputValue(), 'weapp')
+  assert.equal(await page.locator('#project-select option').count(), 6)
+  assert.equal(await page.locator('#canvas').getAttribute('data-project'), 'weapp-vite')
+  assert.equal(await page.locator('#project-command').textContent(), 'npx weapp create weapp-vite my-app')
+  assert.equal(await page.locator('#project-docs').getAttribute('href'), fact('weapp-vite').docsUrl)
+  assert.equal(await page.locator('#project-repo').getAttribute('href'), `https://github.com/${fact('weapp-vite').github}`)
+  assert.deepEqual(await page.locator('#project-capabilities li').allTextContents(), fact('weapp-vite').locales['zh-CN'].capabilities)
+  assert.equal(await page.locator('#project-logo').evaluate(image => image.complete && image.naturalWidth > 0), true)
+  await page.locator('#copy-command').click()
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'npx weapp create weapp-vite my-app')
   await page.locator('#pause').click()
   assert.equal(await page.locator('#pause').getAttribute('aria-pressed'), 'true')
   assert.equal(await page.locator('#canvas').evaluate(canvas => new Set(canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data).size > 10), true)
-  await page.screenshot({ path: fileURLToPath(new URL('lab-desktop.png', evidence)), fullPage: true })
+  await screenshot('lab-desktop.png')
+  await page.locator('#scope').selectOption('all')
+  assert.equal(await page.locator('#project-select option').count(), 11)
+  for (const project of catalog) {
+    await selected(project.slug)
+    const renderedInk = await page.evaluate(() => window.__labWordmarkColor)
+    const ratio = contrastOnStage(renderedInk)
+    assert.ok(ratio >= 3.5, `${project.slug} large wordmark contrast: ${ratio.toFixed(2)}:1`)
+    wordmarkContrasts[project.slug] = { ink: renderedInk, contrast: Number(ratio.toFixed(2)) }
+    assert.equal(await page.locator('#project-description').textContent(), project.locales['zh-CN'].description)
+    assert.equal(await page.locator('#project-logo').evaluate(image => image.complete && image.naturalWidth > 0), true)
+    if (project.status === 'planned') {
+      assert.equal(await page.locator('#command-action').isVisible(), false)
+      assert.equal(await page.locator('#planned-notice').isVisible(), true)
+      assert.equal(await page.locator('#logo-note').isVisible(), true)
+      assert.equal(await page.locator('#project-logo').getAttribute('src'), '/logos/miniprogram.svg')
+    }
+    else {
+      assert.equal(await page.locator('#project-command').textContent(), project.slug === 'weapp-vite' ? 'npx weapp create weapp-vite my-app' : project.quickStart?.command || project.installCommand)
+      assert.equal(await page.locator('#copy-command').isVisible(), true)
+      assert.equal(await page.locator('#logo-note').isVisible(), false)
+    }
+  }
+  await selected('vite-plugin-taro')
+  await page.waitForFunction(() => document.querySelector('#phase').textContent === '由你来玩')
+  await screenshot('lab-vpt.png')
+  await selected('weapp-sqlite')
+  await page.waitForFunction(() => document.querySelector('#phase').textContent === '由你来玩')
+  await screenshot('lab-planned.png')
+  await selected('weapp-vite')
+  await page.locator('#pause').click()
+  await screenshot('lab-orbit.png')
+  await page.locator('#canvas').focus()
+  await page.keyboard.press('ArrowRight')
+  assert.equal(await page.locator('#project-select').inputValue(), 'weapp-tailwindcss')
+  await selected('weapp-vite')
+  await page.locator('[name="scene"][value="particles"]').check()
+  await page.waitForFunction(() => document.querySelector('#canvas').dataset.morph === 'wordmark')
+  const wordmark = await canvasImage()
+  await page.waitForFunction(() => document.querySelector('#canvas').dataset.morph === 'project')
+  assert.notEqual(await canvasImage(), wordmark, 'Wordmark must morph into the selected project logo')
+  await page.locator('#pause').click()
+  await screenshot('lab-particles.png')
   const downloaded = page.waitForEvent('download')
   await page.locator('#download').click()
   const download = await downloaded
@@ -42,11 +128,7 @@ try {
   const png = await readFile(new URL('particles-export.png', evidence))
   assert.equal(png.subarray(1, 4).toString(), 'PNG')
   assert.ok(png.readUInt32BE(16) > 500)
-  await page.locator('[name="scene"][value="orbit"]').check()
   await page.locator('#canvas').focus()
-  await page.keyboard.press('ArrowRight')
-  assert.equal(await page.locator('#project-name').textContent(), catalog[0].locales['zh-CN'].name)
-  await page.screenshot({ path: fileURLToPath(new URL('lab-orbit.png', evidence)), fullPage: true })
   await page.keyboard.press('3')
   assert.equal(await page.locator('[value="flow"]').isChecked(), true)
   const bounds = await page.locator('#canvas').boundingBox()
@@ -56,58 +138,87 @@ try {
     input.value = '100'
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
-  assert.equal(await page.locator('#density-output').textContent(), '100%')
   await page.locator('#speed').evaluate((input) => {
     input.value = '200'
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
-  assert.equal(await page.locator('#speed-output').textContent(), '2×')
   await page.locator('#replay').click()
+  assert.equal(await page.locator('#density-output').textContent(), '100%')
+  assert.equal(await page.locator('#speed-output').textContent(), '2×')
+  assert.equal(await page.locator('#palette').inputValue(), 'ice')
+  assert.equal(await page.locator('#project-select').inputValue(), 'weapp-vite')
   await page.waitForTimeout(300)
-  await page.screenshot({ path: fileURLToPath(new URL('lab-flow.png', evidence)), fullPage: true })
+  await screenshot('lab-flow.png')
+  // Exercise the exact visibilitychange boundary and verify RAF cancellation.
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  const hiddenFrames = await page.evaluate(() => window.__labFrames)
+  await page.waitForTimeout(200)
+  assert.equal(await page.evaluate(() => window.__labFrames), hiddenFrames, 'Hidden documents must stop RAF')
+  await page.evaluate(() => {
+    delete document.hidden
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await page.waitForFunction(frames => window.__labFrames > frames, hiddenFrames)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.waitForFunction(() => document.querySelector('#pause').disabled)
+  assert.equal(await page.locator('#motion-notice').isVisible(), true)
+  await page.locator('#canvas').focus()
+  await page.keyboard.press('1')
+  const first = await canvasImage()
+  await page.waitForTimeout(200)
+  assert.equal(await canvasImage(), first, 'Reduced motion must not animate')
+  await selected('weapp-pandacss')
+  assert.notEqual(await canvasImage(), first, 'Project selection must update the particle logo')
+  await selected('weapp-vite')
+  await page.locator('[name="scene"][value="orbit"]').check()
+  const orbitBounds = await page.locator('#canvas').boundingBox()
+  const nodes = JSON.parse(await page.locator('#canvas').getAttribute('data-nodes'))
+  const node = nodes.find(node => node.slug === 'weapp-vite')
+  const starX = orbitBounds.x + node.x
+  const starY = orbitBounds.y + node.y
+  await page.mouse.move(starX, starY)
+  await page.mouse.down()
+  await page.mouse.move(starX + 45, starY + 35, { steps: 5 })
+  await page.mouse.up()
+  assert.equal(await page.locator('#project-select').inputValue(), 'weapp-vite')
+  const moved = await canvasImage()
+  await page.locator('#replay').click()
+  assert.notEqual(await canvasImage(), moved, 'Replay must reset planet drag offsets')
+  assert.equal(await page.locator('#density').inputValue(), '100')
+  assert.equal(await page.locator('#speed').inputValue(), '200')
+  assert.equal(await page.locator('#palette').inputValue(), 'ice')
+  await page.locator('#scope').selectOption('weapp')
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 })
-    await page.screenshot({ path: fileURLToPath(new URL(`lab-mobile-${width}.png`, evidence)), fullPage: true })
+    await screenshot(`lab-mobile-${width}.png`)
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `Overflow at ${width}px`)
-    for (const selector of ['#pause', '#replay', '#download', '#palette', '#density', '#speed']) {
+    for (const selector of ['#pause', '#replay', '#download', '#palette', '#density', '#speed', '#scope', '#project-select', '#copy-command', '#project-docs', '#project-repo']) {
       const rect = await page.locator(selector).boundingBox()
       assert.ok(rect.height >= 44, `Touch target: ${selector}`)
     }
   }
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.waitForFunction(() => document.querySelector('#pause').disabled)
-  assert.equal(await page.locator('#pause').isDisabled(), true)
-  assert.equal(await page.locator('#motion-notice').isVisible(), true)
-  await page.keyboard.press('1')
-  const first = await page.locator('#canvas').evaluate(canvas => canvas.toDataURL())
-  await page.waitForTimeout(200)
-  assert.equal(await page.locator('#canvas').evaluate(canvas => canvas.toDataURL()), first, 'Reduced motion must not animate')
-  await page.locator('[name="scene"][value="orbit"]').check()
-  const orbitBounds = await page.locator('#canvas').boundingBox()
-  const starX = orbitBounds.x + orbitBounds.width / 2
-  const starY = orbitBounds.y + orbitBounds.height * 0.254
-  await page.mouse.move(starX, starY)
-  await page.mouse.down()
-  await page.mouse.move(starX + 40, starY + 30, { steps: 5 })
-  await page.mouse.up()
-  assert.equal(await page.locator('#project-name').textContent(), catalog[0].locales['zh-CN'].name)
-  const moved = await page.locator('#canvas').evaluate(canvas => canvas.toDataURL())
-  await page.locator('#replay').click()
-  assert.notEqual(await page.locator('#canvas').evaluate(canvas => canvas.toDataURL()), moved, 'Dragging must move a planet; replay resets it')
   await page.goto(new URL('/?lang=en&motion=0', server.url).href)
-  await page.waitForSelector('html[data-ready="true"]')
+  await ready()
   assert.equal(await page.locator('html').getAttribute('lang'), 'en')
   assert.equal(await page.locator('#pause').isDisabled(), true)
   assert.equal(await page.getByRole('heading', { name: 'Make room for play.' }).count(), 1)
-  await page.screenshot({ path: fileURLToPath(new URL('lab-english.png', evidence)), fullPage: true })
+  assert.equal(await page.locator('#project-status').textContent(), 'Stable')
+  await screenshot('lab-english.png')
   await page.addInitScript(() => {
     HTMLCanvasElement.prototype.getContext = () => null
   })
   await page.reload()
+  await ready()
   assert.equal(await page.locator('#fallback').isVisible(), true)
   assert.equal(await page.locator('#download').isDisabled(), true)
+  assert.equal(await page.locator('#project-name').textContent(), 'weapp-vite')
+  assert.equal(await page.locator('#project-docs').isVisible(), true)
   assert.deepEqual(failures, [])
-  process.stdout.write(`Headless lab checks passed: 1440/390/320px, all scenes, controls, PNG, localization, reduced motion, fallback. Evidence: ${fileURLToPath(evidence)}\n`)
+  process.stdout.write(`Project wordmark contrast on #040607: ${JSON.stringify(wordmarkContrasts)}\n`)
+  process.stdout.write(`Headless lab checks passed: default orbit, 6/11 scope, all official logos/facts/actions, project morph, drag/replay, settings, visibility RAF pause, PNG, 1440/390/320px, English, reduced motion, fallback. Evidence: ${fileURLToPath(evidence)}\n`)
 }
 finally {
   try {

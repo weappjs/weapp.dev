@@ -3,13 +3,13 @@ import { t } from './shared.js'
 const globalOptions = ['lang', 'noColor', 'noMotion', 'help', 'version']
 export const commands = {
   fx: { usage: 'fx [logo|orbit|matrix|fireworks]', min: 0, max: 1, options: ['seed', 'duration'], zh: '粒子、星轨、字符雨与烟花', en: 'Particles, orbits, matrix rain, and fireworks' },
-  play: { usage: 'play snake', min: 1, max: 1, options: ['seed'], zh: '玩一局贪吃蛇', en: 'Play terminal snake' },
+  play: { usage: 'play snake', min: 1, max: 1, options: ['seed'], hidden: true, zh: '玩一局贪吃蛇', en: 'Play terminal snake' },
   lab: { usage: 'lab [--no-open]', min: 0, max: 0, options: ['noOpen'], zh: '打开离线视觉实验室', en: 'Open the offline visual lab' },
-  projects: { usage: 'projects [query] [--ecosystem name] [--status state] [--json]', min: 0, max: 1, options: ['ecosystem', 'status', 'json'], zh: '搜索小程序开源生态', en: 'Search the mini-app ecosystem' },
+  projects: { usage: 'projects [query] [--all] [--ecosystem name] [--status state] [--json]', min: 0, max: 1, options: ['all', 'ecosystem', 'status', 'json'], zh: '浏览 weapp 生态，搜索全部项目', en: 'Browse weapp and search every ecosystem' },
   info: { usage: 'info <project> [--json]', min: 1, max: 1, options: ['json'], zh: '查看项目能力与开始方式', en: 'Inspect a project and its quick start' },
   docs: { usage: 'docs <project> [--open]', min: 1, max: 1, options: ['open'], zh: '查看官方文档', en: 'Find official documentation' },
   repo: { usage: 'repo <project> [--open]', min: 1, max: 1, options: ['open'], zh: '查看源码仓库', en: 'Find the source repository' },
-  create: { usage: 'create <weapp-vite|vue-mini|rezor|uni|taro> <directory> [--template name] [--dry-run]', min: 2, max: 2, options: ['template', 'dryRun'], zh: '调用官方脚手架创建新项目', en: 'Create a project with an official scaffold' },
+  create: { usage: 'create [weapp-vite|vue-mini|rezor|uni|taro] [directory] [--template name] [--dry-run]', min: 0, max: 2, options: ['template', 'dryRun'], zh: '默认创建 weapp-vite，支持交互向导', en: 'Create weapp-vite by default, with a guided setup' },
   doctor: { usage: 'doctor [directory] [--json]', min: 0, max: 1, options: ['json'], zh: '只读检查环境与项目', en: 'Inspect the environment and project' },
   qr: { usage: 'qr [text|-] [--output file.svg] [--force]', min: 0, max: 1, options: ['output', 'force'], zh: '生成终端或 SVG 二维码', en: 'Generate a terminal or SVG QR code' },
   palette: { usage: 'palette <hex> [--format css] [--json] [--output file] [--force]', min: 1, max: 1, options: ['format', 'json', 'output', 'force'], zh: '生成五阶配色与文字对比度', en: 'Generate five shades and text contrast' },
@@ -94,7 +94,7 @@ export function parseArgs(argv) {
 }
 
 export function renderHelp(ctx, command) {
-  const intro = t(ctx, 'weapp — 会动、能玩、能干活的小程序工具箱', 'weapp — a playful toolkit for mini-app developers')
+  const intro = t(ctx, 'weapp — 以项目为核心的小程序动态工作台', 'weapp — a project-driven workbench for mini-app developers')
   const links = [
     'Website: https://weapp.js.org/',
     'Projects: https://weapp.js.org/en/projects/',
@@ -103,6 +103,6 @@ export function renderHelp(ctx, command) {
   ]
   const usage = command
     ? [`  npx weapp ${commands[command].usage}`, `  ${t(ctx, commands[command].zh, commands[command].en)}`]
-    : Object.values(commands).flatMap(entry => [`  npx weapp ${entry.usage}`, `    ${t(ctx, entry.zh, entry.en)}`])
-  return [intro, '', ...links, '', 'Usage:', ...(command ? [] : [`  npx weapp — ${t(ctx, '交互大厅', 'interactive hub')}`]), ...usage, '', '--lang zh-CN|en  --no-color  --no-motion  --help  --version', '', t(ctx, '方向键 / Enter 选择 · Esc 返回 · q 退出', 'Arrow keys / Enter select · Esc back · q quit')].join('\n')
+    : Object.values(commands).filter(entry => !entry.hidden).flatMap(entry => [`  npx weapp ${entry.usage}`, `    ${t(ctx, entry.zh, entry.en)}`])
+  return [intro, '', ...links, '', 'Usage:', ...(command ? [] : [`  npx weapp — ${t(ctx, '动态工作台，默认创建 weapp-vite', 'animated workbench, starting with Create weapp-vite')}`]), ...usage, ...(command === 'create' ? ['', t(ctx, '交互终端：目录 → 模板 → 创建摘要；默认模板 default。其他路线须明确指定。', 'Interactive terminal: directory → template → summary; default template: default. Specify other routes explicitly.'), t(ctx, '非交互环境必须提供路线与目录；--dry-run 离线预览。', 'Provide a route and directory in non-interactive environments; --dry-run previews offline.')] : []), '', '--lang zh-CN|en  --no-color  --no-motion  --help  --version', '', t(ctx, '方向键 / Enter 选择 · Tab 切换生态 · 空格暂停 · Esc 返回 · q 退出', 'Arrow keys / Enter select · Tab switch ecosystems · Space pause · Esc back · q quit')].join('\n')
 }
