@@ -289,18 +289,20 @@ test('published Varo project exposes current release data', async ({ page }) => 
   await expect(page.getByText('GitHub Stars')).toBeVisible()
 })
 
-test('passes automated accessibility checks in light and dark themes', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  for (const theme of ['light', 'dark']) {
-    await page.addInitScript(selectedTheme => localStorage.setItem('weapp-theme', selectedTheme), theme)
-    for (const path of (isOpenSourceSite ? ['/', '/en/', '/projects/', '/en/projects/'] : ['/', '/en/', '/pricing/', '/en/pricing/'])) {
+// Give every page/theme scan its own browser context and timeout budget.
+for (const theme of ['light', 'dark']) {
+  for (const path of (isOpenSourceSite ? ['/', '/en/', '/projects/', '/en/projects/'] : ['/', '/en/', '/pricing/', '/en/pricing/'])) {
+    test(`passes automated accessibility checks in ${theme} theme on ${path}`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await page.addInitScript(selectedTheme => localStorage.setItem('weapp-theme', selectedTheme), theme)
       await page.goto(path)
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
       await page.waitForFunction(() => [...document.querySelectorAll('[data-reveal]')].every(element => element.hasAttribute('data-visible')))
       const results = await new AxeBuilder({ page }).analyze()
       expect(results.violations, `${path} ${theme} theme violations`).toEqual([])
-    }
+    })
   }
-})
+}
 
 test('supports keyboard navigation and activation', async ({ page }) => {
   await page.goto('/')
