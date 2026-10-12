@@ -331,7 +331,14 @@ for (const path of ['/', '/en/']) {
               offset,
             }
           }
-          const readFrame = () => new Promise<ReturnType<typeof measure>>(resolve => requestAnimationFrame(timestamp => resolve(measure(timestamp))))
+          const readFrame = () => new Promise<ReturnType<typeof measure>>((resolve, reject) => requestAnimationFrame((timestamp) => {
+            try {
+              resolve(measure(timestamp))
+            }
+            catch (error) {
+              reject(error)
+            }
+          }))
           const first = await readFrame()
           let second
           // Adjacent callbacks can be nearly simultaneous. Choose the window
@@ -389,7 +396,14 @@ for (const path of ['/', '/en/']) {
             y: rect.top,
           }
         }
-        const readFrame = () => new Promise<ReturnType<typeof measure>>(resolve => requestAnimationFrame(timestamp => resolve(measure(timestamp))))
+        const readFrame = () => new Promise<ReturnType<typeof measure>>((resolve, reject) => requestAnimationFrame((timestamp) => {
+          try {
+            resolve(measure(timestamp))
+          }
+          catch (error) {
+            reject(error)
+          }
+        }))
         const first = await readFrame()
         let second
         do {
