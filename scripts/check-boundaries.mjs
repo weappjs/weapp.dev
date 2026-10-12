@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
-const units = ['apps/web', 'apps/open-source', 'packages/project-catalog', 'packages/site-ui']
-const appPackages = ['@weapp.dev/web', '@weapp/open-source']
+const units = ['apps/web', 'apps/open-source', 'packages/project-catalog', 'packages/site-ui', 'packages/weapp']
+const appPackages = ['@weapp-io/web', '@weapp-io/open-source']
 const excluded = new Set(['node_modules', 'dist', 'dist-pages', '.astro', '.cache', '.turbo', 'test-results', 'playwright-report', 'media-source'])
 
 export function boundaryViolations(source, filename, unit, repositoryRoot = root) {
@@ -24,7 +24,7 @@ export function boundaryViolations(source, filename, unit, repositoryRoot = root
     if (appPackages.some(name => value === name || value.startsWith(`${name}/`))) {
       errors.push(`Application packages cannot be dependencies: ${value}`)
     }
-    if (unit === 'packages/project-catalog' && (value === '@weapp/site-ui' || value.startsWith('@weapp/site-ui/'))) {
+    if (unit === 'packages/project-catalog' && (value === '@weapp-io/site-ui' || value.startsWith('@weapp-io/site-ui/'))) {
       errors.push(`The data catalog cannot depend on UI: ${value}`)
     }
     const pathLike = value.startsWith('.') || isAbsolute(value)
@@ -72,7 +72,7 @@ export async function checkRepository() {
     const directory = resolve(root, unit)
     const manifest = JSON.parse(await readFile(resolve(directory, 'package.json'), 'utf8'))
     for (const name of Object.keys({ ...manifest.dependencies, ...manifest.devDependencies })) {
-      if (appPackages.includes(name) || (unit === 'packages/project-catalog' && name === '@weapp/site-ui')) {
+      if (appPackages.includes(name) || (unit === 'packages/project-catalog' && name === '@weapp-io/site-ui')) {
         errors.push(`${unit}: application dependency ${name}`)
       }
     }

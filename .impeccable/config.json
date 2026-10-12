@@ -9,6 +9,15 @@
         "value": "syne",
         "createdAt": "2026-10-09T18:38:35.952Z",
         "reason": "User confirmed Syne 700 for the homepage particle wordmark; reading typography remains Geist."
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "files": [
+          "packages/weapp/lab/style.css"
+        ],
+        "createdAt": "2026-10-12T04:22:33.518Z",
+        "reason": "Agent: preserve the established Geist reading and control typography alongside the Syne particle wordmark, as recorded in .impeccable/surfaces/weapp-cli.md; locally bundled fonts support the offline lab."
       }
     ]
   }

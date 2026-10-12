@@ -1,8 +1,8 @@
 {
   "name": "weapp",
   "type": "module",
-  "version": "0.0.1",
-  "description": "A navigation CLI for the weapp.js.org JavaScript mini-program open-source ecosystem.",
+  "version": "0.1.0",
+  "description": "An offline-first mini-app developer toolkit with terminal effects, games, and a visual lab.",
   "author": "ice breaker <1324318532@qq.com>",
   "license": "MIT",
   "homepage": "https://weapp.js.org/",
@@ -37,18 +37,38 @@
   },
   "files": [
     "README.md",
-    "bin"
+    "bin",
+    "dist"
   ],
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "test": "vitest run"
+    "build": "tsx scripts/build.ts",
+    "prepack": "pnpm build",
+    "preflight": "node scripts/preflight.mjs",
+    "lint": "eslint bin src scripts test lab vitest.config.js",
+    "lint:styles": "stylelint 'lab/**/*.css'",
+    "test": "pnpm build && vitest run",
+    "test:e2e": "pnpm build && node scripts/browser-test.mjs",
+    "test:pack": "node scripts/pack-test.mjs"
   },
   "publishConfig": {
     "access": "public"
   },
+  "dependencies": {
+    "cross-spawn": "7.0.6",
+    "open": "10.2.0",
+    "qrcode": "1.5.4",
+    "semver": "7.7.3",
+    "string-width": "7.2.0"
+  },
   "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@weapp-io/project-catalog": "workspace:*",
+    "@weapp-io/site-ui": "workspace:*",
+    "jsqr": "1.4.0",
+    "tsx": "4.23.15",
     "vitest": "5.0.3"
   }
 }

@@ -16,8 +16,8 @@ pnpm dev:pages                   # open-source application
 pnpm check                       # boundaries, lint, types and unit tests
 pnpm build:cloudflare            # apps/web/dist
 pnpm build:pages                 # apps/open-source/dist
-pnpm --filter @weapp.dev/web exec playwright test
-pnpm --filter @weapp/open-source exec playwright test
+pnpm --filter @weapp-io/web exec playwright test
+pnpm --filter @weapp-io/open-source exec playwright test
 ```
 
 Each application owns its routes, localized copy, page composition, analytics host allowlist, tests, and deployment workflow. There is no environment variable that switches one application into the other. App-to-app imports are prohibited.
@@ -33,5 +33,9 @@ The open-source site publishes no service prices, fundraising content, personal 
 Both apps still share this repository, development tooling, public project facts and existing analytics accounts. Separate applications do not create separate repository permissions.
 
 See [maintenance](docs/maintenance.md), [product boundaries](PRODUCT.md), and [contributors fund](docs/contributors-fund.md).
+
+## weapp CLI
+
+`npx weapp` opens a terminal toolkit with particle effects, snake, an offline browser lab, ecosystem discovery, project diagnostics, official scaffolds, QR codes and palettes. See [the CLI commands](packages/weapp/README.md). For local development, run `pnpm --filter weapp build` then `node packages/weapp/bin/weapp.js`.
 
 [MIT](LICENSE) © 2026 sonofmagic

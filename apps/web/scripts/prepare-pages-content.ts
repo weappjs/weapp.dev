@@ -1,7 +1,7 @@
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import process from 'node:process'
-import { projectsDirectory } from '@weapp/project-catalog/paths'
+import { projectsDirectory } from '@weapp-io/project-catalog/paths'
 import { projectDefinitionSchema } from '../src/content/schemas'
 import { getSiteProfile } from '../src/lib/deployment'
 import { createSiteResources } from '../src/lib/site-resources'

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { projectAssetsDirectory, projectMediaSourceDirectory, showcasesDirectory } from '@weapp/project-catalog/paths'
+import { projectAssetsDirectory, projectMediaSourceDirectory, showcasesDirectory } from '@weapp-io/project-catalog/paths'
 import sharp from 'sharp'
 
 const sourceRoot = pathToFileURL(`${projectMediaSourceDirectory}/showcase/`)

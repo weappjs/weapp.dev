@@ -8,7 +8,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { chromium } from '@playwright/test'
-import { projectMediaSourceDirectory } from '@weapp/project-catalog/paths'
+import { projectMediaSourceDirectory } from '@weapp-io/project-catalog/paths'
 import sharp from 'sharp'
 
 const root = fileURLToPath(new URL('../', import.meta.url))

@@ -1,7 +1,7 @@
 @import 'tailwindcss';
-@import '@weapp/site-ui/foundation.css';
-@import '@weapp/site-ui/hero.css';
-@source '../../node_modules/@weapp/site-ui/src';
+@import '@weapp-io/site-ui/foundation.css';
+@import '@weapp-io/site-ui/hero.css';
+@source '../../node_modules/@weapp-io/site-ui/src';
 @source '../**/*.{astro,ts}';
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 

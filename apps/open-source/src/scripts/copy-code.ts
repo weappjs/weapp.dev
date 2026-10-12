@@ -1,1 +1,1 @@
-export * from '@weapp/site-ui/copy-code'
+export * from '@weapp-io/site-ui/copy-code'

@@ -1,4 +1,4 @@
-import { demoCopy } from '@weapp/site-ui/demo-copy'
+import { demoCopy } from '@weapp-io/site-ui/demo-copy'
 import { expect, test } from './test'
 
 for (const locale of ['zh-CN', 'en'] as const) {

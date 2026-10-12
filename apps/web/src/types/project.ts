@@ -1,1 +1,1 @@
-export type { Locale, LocalizedProjectContent, ProjectDefinition, ProjectMetrics, ProjectMetricsMap, ProjectVisual } from '@weapp/project-catalog/types'
+export type { Locale, LocalizedProjectContent, ProjectDefinition, ProjectMetrics, ProjectMetricsMap, ProjectVisual } from '@weapp-io/project-catalog/types'

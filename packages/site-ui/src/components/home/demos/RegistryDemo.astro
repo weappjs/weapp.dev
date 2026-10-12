@@ -1,6 +1,6 @@
 ---
 import { Check, Layers } from '@lucide/astro'
-import type { Locale } from '@weapp/project-catalog/types'
+import type { Locale } from '@weapp-io/project-catalog/types'
 import CodePanel from './CodePanel.astro'
 import { demoCopy } from './copy'
 import { registryCode, registryComponents } from './registry'
@@ -32,7 +32,7 @@ const copy = demoCopy[locale]
   </div>
 </registry-demo>
 <script>
-  import type { Locale } from '@weapp/project-catalog/types'
+  import type { Locale } from '@weapp-io/project-catalog/types'
   import type { RegistryComponent } from './registry'
   import { updateCode } from './code'
   import { demoCopy } from './copy'

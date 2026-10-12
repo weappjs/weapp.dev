@@ -54,17 +54,17 @@ jobs:
       - name: Check dependency boundaries
         run: pnpm check:boundaries
       - name: Check shared catalog
-        run: pnpm --filter @weapp/project-catalog check && pnpm --filter @weapp/project-catalog lint && pnpm --filter @weapp/project-catalog test
+        run: pnpm --filter @weapp-io/project-catalog check && pnpm --filter @weapp-io/project-catalog lint && pnpm --filter @weapp-io/project-catalog test
       - name: Check shared UI
-        run: pnpm --filter @weapp/site-ui lint && pnpm --filter @weapp/site-ui lint:styles && pnpm --filter @weapp/site-ui check && pnpm --filter @weapp/site-ui test
+        run: pnpm --filter @weapp-io/site-ui lint && pnpm --filter @weapp-io/site-ui lint:styles && pnpm --filter @weapp-io/site-ui check && pnpm --filter @weapp-io/site-ui test
       - name: Check application
-        run: pnpm --filter @weapp/open-source lint && pnpm --filter @weapp/open-source lint:styles && pnpm --filter @weapp/open-source check && pnpm --filter @weapp/open-source test
+        run: pnpm --filter @weapp-io/open-source lint && pnpm --filter @weapp-io/open-source lint:styles && pnpm --filter @weapp-io/open-source check && pnpm --filter @weapp-io/open-source test
       - name: Build and validate
-        run: pnpm --filter @weapp/open-source build
+        run: pnpm --filter @weapp-io/open-source build
       - name: Install browser
-        run: pnpm --filter @weapp/open-source exec playwright install --with-deps chromium
+        run: pnpm --filter @weapp-io/open-source exec playwright install --with-deps chromium
       - name: Test deployment artifact
-        run: pnpm --filter @weapp/open-source exec playwright test
+        run: pnpm --filter @weapp-io/open-source exec playwright test
       - name: Retain validated artifact for deployment and rollback
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

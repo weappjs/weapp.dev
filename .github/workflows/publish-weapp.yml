@@ -4,6 +4,21 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Validate only, or explicitly publish a release tag'
+        required: true
+        default: preflight
+        type: choice
+        options: [preflight, publish]
+      tag:
+        description: Git ref for preflight; publish requires weapp-v<package version>
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
 
 concurrency:
   group: publish-weapp
@@ -11,17 +26,23 @@ concurrency:
 
 jobs:
   publish:
-    if: github.repository == 'weappjs/weapp.dev'
-    name: Publish weapp to npm
+    if: github.repository == 'weappjs/weapp.dev' && (github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'weapp-v'))
+    name: Validate weapp and optionally publish
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
+    env:
+      WEAPP_PREFLIGHT_MODE: ${{ github.event_name == 'release' && 'publish' || inputs.mode }}
+      WEAPP_RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
 
     steps:
       - name: Check out the release ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.event.release.tag_name }}
+          fetch-depth: 0
 
       - name: Set up pnpm
         uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -39,13 +60,36 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify release tag
+        if: github.event_name == 'release' || inputs.mode == 'publish'
+        run: node packages/weapp/scripts/check-release.mjs
+
+      - name: Verify generated catalog
+        run: pnpm --filter weapp exec tsx scripts/build.ts --check-readme
+
       - name: Test the package
-        run: pnpm --filter weapp test
+        run: pnpm check:boundaries && pnpm --filter weapp lint && pnpm --filter weapp lint:styles && pnpm --filter weapp test
 
       - name: Verify the package contents
         working-directory: packages/weapp
-        run: npm pack --dry-run --json
+        run: npm pack --ignore-scripts --json
+
+      - name: Preflight identity, unpublished version, exact artifact, and OIDC exchange
+        id: preflight
+        working-directory: packages/weapp
+        run: node scripts/preflight.mjs --artifact
+
+      - name: Preserve the validated artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.1
+        with:
+          name: weapp-publication-${{ github.run_id }}
+          path: packages/weapp/${{ steps.preflight.outputs.artifact }}
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Publish with npm provenance
+        if: github.event_name == 'release' || inputs.mode == 'publish'
         working-directory: packages/weapp
-        run: npm publish --access public --provenance
+        env:
+          WEAPP_VALIDATED_ARTIFACT: ${{ steps.preflight.outputs.artifact }}
+        run: npm publish "./$WEAPP_VALIDATED_ARTIFACT" --ignore-scripts --access public --provenance

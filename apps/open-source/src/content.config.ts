@@ -1,4 +1,4 @@
-import { projectsDirectory, showcasesDirectory } from '@weapp/project-catalog/paths'
+import { projectsDirectory, showcasesDirectory } from '@weapp-io/project-catalog/paths'
 import { glob } from 'astro/loaders'
 import { defineCollection } from 'astro:content'
 import { projectDefinitionSchema, showcaseSchema } from './content/schemas'

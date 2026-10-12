@@ -1,4 +1,4 @@
-import type { Locale, ProjectDefinition } from '@weapp/project-catalog/types'
+import type { Locale, ProjectDefinition } from '@weapp-io/project-catalog/types'
 
 export type HomeDemoKind = 'style' | 'build' | 'registry' | 'sqlite' | 'migration'
 

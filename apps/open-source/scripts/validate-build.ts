@@ -1,7 +1,7 @@
 import { access, readdir, readFile } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
 import process from 'node:process'
-import { projectsDirectory } from '@weapp/project-catalog/paths'
+import { projectsDirectory } from '@weapp-io/project-catalog/paths'
 import { parse } from 'node-html-parser'
 import { getSiteProfile, isRetiredOpenSourcePath } from '../src/lib/deployment'
 

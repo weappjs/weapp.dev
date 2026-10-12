@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { projectAssetsDirectory, projectMediaSourceDirectory } from '@weapp/project-catalog/paths'
+import { projectAssetsDirectory, projectMediaSourceDirectory } from '@weapp-io/project-catalog/paths'
 import sharp from 'sharp'
 
 const publicMediaDir = pathToFileURL(`${projectAssetsDirectory}/media/`)

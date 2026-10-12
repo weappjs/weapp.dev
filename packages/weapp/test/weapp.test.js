@@ -44,8 +44,22 @@ describe('weapp CLI', () => {
     const result = run('--unknown')
 
     expect(result.status).toBe(1)
-    expect(result.stderr).toMatch(/Unknown option: --unknown/)
+    expect(result.stderr).toMatch(/未知选项.*--unknown/)
     expect(result.stderr).toMatch(/Usage:/)
+  })
+
+  it('honors explicit language for errors, help and JSON without ANSI', () => {
+    const missing = run('info', 'missing', '--lang', 'en')
+    expect(missing.status).toBe(1)
+    expect(missing.stderr).toMatch(/^Error:/)
+    expect(missing.stderr).toContain('Unknown project')
+    const badOption = run('--unknown', '--lang', 'zh-CN')
+    expect(badOption.status).toBe(1)
+    expect(badOption.stderr).toContain('未知选项')
+    const catalog = run('projects', '--json', '--lang', 'zh-CN')
+    expect(catalog.status).toBe(0)
+    expect(JSON.parse(catalog.stdout)).toHaveLength(11)
+    expect(catalog.stdout.includes(String.fromCharCode(27))).toBe(false)
   })
 
   it('README keeps the complete project catalog in both language sections', () => {
@@ -59,6 +73,8 @@ describe('weapp CLI', () => {
       'rezor',
       'uni-helper',
       'wot-ui',
+      'weapp-pandacss',
+      'weapp-stylex',
     ]
 
     expect(readme.indexOf('<details>')).toBeGreaterThan(readme.indexOf('# weapp\n'))

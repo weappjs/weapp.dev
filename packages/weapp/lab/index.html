@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>weapp · 视觉实验室</title>
+    <link rel="icon" href="data:," />
+    <link rel="preload" href="/syne-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <a class="brand" href="/" aria-label="weapp 视觉实验室">
+          <svg viewBox="0 0 1024 1024" aria-hidden="true">
+            <path
+              d="M512 0a512 512 0 1 0 512 512A512 512 0 0 0 512 0z m256.717 460.186a151.962 151.962 0 0 1-87.347 65.74 83.251 83.251 0 0 1-24.474 4.096 29.082 29.082 0 0 1 0-58.163 15.667 15.667 0 0 0 6.451-1.229 91.443 91.443 0 0 0 55.91-40.96 75.264 75.264 0 0 0 11.06-39.628c0-45.978-42.496-83.866-94.31-83.866a105.267 105.267 0 0 0-51.2 13.414 81.92 81.92 0 0 0-43.725 70.452v244.224a138.445 138.445 0 0 1-72.704 120.422 159.642 159.642 0 0 1-79.77 20.48c-84.378 0-153.6-63.488-153.6-142.029a136.192 136.192 0 0 1 19.763-69.837 151.962 151.962 0 0 1 87.347-65.74 85.914 85.914 0 0 1 24.474-4.096 29.082 29.082 0 1 1 0 58.163 15.667 15.667 0 0 0-6.451 1.229 95.949 95.949 0 0 0-55.91 40.96 75.264 75.264 0 0 0-11.06 39.628c0 45.978 42.496 83.866 94.925 83.866a105.267 105.267 0 0 0 51.2-13.414 81.92 81.92 0 0 0 43.622-70.452V390.35a138.752 138.752 0 0 1 72.807-120.525 151.245 151.245 0 0 1 79.155-21.504c84.378 0 153.6 63.488 153.6 142.029a136.192 136.192 0 0 1-19.763 69.837z"
+            />
+          </svg>
+          <span>weapp<span class="brand-slash"> / </span><span class="brand-lab">lab</span></span>
+        </a>
+        <span class="local"><span aria-hidden="true"></span><span data-copy="local">本地 · 离线</span></span>
+      </header>
+      <section class="introduction" aria-labelledby="title">
+        <div>
+          <h1 id="title" data-copy="title">让灵感动起来。</h1>
+          <p data-copy="intro">一枚 Logo，十一颗星，一片由你牵动的流场。</p>
+        </div>
+        <fieldset class="scene-switch" aria-label="视觉场景">
+          <legend class="sr-only" data-copy="scene">视觉场景</legend>
+          <label
+            ><input type="radio" name="scene" value="particles" checked /><span data-copy="particles"
+              >粒子字标</span
+            ></label
+          >
+          <label><input type="radio" name="scene" value="orbit" /><span data-copy="orbit">生态星系</span></label>
+          <label><input type="radio" name="scene" value="flow" /><span data-copy="flow">指针流场</span></label>
+        </fieldset>
+      </section>
+      <section class="stage" aria-label="交互画布">
+        <canvas id="canvas" tabindex="0" aria-describedby="scene-hint" aria-label="weapp 粒子视觉场景"></canvas>
+        <div class="stage-fallback" id="fallback" hidden>
+          <strong>weapp</strong>
+          <p data-copy="fallback">此浏览器无法绘制画布。请换一个支持 Canvas 的浏览器。</p>
+        </div>
+        <noscript
+          ><div class="stage-fallback">
+            <strong>weapp</strong>
+            <p>启用 JavaScript 来体验实验室。Enable JavaScript to play.</p>
+          </div></noscript
+        >
+        <div class="stage-top">
+          <span class="stage-name" id="scene-name">WEAPP / PARTICLES</span
+          ><span class="phase" id="phase" aria-live="polite"></span>
+        </div>
+        <div class="stage-bottom">
+          <p id="scene-hint" data-copy="particleHint">移动指针，让粒子轻轻散开。</p>
+          <span class="motion-notice" id="motion-notice" hidden data-copy="reduced">已减少动态效果</span>
+        </div>
+        <div class="project-detail" id="project-detail" hidden>
+          <strong id="project-name"></strong><span id="project-tagline"></span>
+        </div>
+      </section>
+      <section class="toolbar" aria-label="场景控制">
+        <div class="settings">
+          <label class="range-control"
+            ><span data-copy="density">密度</span
+            ><input id="density" type="range" min="25" max="100" value="70" step="5" /><output
+              for="density"
+              id="density-output"
+              >70%</output
+            ></label
+          >
+          <label class="range-control"
+            ><span data-copy="speed">速度</span
+            ><input id="speed" type="range" min="25" max="200" value="100" step="25" /><output
+              for="speed"
+              id="speed-output"
+              >1×</output
+            ></label
+          >
+          <label class="palette-control"
+            ><span data-copy="palette">配色</span
+            ><select id="palette">
+              <option value="jade" data-copy="jade">玉绿</option>
+              <option value="ice" data-copy="ice">冰蓝</option>
+              <option value="amber" data-copy="amber">琥珀</option>
+              <option value="pearl" data-copy="pearl">珍珠</option>
+            </select></label
+          >
+        </div>
+        <div class="actions">
+          <button id="pause" type="button" aria-pressed="false">
+            <svg id="pause-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4v12M13 4v12" /></svg
+            ><span data-copy="pause">暂停</span>
+          </button>
+          <button id="replay" type="button">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7a6 6 0 1 1 0 6M4 3v4h4" /></svg
+            ><span data-copy="replay">重播</span>
+          </button>
+          <button id="download" type="button" class="download">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m-4-4 4 4 4-4M4 13v4h12v-4" /></svg
+            ><span data-copy="download">保存 PNG</span>
+          </button>
+        </div>
+      </section>
+      <footer>
+        <p data-copy="keyboard">空格暂停 · R 重播 · 1 / 2 / 3 切换场景</p>
+        <p id="status" role="status" aria-live="polite"></p>
+      </footer>
+    </main>
+  </body>
+</html>

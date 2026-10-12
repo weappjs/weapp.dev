@@ -1,6 +1,6 @@
 ---
 import { Copy } from '@lucide/astro'
-import type { Locale } from '@weapp/project-catalog/types'
+import type { Locale } from '@weapp-io/project-catalog/types'
 import type { CodePart } from './code'
 import { demoCopy } from './copy'
 
@@ -16,7 +16,7 @@ const copy = demoCopy[locale]
 <script>
   import { copyCode } from '../../../scripts/copy-code'
   import { demoCopy } from './copy'
-  import type { Locale } from '@weapp/project-catalog/types'
+  import type { Locale } from '@weapp-io/project-catalog/types'
 
   class DemoCode extends HTMLElement {
     connectedCallback() {

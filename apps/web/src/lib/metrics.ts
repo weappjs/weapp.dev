@@ -1,1 +1,1 @@
-export { formatCompactNumber, formatReleaseDate, hasSameProjectMetricValues, isProjectMetrics, loadProjectMetrics, parseMetricsMap, showsPublicMetrics, usesLiveMetrics } from '@weapp/project-catalog/metrics'
+export { formatCompactNumber, formatReleaseDate, hasSameProjectMetricValues, isProjectMetrics, loadProjectMetrics, parseMetricsMap, showsPublicMetrics, usesLiveMetrics } from '@weapp-io/project-catalog/metrics'

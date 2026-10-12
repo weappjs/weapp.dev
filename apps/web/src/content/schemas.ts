@@ -1,1 +1,1 @@
-export { projectDefinitionSchema, projectVisualSchema, showcaseSchema } from '@weapp/project-catalog/schemas'
+export { projectDefinitionSchema, projectVisualSchema, showcaseSchema } from '@weapp-io/project-catalog/schemas'

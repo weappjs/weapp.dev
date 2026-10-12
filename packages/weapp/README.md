@@ -1,131 +1,106 @@
 # weapp
 
-`weapp` is a small navigation CLI for the [weapp.js.org](https://weapp.js.org/) JavaScript mini-program open-source ecosystem.
-
-It gives you one stable entry point to the project catalog. The package does not bundle `weapp-vite`, `weapp-tailwindcss`, Varo, or any other project listed below. Each project keeps its own repository, documentation, release cadence, and API contract.
-
-## Quick start
+A playful, offline-first toolkit for mini-app developers. Run a particle wordmark in your terminal, explore a local visual lab, find projects, or create a real mini-app with an official scaffold.
 
 ```bash
-npx weapp
+npx weapp                     # short opening → interactive hub
+npx weapp fx fireworks        # terminal fireworks
+npx weapp play snake          # arrow keys / WASD
+npx weapp lab                 # offline browser lab
+npx weapp projects vue
+npx weapp info tw
+npx weapp create weapp-vite my-app --template wevu
+npx weapp doctor .
+npx weapp qr https://weapp.js.org/ --output weapp.svg
+npx weapp palette '#07c160' --format css
 ```
 
-The command prints the official website, project index, GitHub organization, and issue tracker. It works without a network request and does not open a browser.
+Node.js 18 or newer is supported by the toolkit. Each upstream scaffold may require a newer version; `create` checks that before running it. No telemetry, account, API key, or network is needed for effects, games, the lab, the catalog, diagnostics, QR codes, or palettes. Creation queries npm and downloads the selected official scaffold. Documentation and repository commands open external links only with `--open`.
 
-## Choose a project
+## Commands
 
-The catalog is organized by the responsibility a project owns. Projects can be adopted independently or combined when their boundaries fit your application.
+| Command                               | What it does                                                                                                                                                          |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fx [logo\|orbit\|matrix\|fireworks]` | Terminal effects; Space pauses, R replays, Left/Right switches, Q/Esc exits. `--seed 42`, `--duration 5` (seconds).                                                   |
+| `play snake`                          | Snake with arrows/WASD, Space pause, R restart. Scores stay in memory.                                                                                                |
+| `lab`                                 | Particles, a draggable galaxy, and pointer flow. Adjust density, speed, palette, pause, replay, or download PNG. `--no-open` prints the local URL without opening it. |
+| `projects [query]`                    | Search all eleven projects; `--ecosystem weapp\|taro\|vue-mini\|rezor\|uni-app`, `--status stable\|beta\|planned`, `--json`.                                          |
+| `info <project>`                      | Purpose, scope, platforms, official quick start, and related projects; `--json`.                                                                                      |
+| `docs <project>` / `repo <project>`   | Print the official link; `--open` opens it.                                                                                                                           |
+| `create <route> <directory>`          | Create a new project through an official scaffold; `--dry-run` prints an offline execution plan.                                                                      |
+| `doctor [directory]`                  | Read-only environment, manifest, lockfile, installed-dependency, and mini-app configuration checks; `--json`. Never loads project config or runs project scripts.     |
+| `qr <text\|->`                        | Scannable terminal QR, or SVG with `--output file.svg`. `-` reads stdin.                                                                                              |
+| `palette <hex>`                       | Five shades and black/white text contrast. `--format css`, `--json`, or `--output file`.                                                                              |
 
-### Engineering
+Global options: `--lang zh-CN|en`, `--no-color`, `--no-motion`, `--help`, `--version`. Language follows `LC_ALL`, `LC_MESSAGES`, or `LANG`, with Chinese as fallback. `NO_COLOR` is honored. `--no-motion` removes decorative animation; snake movement remains part of gameplay. Redirected output, CI, and `TERM=dumb` get bounded static output; JSON never contains terminal control sequences. Use `--force` to overwrite an exported QR/palette file; existing files are preserved otherwise.
 
-#### [weapp-vite](https://weapp.js.org/en/projects/weapp-vite/)
+The hub uses arrow keys and Enter; Esc returns and Q exits. The opening can be skipped with any key. Effects and games restore the original terminal state on exit. The lab listens only on a random loopback port and stops when this CLI exits; no project directory is served.
 
-**Stable** · Vite builds for mini-app projects. It owns dependencies, routes, subpackages, and single-target multi-platform builds.
+## Official scaffolds
 
-- **Best for:** Mini-app teams that want a modern Vite workflow, Vue SFC, and multi-platform output.
-- **Start with:** `pnpm add -D weapp-vite`
-- **Links:** [Docs](https://vite.weapp.dev/) · [Source](https://github.com/weapp-vite/weapp-vite) · [npm](https://www.npmjs.com/package/weapp-vite)
+| Route        | Upstream creator    | Expected project dependency |
+| ------------ | ------------------- | --------------------------- |
+| `weapp-vite` | `create-weapp-vite` | `weapp-vite`                |
+| `vue-mini`   | `create-vue-mini`   | `@vue-mini/core`            |
+| `rezor`      | `create-rezor`      | `rezor`                     |
+| `uni`        | `create-uni`        | `@dcloudio/uni-app`         |
+| `taro`       | `create-vite-taro`  | `vite-plugin-taro`          |
 
-### Styling
+`weapp-vite --template` supports `default` (the default), `wevu`, `react`, `tailwindcss`, and `multi-platform-sfc`. Other creators retain their own prompts. A target must not exist and its parent must exist. The CLI resolves the latest creator version, checks its Node requirement, executes that exact version, and verifies the generated manifest and dependency before reporting success. It does not install project dependencies or initialize an existing project. Partial output remains available if an upstream creator fails.
 
-#### [weapp-tailwindcss](https://weapp.js.org/en/projects/weapp-tailwindcss/)
+Each ecosystem project keeps its own release cadence and API. An install command is not a complete integration. Planned SQLite has no install command or production API: **No install command is available yet.**
 
-**Stable** · Tailwind CSS utilities for mini-app templates and cross-platform projects. It handles template transforms and style generation without owning your routing or bundler lifecycle.
+## Project catalog
 
-- **Best for:** Teams that want one Tailwind CSS workflow across WeChat, Alipay, Douyin, Taro, uni-app, or Mpx projects.
-- **Start with:** `pnpm add -D weapp-tailwindcss`
-- **Links:** [Docs](https://tw.weapp.dev/) · [Source](https://github.com/sonofmagic/weapp-tailwindcss) · [npm](https://www.npmjs.com/package/weapp-tailwindcss)
+Generated from the repository's neutral public project catalog during builds.
 
-### Components
+<!-- catalog:en:start -->
 
-#### [Varo](https://weapp.js.org/en/projects/varo/)
+| Project                                                                  | Status  | Purpose                                                  |
+| ------------------------------------------------------------------------ | ------- | -------------------------------------------------------- |
+| [weapp-vite](https://weapp.js.org/en/projects/weapp-vite/)               | stable  | Vite builds for mini-app projects                        |
+| [weapp-tailwindcss](https://weapp.js.org/en/projects/weapp-tailwindcss/) | stable  | Use Tailwind classes in mini-app styles                  |
+| [weapp-pandacss](https://weapp.js.org/en/projects/weapp-pandacss/)       | stable  | Bring Panda CSS generation to mini-apps                  |
+| [weapp-stylex](https://weapp.js.org/en/projects/weapp-stylex/)           | beta    | Compile official StyleX to WeChat WXSS                   |
+| [Varo](https://weapp.js.org/en/projects/varo/)                           | stable  | Registry-first mobile UI for two runtimes                |
+| [weapp-sqlite](https://weapp.js.org/en/projects/weapp-sqlite/)           | planned | A local data layer for mini-app projects                 |
+| [VPT](https://weapp.js.org/en/projects/vite-plugin-taro/)                | stable  | Vite for Taro projects                                   |
+| [Vue Mini](https://weapp.js.org/en/projects/vue-mini/)                   | stable  | A Vue 3 framework for mini programs                      |
+| [Rezor](https://weapp.js.org/en/projects/rezor/)                         | beta    | A React framework for mini programs                      |
+| [Uni Helper](https://weapp.js.org/en/projects/uni-helper/)               | stable  | Better DX for the uni-app family                         |
+| [Wot UI](https://weapp.js.org/en/projects/wot-ui/)                       | stable  | A light, polished, AI-friendly uni-app component library |
 
-**Stable** · Registry-first mobile UI for H5 and Wevu mini-program projects. It delivers editable component source, business Blocks, and Agent UI while preserving native rendering on each target.
+<!-- catalog:en:end -->
 
-- **Best for:** Vue 3 teams that share interaction semantics, component source, or business Blocks between H5 and mini-program products.
-- **Start with:** `pnpm dlx @varo-ui/cli add --target weapp button input card`
-- **Links:** [Docs](https://varo.weapp.dev/) · [Source](https://github.com/daguanren21/Varo) · [npm](https://www.npmjs.com/package/@varo-ui/cli)
+## Development
 
-### Local data
+```bash
+pnpm --filter weapp build
+pnpm --filter weapp lint
+pnpm --filter weapp test
+pnpm --filter weapp test:e2e
+pnpm --filter weapp test:pack
+node packages/weapp/bin/weapp.js
+```
 
-#### [weapp-sqlite](https://weapp.js.org/en/projects/weapp-sqlite/)
+The published tarball contains runtime JavaScript, an embedded catalog and Logo point cloud, and the lab's licensed assets. It does not depend on the monorepo, Astro, or either website. `test:pack` installs the actual tarball in a temporary directory and runs artifact smoke checks. Release tags use `weapp-v<version>`.
 
-**Planned** · A planned SQLite capability for structured local data in mini-app projects. Runtime boundaries, synchronization strategy, and cross-platform APIs are still being defined.
+## Release preflight
 
-- **Best for:** Teams evaluating structured local storage, offline behavior, or a controlled migration path.
-- **Start with:** No install command is available yet.
-- **Links:** [Project docs](https://sqlite.weapp.dev/) · [Source](https://github.com/weapp-sqlite/weapp-sqlite)
+After building, `pnpm --filter weapp preflight` checks package identity, Node 18 support, public access, the unpublished npm version, and the pack dry-run's resources. This local check does **not** check CI OIDC or prove permission to publish.
 
-### Migration
+The `publish-weapp.yml` manual workflow defaults to `mode=preflight`, `tag=main`. On a GitHub-hosted runner it tests and installs one exact tarball, validates its manifest and resources, and explicitly requests a GitHub JWT for `npm:registry.npmjs.org` before exchanging it with npm. Missing credentials or a failed exchange stop the run. The JWT and exchange token are masked, never saved or passed to `npm publish`, and the run uploads the validated artifact without publishing. A successful exchange verifies that exchange only; it does not independently prove publishing permission.
 
-#### [VPT](https://weapp.js.org/en/projects/vite-plugin-taro/)
+Actual publication requires an explicit `mode=publish` with an existing `weapp-v<version>` Git tag, or a published GitHub release with that tag. The workflow must itself run from that tag: its GitHub ref, provenance commit, checked-out commit, and resolved tag commit must agree, and the version must still be unpublished. Publication uses the validated tarball with lifecycle scripts disabled and npm's own trusted-publishing authentication. The npm trusted publisher must match `weappjs/weapp.dev`, workflow filename `publish-weapp.yml`, and the workflow's environment (currently empty). `npm publish --dry-run` is not an OIDC authentication check.
 
-**Stable** · `vite-plugin-taro` brings a Vite development and build workflow to existing Taro and React projects.
+```bash
+# Validate main without publishing:
+gh workflow run publish-weapp.yml --ref main -f mode=preflight -f tag=main
+# Only after authorizing publication and creating the matching release tag:
+gh workflow run publish-weapp.yml --ref weapp-v0.1.0 -f mode=publish -f tag=weapp-v0.1.0
+```
 
-- **Best for:** Teams that want to keep Taro components and APIs while adopting Vite, faster HMR, and modern build tooling.
-- **Start with:** `npm install -D vite-plugin-taro`
-- **Links:** [Docs](https://vpt.js.org/) · [Source](https://github.com/sep2/vite-plugin-taro) · [npm](https://www.npmjs.com/package/vite-plugin-taro)
-
-### Frameworks
-
-#### [Vue Mini](https://weapp.js.org/en/projects/vue-mini/)
-
-**Stable** · Vue 3 reactivity and Composition API for mini-program pages, with compatibility for native mini-program syntax and gradual adoption.
-
-- **Best for:** Vue teams that want Vue page patterns while keeping a native mini-program project boundary.
-- **Start with:** `pnpm add @vue-mini/core` or `npm create vue-mini@latest`
-- **Links:** [Docs](https://vuemini.org/) · [Source](https://github.com/vue-mini/vue-mini) · [npm](https://www.npmjs.com/package/@vue-mini/core)
-
-#### [Rezor](https://weapp.js.org/en/projects/rezor/)
-
-**Beta** · A React Hooks mini-program runtime that aims to stay close to native performance.
-
-- **Best for:** Teams evaluating a React runtime designed specifically for mini-program projects.
-- **Start with:** `npm create rezor@latest`
-- **Links:** [Docs and source](https://github.com/rezorjs/rezor) · [npm](https://www.npmjs.com/package/rezor)
-
-### Ecosystem
-
-#### [Uni Helper](https://weapp.js.org/en/projects/uni-helper/)
-
-**Stable** · A uni-app ecosystem of tooling, conventions, and project creation helpers.
-
-- **Best for:** uni-app teams that want maintained project tooling and a consistent community entry point.
-- **Start with:** `pnpm dlx create-uni`
-- **Links:** [Docs](https://uni-helper.cn/) · [Source](https://github.com/uni-helper/create-uni) · [npm](https://www.npmjs.com/package/create-uni)
-
-#### [Wot UI](https://weapp.js.org/en/projects/wot-ui/)
-
-**Stable** · Vue 3 components for uni-app, published on npm as `wot-design-uni`.
-
-- **Best for:** uni-app products that need a production-ready mobile component library.
-- **Start with:** `pnpm add wot-design-uni`
-- **Links:** [Docs](https://wot-ui.cn/) · [Source](https://github.com/wot-ui/wot-ui) · [npm](https://www.npmjs.com/package/wot-design-uni)
-
-## How the projects fit together
-
-Start with the responsibility your project needs:
-
-1. **Build:** use `weapp-vite` for dependencies, routing, subpackages, and platform builds.
-2. **Style:** add `weapp-tailwindcss` when Tailwind utilities should reach mini-app templates.
-3. **Compose:** use Varo when your team wants editable component source and shared H5/mini-app Blocks.
-4. **Choose a runtime or migration path:** use VPT for Taro/React migration, Vue Mini for Vue 3 pages, or Rezor for a React mini-program runtime.
-5. **Choose an ecosystem layer:** use Uni Helper and Wot UI for uni-app projects.
-6. **Evaluate local data:** follow weapp-sqlite while its runtime and API boundaries are being specified.
-
-These are separate projects. Combining them is an architectural choice made by the application team, not a requirement of the `weapp` package.
-
-## Official links
-
-- [weapp.js.org](https://weapp.js.org/) — Chinese homepage
-- [Project index](https://weapp.js.org/en/projects/) — English catalog
-- [GitHub organization](https://github.com/weappjs) — project repositories and contributions
-- [Repository](https://github.com/weappjs/weapp.dev) — this catalog website and the `weapp` package
-- [Issues](https://github.com/weappjs/weapp.dev/issues) — report problems with this package or the catalog
-
-Project-specific bugs and feature requests should be filed in the repository linked from that project's catalog page.
-
-## License
+[Website](https://weapp.js.org/) · [Projects](https://weapp.js.org/en/projects/) · [GitHub](https://github.com/weappjs) · [Issues](https://github.com/weappjs/weapp.dev/issues)
 
 MIT
 
@@ -134,132 +109,51 @@ MIT
 
 ## 中文说明
 
-`weapp` 是 [weapp.js.org](https://weapp.js.org/) JavaScript 小程序开源生态的轻量导航 CLI。
+`weapp` 是面向小程序开发者的工具箱：终端里能看粒子、玩贪吃蛇，浏览器里能体验离线视觉实验室，也能搜索生态、检查项目、调用官方脚手架、生成二维码与配色。
 
-它为项目目录提供统一入口。这个包不会捆绑 `weapp-vite`、`weapp-tailwindcss`、Varo 或下面列出的其他项目。每个项目都保留自己的源码仓库、文档、发布节奏和 API 约定。
-
-## 快速开始
+直接运行 `npx weapp`，约 1.2 秒的粒子 Logo 开场后进入交互大厅；任意按键跳过。方向键与 Enter 选择，Esc 返回，Q 退出。管道、CI 与不支持交互的终端输出静态命令清单。
 
 ```bash
-npx weapp
+npx weapp --lang zh-CN
+npx weapp fx orbit --seed 42
+npx weapp lab --no-open
+npx weapp projects --status stable --json
+npx weapp docs vite --open
+npx weapp create weapp-vite my-app --template tailwindcss
+npx weapp doctor . --json
+printf 'https://weapp.js.org/' | npx weapp qr -
+npx weapp palette '#07c160' --output colors.css --format css
 ```
 
-命令会输出官网、项目目录、GitHub 组织和 issue 入口。它不发起网络请求，也不会自动打开浏览器。
+默认无遥测，无账号或 API key。除主动创建项目和访问外部链接外，功能均离线可用。`--no-color` / `NO_COLOR` 禁用颜色，`--no-motion` 禁用装饰动画（贪吃蛇仍保留游戏移动），`--lang en` 切换英文。二维码和配色文件默认不覆盖，明确传 `--force` 才覆盖。
 
-## 选择项目
+创建支持 weapp-vite、Vue Mini、Rezor、Uni Helper 和 VPT 的官方入口。新目录必须不存在且父目录已存在；运行前核验 Node 要求、固定解析版本，运行后检查 manifest 和框架依赖。上游选项仍由官方工具询问，依赖安装按其说明执行。`doctor` 只读取文件，不执行配置或脚本。已有项目的接入请参考 `info` 与官方文档。
 
-项目按各自负责的工程边界组织。你可以独立采用某个项目，也可以根据应用架构组合使用。
+每个项目保留自己的仓库、发布节奏和 API 边界。安装依赖不代表已经完成接入。weapp-sqlite 仍在规划中：**当前还没有安装命令。**
 
-### 工程构建
+构建后执行 `pnpm --filter weapp preflight` 可本地检查包身份、Node 18、公开访问、版本未发布和打包资源；它不会检查 CI OIDC，也不证明发布权限。`publish-weapp.yml` 手动运行默认 `mode=preflight`、`tag=main`：在 GitHub 托管 runner 上安装并测试同一 tarball，显式请求 GitHub JWT 并调用 npm OIDC exchange。凭据缺失或 exchange 失败即终止；JWT 与 token 仅掩码后丢弃，不落盘、不交给发布命令。交换成功只证明该交换完成，预检上传验证后的 tarball，整个模式不会发布 npm 包。
 
-#### [weapp-vite](https://weapp.js.org/projects/weapp-vite/)
+实际发布须明确选择 `mode=publish` 并传入已存在的 `weapp-v<version>` Git tag，或发布同名 GitHub release；工作流本身也须由该 tag 运行，GitHub ref、provenance SHA、检出的 HEAD 与 tag 对应提交必须一致。手动发布应使用 `--ref weapp-v0.1.0 -f mode=publish -f tag=weapp-v0.1.0`，不能以 `--ref main` 替代。npm trusted publisher 应匹配 `weappjs/weapp.dev`、`publish-weapp.yml` 及当前空 environment。`npm publish --dry-run` 不能作为 OIDC 认证证明。
 
-**稳定版** · 面向小程序项目的 Vite 构建工具，负责依赖、路由、分包和多平台单目标构建。
+<!-- catalog:zh-CN:start -->
 
-- **适合：** 需要现代 Vite 工作流、Vue SFC 和多平台输出的小程序团队。
-- **开始：** `pnpm add -D weapp-vite`
-- **链接：** [文档](https://vite.weapp.dev/) · [源码](https://github.com/weapp-vite/weapp-vite) · [npm](https://www.npmjs.com/package/weapp-vite)
+| 项目                                                                  | 状态    | 定位                                 |
+| --------------------------------------------------------------------- | ------- | ------------------------------------ |
+| [weapp-vite](https://weapp.js.org/projects/weapp-vite/)               | stable  | 用 Vite 做小程序工程构建             |
+| [weapp-tailwindcss](https://weapp.js.org/projects/weapp-tailwindcss/) | stable  | 把 Tailwind 写进小程序样式里         |
+| [weapp-pandacss](https://weapp.js.org/projects/weapp-pandacss/)       | stable  | 把 Panda CSS 的生成样式带进小程序    |
+| [weapp-stylex](https://weapp.js.org/projects/weapp-stylex/)           | beta    | 把官方 StyleX 编译为微信小程序 WXSS  |
+| [Varo](https://weapp.js.org/projects/varo/)                           | stable  | 双端移动 UI Registry                 |
+| [weapp-sqlite](https://weapp.js.org/projects/weapp-sqlite/)           | planned | 面向小程序工程的本地数据层           |
+| [VPT](https://weapp.js.org/projects/vite-plugin-taro/)                | stable  | 给 Taro 接上 Vite                    |
+| [Vue Mini](https://weapp.js.org/projects/vue-mini/)                   | stable  | 基于 Vue 3 的小程序框架              |
+| [Rezor](https://weapp.js.org/projects/rezor/)                         | beta    | 基于 React 的小程序框架              |
+| [Uni Helper](https://weapp.js.org/projects/uni-helper/)               | stable  | 增强 uni-app 系列产品的开发体验      |
+| [Wot UI](https://weapp.js.org/projects/wot-ui/)                       | stable  | 轻量、美观、AI 友好的 uni-app 组件库 |
 
-### 样式
+<!-- catalog:zh-CN:end -->
 
-#### [weapp-tailwindcss](https://weapp.js.org/projects/weapp-tailwindcss/)
-
-**稳定版** · 将 Tailwind CSS 原子类带到小程序模板和跨端项目，负责模板转换与样式生成，不接管路由或打包生命周期。
-
-- **适合：** 希望在微信、支付宝、抖音、Taro、uni-app 或 Mpx 项目中复用 Tailwind CSS 工作流的团队。
-- **开始：** `pnpm add -D weapp-tailwindcss`
-- **链接：** [文档](https://tw.weapp.dev/) · [源码](https://github.com/sonofmagic/weapp-tailwindcss) · [npm](https://www.npmjs.com/package/weapp-tailwindcss)
-
-### 组件
-
-#### [Varo](https://weapp.js.org/projects/varo/)
-
-**稳定版** · 面向 H5 与 Wevu 小程序的 Registry-first 移动 UI，交付可编辑组件源码、业务 Blocks 和 Agent UI，同时保留各端原生渲染。
-
-- **适合：** 需要在 H5 与小程序产品间共享交互语义、组件源码或业务 Blocks 的 Vue 3 团队。
-- **开始：** `pnpm dlx @varo-ui/cli add --target weapp button input card`
-- **链接：** [文档](https://varo.weapp.dev/) · [源码](https://github.com/daguanren21/Varo) · [npm](https://www.npmjs.com/package/@varo-ui/cli)
-
-### 本地数据
-
-#### [weapp-sqlite](https://weapp.js.org/projects/weapp-sqlite/)
-
-**规划中** · 面向小程序项目的 SQLite 结构化本地数据能力。运行时边界、同步策略和跨平台 API 仍在设计中。
-
-- **适合：** 需要评估结构化本地存储、离线行为或可控迁移路径的团队。
-- **开始：** 当前还没有安装命令。
-- **链接：** [项目文档](https://sqlite.weapp.dev/) · [源码](https://github.com/weapp-sqlite/weapp-sqlite)
-
-### 迁移
-
-#### [VPT](https://weapp.js.org/projects/vite-plugin-taro/)
-
-**稳定版** · `vite-plugin-taro` 为已有 Taro 与 React 项目提供 Vite 开发和构建工作流。
-
-- **适合：** 希望保留 Taro 组件和 API，同时采用 Vite、更快 HMR 与现代构建工具的团队。
-- **开始：** `npm install -D vite-plugin-taro`
-- **链接：** [文档](https://vpt.js.org/) · [源码](https://github.com/sep2/vite-plugin-taro) · [npm](https://www.npmjs.com/package/vite-plugin-taro)
-
-### 运行时框架
-
-#### [Vue Mini](https://weapp.js.org/projects/vue-mini/)
-
-**稳定版** · 为小程序页面提供 Vue 3 响应式数据和组合式 API，兼容原生小程序写法，支持渐进接入。
-
-- **适合：** 希望使用 Vue 页面模式，同时保留原生小程序工程边界的团队。
-- **开始：** `pnpm add @vue-mini/core` 或 `npm create vue-mini@latest`
-- **链接：** [文档](https://vuemini.org/) · [源码](https://github.com/vue-mini/vue-mini) · [npm](https://www.npmjs.com/package/@vue-mini/core)
-
-#### [Rezor](https://weapp.js.org/projects/rezor/)
-
-**Beta** · 使用 React Hooks 编写小程序的运行时，目标是接近原生性能。
-
-- **适合：** 评估面向小程序项目的 React 运行时的团队。
-- **开始：** `npm create rezor@latest`
-- **链接：** [文档与源码](https://github.com/rezorjs/rezor) · [npm](https://www.npmjs.com/package/rezor)
-
-### 生态工具
-
-#### [Uni Helper](https://weapp.js.org/projects/uni-helper/)
-
-**稳定版** · uni-app 工具、约定和项目创建工具组成的生态组织。
-
-- **适合：** 需要稳定项目工具和统一社区入口的 uni-app 团队。
-- **开始：** `pnpm dlx create-uni`
-- **链接：** [文档](https://uni-helper.cn/) · [源码](https://github.com/uni-helper/create-uni) · [npm](https://www.npmjs.com/package/create-uni)
-
-#### [Wot UI](https://weapp.js.org/projects/wot-ui/)
-
-**稳定版** · 面向 uni-app 的 Vue 3 组件库，在 npm 上的发布名为 `wot-design-uni`。
-
-- **适合：** 需要生产级移动组件库的 uni-app 产品。
-- **开始：** `pnpm add wot-design-uni`
-- **链接：** [文档](https://wot-ui.cn/) · [源码](https://github.com/wot-ui/wot-ui) · [npm](https://www.npmjs.com/package/wot-design-uni)
-
-## 项目如何组合
-
-根据项目需要选择对应边界：
-
-1. **构建：** 使用 `weapp-vite` 处理依赖、路由、分包和平台构建。
-2. **样式：** 使用 `weapp-tailwindcss` 将 Tailwind 原子类带到小程序模板。
-3. **组装：** 使用 Varo 将可编辑组件源码和 H5/小程序业务 Blocks 安装到项目中。
-4. **选择运行时或迁移路径：** Taro/React 项目选择 VPT，Vue 3 页面选择 Vue Mini，React 小程序运行时选择 Rezor。
-5. **选择生态层：** uni-app 项目选择 Uni Helper 和 Wot UI。
-6. **评估本地数据：** 关注仍在定义运行时与 API 边界的 weapp-sqlite。
-
-这些项目彼此独立。是否组合使用由应用团队的架构决定，不是 `weapp` 包的强制要求。
-
-## 官方入口
-
-- [weapp.js.org](https://weapp.js.org/) — 中文首页
-- [项目目录](https://weapp.js.org/en/projects/) — 英文项目索引
-- [GitHub 组织](https://github.com/weappjs) — 项目仓库与贡献入口
-- [源码仓库](https://github.com/weappjs/weapp.dev) — 本项目目录站点和 `weapp` 包
-- [Issues](https://github.com/weappjs/weapp.dev/issues) — 反馈本包或项目目录问题
-
-具体项目的 bug 和功能请求，请提交到该项目目录页面链接的源码仓库。
-
-## 许可证
+[官网](https://weapp.js.org/) · [项目目录](https://weapp.js.org/projects/) · [GitHub](https://github.com/weappjs) · [反馈](https://github.com/weappjs/weapp.dev/issues)
 
 MIT
 

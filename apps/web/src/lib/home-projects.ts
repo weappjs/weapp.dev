@@ -1,1 +1,1 @@
-export * from '@weapp/site-ui/home-projects'
+export * from '@weapp-io/site-ui/home-projects'

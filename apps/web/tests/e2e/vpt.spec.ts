@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import vpt from '@weapp/project-catalog/projects/vite-plugin-taro.json' with { type: 'json' }
+import vpt from '@weapp-io/project-catalog/projects/vite-plugin-taro.json' with { type: 'json' }
 import { expectSiteLink, siteOrigin } from './site-target'
 import { expect, test } from './test'
 
