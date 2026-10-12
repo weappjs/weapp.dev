@@ -1,5 +1,15 @@
 # weapp
 
+## 0.2.0
+
+### Minor Changes
+
+- 以六个 weapp 项目为核心升级动态终端工作台、创建向导与离线生态视觉实验室
+
+### Patch Changes
+
+- 将 CLI、终端、实验室和验收脚本迁移到严格 TypeScript，使用 tsdown 分目标打包并保留 Node 18 兼容性
+
 ## 0.1.0
 
 ### Minor Changes

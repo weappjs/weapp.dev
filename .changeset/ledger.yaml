@@ -2,3 +2,8 @@ weapp@0.1.0:
   dir: packages/weapp
   intents:
     - weapp-cli-launch
+weapp@0.2.0:
+  dir: packages/weapp
+  intents:
+    - empty-hairs-dance
+    - soft-emus-drop
