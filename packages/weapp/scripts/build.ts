@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { projectsDirectory } from '@weapp-io/project-catalog/paths'
 import { projectDefinitionSchema } from '@weapp-io/project-catalog/schemas'
 import { createHeroLogo, HERO_LOGO_PALETTE, HERO_LOGO_VIEWBOX } from '@weapp-io/site-ui/hero-logo'
+import { syncCatalogReadme } from './catalog-readme.mjs'
 
 const root = new URL('../', import.meta.url)
 const dist = new URL('dist/', root)
@@ -24,24 +25,14 @@ await writeFile(new URL('data/meta.json', dist), `${JSON.stringify({ version: pa
 await cp(new URL('src/', root), new URL('src/', dist), { recursive: true })
 await cp(new URL('lab/', root), new URL('lab/', dist), { recursive: true })
 
-const rows = (lang: 'zh-CN' | 'en') => projects.map(project => `| [${project.locales[lang].name}](https://weapp.js.org/${lang === 'en' ? 'en/' : ''}projects/${project.slug}/) | ${project.status} | ${project.locales[lang].tagline} |`).join('\n')
 const readmeUrl = new URL('README.md', root)
-let readme = await readFile(readmeUrl, 'utf8')
-for (const lang of ['en', 'zh-CN'] as const) {
-  const start = `<!-- catalog:${lang}:start -->`
-  const end = `<!-- catalog:${lang}:end -->`
-  if (!readme.includes(start) || !readme.includes(end)) {
-    throw new Error(`README is missing catalog markers: ${lang}`)
-  }
-  const table = lang === 'en' ? '| Project | Status | Purpose |\n| --- | --- | --- |' : '| 项目 | 状态 | 定位 |\n| --- | --- | --- |'
-  readme = readme.replace(new RegExp(`${start}[\\s\\S]*?${end}`), `${start}\n${table}\n${rows(lang)}\n${end}`)
-}
+const { readme, changed } = syncCatalogReadme(await readFile(readmeUrl, 'utf8'), projects)
 if (process.argv.includes('--check-readme')) {
-  if (readme !== await readFile(readmeUrl, 'utf8')) {
+  if (changed) {
     throw new Error('README catalog is stale; run pnpm --filter weapp build')
   }
 }
-else {
+else if (changed) {
   await writeFile(readmeUrl, readme)
 }
 process.stdout.write(`Built weapp: ${projects.length} projects, ${logo.points.length} Logo points → ${fileURLToPath(dist)}\n`)
