@@ -271,7 +271,7 @@ for (const path of ['/', '/en/']) {
       await expectFreshDelay(page, 0)
     })
 
-    test('keeps the shared-phase highlight attached to moving automatic, focused and hovered planets', async ({ page }) => {
+    test('keeps the shared-phase highlight attached to moving automatic, focused and hovered planets', async ({ page }, testInfo) => {
       // Natural animation time proves that selection keeps the physical
       // orbit moving; a fake clock cannot provide its native layout evidence.
       await page.emulateMedia({ reducedMotion: 'no-preference' })
@@ -302,7 +302,7 @@ for (const path of ['/', '/en/']) {
           const constellation = element.closest<HTMLElement>('hero-planets')!
           const animations = constellation.getAnimations()
           await Promise.all(animations.map(animation => animation.ready))
-          const measure = () => {
+          const measure = (frameTime: number) => {
             const link = element.getBoundingClientRect()
             const ellipse = constellation.querySelector<SVGEllipseElement>('[data-planet-highlight]')!
             const dash = getComputedStyle(ellipse).strokeDashoffset
@@ -316,7 +316,13 @@ for (const path of ['/', '/en/']) {
             const style = getComputedStyle(constellation)
             const phase = Number.parseFloat(style.getPropertyValue('--orbit-turn'))
             const selected = Number.parseFloat(style.getPropertyValue('--orbit-highlight-p'))
+            const animationTime = animations[0]?.currentTime
             return {
+              sampledAt: performance.now(),
+              frameTime,
+              timelineTime: document.timeline.currentTime,
+              animationTime: typeof animationTime === 'number' ? animationTime : null,
+              active: element.hasAttribute('data-planet-active'),
               x: link.left + link.width / 2,
               y: link.top + link.height / 2,
               error: Math.hypot(point.x - link.left - link.width / 2, point.y - link.top - link.height / 2),
@@ -325,23 +331,37 @@ for (const path of ['/', '/en/']) {
               offset,
             }
           }
-          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-          const first = measure()
-          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-          const second = measure()
+          const readFrame = () => new Promise<ReturnType<typeof measure>>(resolve => requestAnimationFrame(timestamp => resolve(measure(timestamp))))
+          const first = await readFrame()
+          let second
+          // Adjacent callbacks can be nearly simultaneous. Choose the window
+          // by elapsed natural time alone, never by the observed movement.
+          do {
+            second = await readFrame()
+          } while (second.frameTime - first.frameTime < 100 || second.sampledAt - first.sampledAt < 100)
           return {
             first,
             second,
+            elapsed: second.sampledAt - first.sampledAt,
             animationCount: animations.length,
             running: animations.every(animation => !animation.pending && animation.playState === 'running'),
             movement: Math.hypot(second.x - first.x, second.y - first.y),
             selectedPosition: Number.parseFloat((element as HTMLElement).style.getPropertyValue('--orbit-p')),
           }
         })
+        await testInfo.attach(`${interaction}-orbit-observation`, { body: JSON.stringify(alignment, null, 2), contentType: 'application/json' })
+        expect(alignment.elapsed, 'Observe at least 100ms of natural animation time').toBeGreaterThanOrEqual(100)
+        expect(alignment.second.frameTime - alignment.first.frameTime).toBeGreaterThanOrEqual(100)
+        expect(alignment.first.animationTime).not.toBeNull()
+        expect(alignment.second.animationTime).toBeGreaterThan(alignment.first.animationTime!)
+        const phaseAdvance = (alignment.second.phase - alignment.first.phase + 1) % 1
+        expect(phaseAdvance, 'The inherited phase must advance with the native timeline').toBeGreaterThan(0)
+        expect(phaseAdvance).toBeCloseTo((alignment.second.animationTime! - alignment.first.animationTime!) / 240000, 5)
         expect(alignment.animationCount, 'A single real parent animation must drive both the projects and the highlight').toBe(1)
         expect(alignment.running, 'Selection must preserve native orbit playback').toBe(true)
         expect(alignment.movement, `${interaction} must keep the selected link moving`).toBeGreaterThan(0.01)
         for (const sample of [alignment.first, alignment.second]) {
+          expect(sample.active, 'The same project must stay selected throughout the observation').toBe(true)
           expect(sample.selected).toBeCloseTo(alignment.selectedPosition, 4)
           expect(sample.offset, 'The bright arc must use the same inherited phase as its selected project').toBeCloseTo(2.5 - (sample.selected + sample.phase) * 100, 3)
           expect(sample.error, `${interaction}: the actual SVG arc midpoint must coincide with its moving link center`).toBeLessThanOrEqual(1)
@@ -358,14 +378,36 @@ for (const path of ['/', '/en/']) {
         const animations = element.getAnimations()
         await Promise.all(animations.map(animation => animation.ready))
         const planet = element.querySelector('.home-hero-planet')!
-        const first = planet.getBoundingClientRect()
-        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-        const second = planet.getBoundingClientRect()
+        const measure = (frameTime: number) => {
+          const rect = planet.getBoundingClientRect()
+          return {
+            sampledAt: performance.now(),
+            frameTime,
+            animationTime: animations[0]?.currentTime,
+            phase: Number.parseFloat(getComputedStyle(element).getPropertyValue('--orbit-turn')),
+            x: rect.left,
+            y: rect.top,
+          }
+        }
+        const readFrame = () => new Promise<ReturnType<typeof measure>>(resolve => requestAnimationFrame(timestamp => resolve(measure(timestamp))))
+        const first = await readFrame()
+        let second
+        do {
+          second = await readFrame()
+        } while (second.frameTime - first.frameTime < 100 || second.sampledAt - first.sampledAt < 100)
         return {
+          first,
+          second,
+          elapsed: second.sampledAt - first.sampledAt,
           paused: animations.every(animation => !animation.pending && animation.playState === 'paused'),
-          movement: Math.hypot(first.left - second.left, first.top - second.top),
+          movement: Math.hypot(first.x - second.x, first.y - second.y),
         }
       })
+      await testInfo.attach('paused-orbit-observation', { body: JSON.stringify(frozen, null, 2), contentType: 'application/json' })
+      expect(frozen.elapsed).toBeGreaterThanOrEqual(100)
+      expect(frozen.second.frameTime - frozen.first.frameTime).toBeGreaterThanOrEqual(100)
+      expect(frozen.second.animationTime).toBe(frozen.first.animationTime)
+      expect(frozen.second.phase).toBe(frozen.first.phase)
       expect(frozen.paused).toBe(true)
       expect(frozen.movement, 'The explicit pause button must still freeze the physical orbit').toBeLessThan(0.001)
     })
