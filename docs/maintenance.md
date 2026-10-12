@@ -32,7 +32,7 @@ pnpm metrics:sync
 
 ## 依赖维护
 
-[2026-10-09 依赖升级验收](dependency-upgrade-2026-10-09.md) 记录本轮版本变化、限定 overrides 的删除条件、安全审计剩余告警、上游 peer 冲突和双站验证结果。后续升级应复查这些上游约束，满足删除条件后移除对应 override。
+[2026-10-12 依赖升级验收](dependency-upgrade-2026-10-12.md) 记录当前版本、静态产物整理、限定 override 的删除条件和剩余安全告警；[2026-10-09 记录](dependency-upgrade-2026-10-09.md) 保留上一轮基线。后续升级应复查上游约束，满足删除条件后移除对应 override。
 
 ## 内容与路由
 
@@ -43,6 +43,8 @@ pnpm metrics:sync
 开源站保留完整项目资料、演示与贡献路径。六个历史资金路径仅提供同语种项目目录的 noindex 静态跳转，禁用 JavaScript 时仍可访问。官方文档可以使用现有 weapp.dev 子域名，但不得链接商业主域名作为服务入口。
 
 两站独立生成 canonical、hreflang、OG、JSON-LD、robots、sitemap、RSS 与 LLM 资源。商业项目页使用 WebPage 和经确认的 Service；开源项目页使用 SoftwareSourceCode。
+
+两站的 BIMI 标识文件由各自 public/bimi/logo.svg 发布到 /bimi/logo.svg。构建验证要求该文件存在，旧的 /.well-known/bimi/ 路径不得进入产物；更新 BIMI DNS 记录时使用新路径。
 
 ## 统计与隐私
 
@@ -56,7 +58,7 @@ Commercial CI 和 Open source CI 独立验证、部署和并发控制。各应�
 
 商业站继续发布到 Worker weapp-dev，域名为 weapp.dev 和 www.weapp.dev。Cloudflare 凭据只注入商业部署任务；www 的现有 Redirect Rule 保留。PR 保留 Worker Version 预览。
 
-开源站使用 GitHub Pages，产物带 CNAME 和 .nojekyll，并改写相对资源链接以兼容 /weapp.dev/ 子路径。Pages 发布权限仅出现在该部署任务。保留现有仓库 Pages 设置与域名申请，不通过此次代码变更迁移域名。
+开源站使用 GitHub Pages，直接发布已构建的静态产物，不经过 Jekyll。产物保留 CNAME，不生成 .nojekyll，并改写相对资源链接以兼容 /weapp.dev/ 子路径；重复执行资源准备时会清理旧的 .nojekyll，产物验证也会拒绝该文件。Pages 发布权限仅出现在该部署任务。保留现有仓库 Pages 设置与域名申请，不通过此次代码变更迁移域名。
 
 每站仅在该站 lint、类型、单测、产物验证、桌面/移动 E2E 通过后发布。依赖边界检查阻止跨应用导入。开源验证同时扫描 HTML、JS、JSON、SVG 和文本资源，防止商业文案及联系方式进入产物。
 

@@ -23,7 +23,8 @@ const expectedFiles = [
   'llms-full.txt',
   'og.png',
   'og.svg',
-  ...(['CNAME', '.nojekyll', '404/index.html']),
+  'bimi/logo.svg',
+  ...(['CNAME', '404/index.html']),
 ]
 const retiredDocsHosts = ['tw.icebreaker.top', 'vite.icebreaker.top']
 const errors: string[] = []
@@ -75,6 +76,16 @@ for (const file of expectedFiles) {
   }
   catch {
     errors.push(`Missing expected build output: ${file}`)
+  }
+}
+
+for (const name of ['.nojekyll', '.well-known/bimi']) {
+  try {
+    await access(resolve(dist, name))
+    errors.push(`Forbidden build output: ${name}`)
+  }
+  catch {
+    // The Pages artifact does not publish legacy BIMI paths or use Jekyll.
   }
 }
 

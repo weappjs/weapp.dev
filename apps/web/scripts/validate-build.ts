@@ -23,6 +23,7 @@ const expectedFiles = [
   'llms-full.txt',
   'og.png',
   'og.svg',
+  'bimi/logo.svg',
 ]
 const retiredDocsHosts = ['tw.icebreaker.top', 'vite.icebreaker.top']
 const errors: string[] = []
@@ -64,13 +65,13 @@ for (const file of expectedFiles) {
   }
 }
 
-for (const name of ['CNAME', '.nojekyll']) {
+for (const name of ['CNAME', '.nojekyll', '.well-known/bimi']) {
   try {
     await access(resolve(dist, name))
-    errors.push(`${name}: Pages deployment file must not appear in the Cloudflare output`)
+    errors.push(`Forbidden build output: ${name}`)
   }
   catch {
-    // The complete site does not publish GitHub Pages control files.
+    // The complete site does not publish legacy BIMI paths or Pages control files.
   }
 }
 

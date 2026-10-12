@@ -1,4 +1,4 @@
-import { readdir, readFile, writeFile } from 'node:fs/promises'
+import { readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import process from 'node:process'
 import { projectsDirectory } from '@weapp/project-catalog/paths'
@@ -20,4 +20,4 @@ for (const [name, content] of Object.entries(createSiteResources(site, projects)
 }
 
 await writeFile(join(root, 'CNAME'), `${new URL(site.origin).hostname}\n`, 'utf8')
-await writeFile(join(root, '.nojekyll'), '', 'utf8')
+await rm(join(root, '.nojekyll'), { force: true })
