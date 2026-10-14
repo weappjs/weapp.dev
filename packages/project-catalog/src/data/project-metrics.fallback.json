@@ -1,72 +1,72 @@
 {
   "weapp-tailwindcss": {
-    "version": "5.3.5",
-    "releasedAt": "2026-08-25T03:07:36.077Z",
-    "stars": 1849,
-    "weeklyDownloads": 11561,
-    "fetchedAt": "2026-08-26T00:00:00.000Z"
+    "version": "5.6.1",
+    "releasedAt": "2026-10-10T19:25:44.429Z",
+    "stars": 1865,
+    "weeklyDownloads": 11151,
+    "fetchedAt": "2026-10-12T07:01:47.149Z"
   },
   "weapp-vite": {
-    "version": "6.22.0",
-    "releasedAt": "2026-08-24T15:07:11.946Z",
-    "stars": 465,
-    "weeklyDownloads": 3178,
-    "fetchedAt": "2026-08-26T00:00:00.000Z"
+    "version": "7.5.0",
+    "releasedAt": "2026-10-10T17:15:41.065Z",
+    "stars": 510,
+    "weeklyDownloads": 3678,
+    "fetchedAt": "2026-10-12T07:01:46.890Z"
   },
   "varo": {
-    "version": "2.1.0",
-    "releasedAt": "2026-09-13T15:45:51.579Z",
-    "stars": 2,
-    "weeklyDownloads": 195,
-    "fetchedAt": "2026-09-16T00:00:00.000Z"
+    "version": "2.2.0",
+    "releasedAt": "2026-10-07T05:20:24.356Z",
+    "stars": 3,
+    "weeklyDownloads": 216,
+    "fetchedAt": "2026-10-12T07:01:46.830Z"
   },
   "vite-plugin-taro": {
-    "version": "0.7.1",
-    "releasedAt": "2026-09-07T16:45:56.067Z",
-    "stars": 50,
-    "weeklyDownloads": 934,
-    "fetchedAt": "2026-09-09T11:13:25.620Z"
+    "version": "0.7.11",
+    "releasedAt": "2026-10-01T02:18:29.357Z",
+    "stars": 59,
+    "weeklyDownloads": 388,
+    "fetchedAt": "2026-10-12T07:01:46.802Z"
   },
   "vue-mini": {
-    "version": "1.2.15",
-    "releasedAt": "2026-08-06T07:39:20.963Z",
-    "stars": 2080,
-    "weeklyDownloads": 111,
-    "fetchedAt": "2026-09-21T00:00:00.000Z"
+    "version": "1.2.16",
+    "releasedAt": "2026-09-25T13:46:25.693Z",
+    "stars": 2084,
+    "weeklyDownloads": 91,
+    "fetchedAt": "2026-10-12T07:01:46.804Z"
   },
   "rezor": {
     "version": "0.6.1",
     "releasedAt": "2026-09-03T05:22:38.014Z",
-    "stars": 31,
-    "weeklyDownloads": 44,
-    "fetchedAt": "2026-09-21T00:00:00.000Z"
+    "stars": 39,
+    "weeklyDownloads": 6,
+    "fetchedAt": "2026-10-12T07:01:46.746Z"
   },
   "uni-helper": {
     "version": "2.17.1",
     "releasedAt": "2026-09-14T02:54:35.528Z",
-    "stars": 309,
-    "weeklyDownloads": 817,
-    "fetchedAt": "2026-09-16T12:00:00.000Z"
+    "stars": 310,
+    "weeklyDownloads": 113,
+    "fetchedAt": "2026-10-12T07:01:46.813Z"
   },
   "wot-ui": {
     "version": "1.14.0",
     "releasedAt": "2026-01-04T11:19:40.319Z",
-    "stars": 360,
-    "weeklyDownloads": 2378,
-    "fetchedAt": "2026-09-16T12:00:00.000Z"
+    "stars": 390,
+    "weeklyDownloads": 3546,
+    "fetchedAt": "2026-10-12T07:01:46.794Z"
   },
   "weapp-pandacss": {
-    "version": "2.0.1",
-    "releasedAt": "2026-10-09T05:24:35.278Z",
+    "version": "2.2.0",
+    "releasedAt": "2026-10-11T19:19:03.256Z",
     "stars": 17,
-    "weeklyDownloads": 71,
-    "fetchedAt": "2026-10-09T09:24:09.413578Z"
+    "weeklyDownloads": 582,
+    "fetchedAt": "2026-10-12T07:01:46.844Z"
   },
   "weapp-stylex": {
-    "version": "0.1.0",
-    "releasedAt": "2026-10-09T05:12:51.758Z",
-    "stars": 0,
-    "weeklyDownloads": null,
-    "fetchedAt": "2026-10-09T09:24:12.596923Z"
+    "version": "0.2.0",
+    "releasedAt": "2026-10-09T09:55:31.274Z",
+    "stars": 2,
+    "weeklyDownloads": 685,
+    "fetchedAt": "2026-10-12T07:01:46.825Z"
   }
 }
