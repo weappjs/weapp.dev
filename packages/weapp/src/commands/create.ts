@@ -1,161 +1,20 @@
 import type { Buffer } from 'node:buffer'
-import type { Template } from '../templates.js'
 import type { CliContext, CliOptions } from '../types.js'
-import { lstat, readFile, realpath } from 'node:fs/promises'
+import type { CreateOperations, CreateProgress, CreateResult, CreateWizardHooks, ExecutionOptions, QueryOptions, ScaffolderExecution, ScaffolderMetadata, ScaffoldPlan } from './create/plan.js'
+import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import process from 'node:process'
 // eslint-disable-next-line e18e/ban-dependencies -- Preserve Windows-safe npm spawning on the Node 18 baseline.
 import spawn from 'cross-spawn'
-// eslint-disable-next-line e18e/ban-dependencies -- Validate npm engines with the complete semver grammar on Node 18.
-import semver from 'semver'
 import { sanitize, t, write, writeError } from '../shared.js'
-import { TEMPLATES } from '../templates.js'
+import { cancellationError, checkCancellation, CreateError } from './create/errors.js'
+import { CREATE_ADAPTERS, displayCommand, exists, npmExecArgs, scaffoldPlan, validateSelection } from './create/plan.js'
+import { CreatePreparation, validateScaffolderMetadata } from './create/preparation.js'
 
-export { TEMPLATES } from '../templates.js'
-export const CREATE_ADAPTERS = Object.freeze({
-  'weapp-vite': { package: 'create-weapp-vite', bin: 'create-weapp-vite', dependency: 'weapp-vite' },
-  'vue-mini': { package: 'create-vue-mini', bin: 'create-vue-mini', dependency: '@vue-mini/core' },
-  'rezor': { package: 'create-rezor', bin: 'create-rezor', dependency: 'rezor' },
-  'uni': { package: 'create-uni', bin: 'create-uni', dependency: '@dcloudio/uni-app' },
-  'taro': { package: 'create-vite-taro', bin: 'create-vite-taro', dependency: 'vite-plugin-taro' },
-})
-export type CreateRoute = keyof typeof CREATE_ADAPTERS
-export interface ScaffoldPlan {
-  route: CreateRoute
-  package: string
-  bin: string
-  dependency: string
-  directory: string
-  cwd: string
-  args: string[]
-}
-export interface ScaffolderMetadata {
-  version: string
-  engines?: { node?: string }
-}
-export interface QueryOptions {
-  timeout?: number
-  signal?: AbortSignal
-}
-export interface ExecutionOptions {
-  signal?: AbortSignal
-}
-export interface ScaffolderExecution {
-  code: number | null
-  signal?: NodeJS.Signals | null
-}
-export interface CreateOperations {
-  nodeVersion?: string
-  signal?: AbortSignal
-  isCancelled?: () => boolean | undefined
-  query?: (packageName: string, options?: QueryOptions) => Promise<ScaffolderMetadata>
-  execute?: (plan: ScaffoldPlan, version: string, options?: ExecutionOptions) => Promise<ScaffolderExecution | number>
-}
-export interface CreateWizardSelection {
-  args: string[]
-  options?: CliOptions
-}
-export type CreateResult = {
-  plan: ScaffoldPlan
-  dryRun: true
-  version?: never
-  manifest?: never
-} | {
-  plan: ScaffoldPlan
-  dryRun?: false
-  version: string
-  manifest: Record<string, unknown>
-}
-class CreateError extends Error {
-  readonly zh: string
-  readonly en: string
+export type { CreateOperations, CreateProgress, CreateResult, CreateRoute, CreateWizardHooks, CreateWizardSelection, ExecutionOptions, QueryOptions, ScaffolderExecution, ScaffolderMetadata, ScaffoldPlan } from './create/plan.js'
+export { CREATE_ADAPTERS, displayCommand, npmExecArgs, scaffoldPlan, TEMPLATES } from './create/plan.js'
 
-  constructor(zh: string, en: string) {
-    super(en)
-    this.zh = zh
-    this.en = en
-  }
-}
-function cancellationError() {
-  const error = new Error('Project creation cancelled.')
-  error.name = 'AbortError'
-  return error
-}
-function checkCancellation(operations: Pick<CreateOperations, 'signal' | 'isCancelled'>): void {
-  if (operations.signal?.aborted || operations.isCancelled?.()) {
-    throw cancellationError()
-  }
-}
-async function exists(filename: string): Promise<boolean> {
-  try {
-    await lstat(filename)
-    return true
-  }
-  catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      return false
-    }
-    throw error
-  }
-}
-function isCreateRoute(route: string): route is CreateRoute {
-  return Object.hasOwn(CREATE_ADAPTERS, route)
-}
-function isTemplate(template: string): template is Template {
-  const templates: readonly string[] = TEMPLATES
-  return templates.includes(template)
-}
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-function validateSelection(route: string, options: CliOptions): { route: CreateRoute, template: Template } {
-  if (!isCreateRoute(route)) {
-    throw new CreateError(`未知创建路线：${route}。可选：${Object.keys(CREATE_ADAPTERS).join(', ')}`, `Unknown creation route: ${route}. Choose ${Object.keys(CREATE_ADAPTERS).join(', ')}`)
-  }
-  if (options.template !== undefined && route !== 'weapp-vite') {
-    throw new CreateError('--template 只适用于 weapp-vite。', '--template is only available for weapp-vite.')
-  }
-  const template = options.template || 'default'
-  if (!isTemplate(template)) {
-    throw new CreateError(`未知模板：${template}。可选：${TEMPLATES.join(', ')}`, `Unknown template: ${template}. Choose ${TEMPLATES.join(', ')}`)
-  }
-  return { route, template }
-}
-export async function scaffoldPlan(route: string, directory: string, options: CliOptions = {}): Promise<ScaffoldPlan> {
-  const selection = validateSelection(route, options)
-  const { template } = selection
-  const adapter = CREATE_ADAPTERS[selection.route]
-  if (typeof directory !== 'string' || !directory.trim() || [...directory].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) {
-    throw new CreateError('请提供有效的新项目目录。', 'Provide a valid new project directory.')
-  }
-  const absolute = path.resolve(directory)
-  const name = path.basename(absolute)
-  if (!/^[a-z0-9][\w.-]*$/i.test(name) || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name) || name.endsWith('.')) {
-    throw new CreateError('项目目录名须以字母或数字开头，仅包含字母、数字、点、下划线和短横线。', 'The project directory name must begin with a letter or number and contain only letters, numbers, dots, underscores, or hyphens.')
-  }
-  if (await exists(absolute)) {
-    throw new CreateError(`目标已存在，不能覆盖：${absolute}`, `Target already exists and cannot be overwritten: ${absolute}`)
-  }
-  let parent: string
-  try {
-    parent = await realpath(path.dirname(absolute))
-    if (!(await lstat(parent)).isDirectory()) {
-      throw new Error('not-directory')
-    }
-  }
-  catch {
-    throw new CreateError(`父目录不存在或不是目录：${path.dirname(absolute)}`, `Parent directory does not exist or is not a directory: ${path.dirname(absolute)}`)
-  }
-  const target = path.join(parent, name)
-  const scaffoldName = route === 'weapp-vite' && name === 'init' ? './init' : name
-  const scaffoldArgs = route === 'weapp-vite' ? [scaffoldName, template, '--no-install-skills'] : [scaffoldName]
-  return { route: selection.route, package: adapter.package, bin: adapter.bin, dependency: adapter.dependency, directory: target, cwd: parent, args: scaffoldArgs }
-}
-export function npmExecArgs(plan: ScaffoldPlan, version = 'latest'): string[] {
-  return ['exec', '--yes', `--package=${plan.package}@${version}`, '--', plan.bin, ...plan.args]
-}
-export function displayCommand(args: readonly string[]): string {
-  return ['npm', ...args].map(arg => /^[\w@/.=:-]+$/.test(arg) ? arg : `'${arg.replaceAll('\'', '\'\\\'\'')}'`).join(' ')
 }
 export function parseScaffolderMetadata(output: string): ScaffolderMetadata {
   const metadata: unknown = JSON.parse(output)
@@ -174,10 +33,10 @@ export function parseScaffolderMetadata(output: string): ScaffolderMetadata {
   }
   return { version: metadata.version, engines: { node: metadata.engines.node } }
 }
-export function queryScaffolder(packageName: string, { timeout = 15000, signal }: QueryOptions = {}): Promise<ScaffolderMetadata> {
+export function queryScaffolder(packageName: string, { timeout = 15000, signal, cwd }: QueryOptions = {}): Promise<ScaffolderMetadata> {
   return new Promise((resolve, reject) => {
     checkCancellation({ signal })
-    const child = spawn('npm', ['view', `${packageName}@latest`, 'version', 'engines', '--json', '--registry=https://registry.npmjs.org/', '--fetch-retries=0', `--fetch-timeout=${timeout}`], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
+    const child = spawn('npm', ['view', `${packageName}@latest`, 'version', 'engines', '--json', '--fetch-retries=0', `--fetch-timeout=${timeout}`], { cwd, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
     let output = ''
     let oversized = false
     let settled = false
@@ -229,7 +88,7 @@ export function queryScaffolder(packageName: string, { timeout = 15000, signal }
         return
       }
       if (code !== 0 || oversized) {
-        finish({ error: new CreateError(`无法从官方 npm 源查询 ${packageName}，请检查网络后重试。`, `Unable to query ${packageName} from the official npm registry. Check your connection and retry.`) })
+        finish({ error: new CreateError(`无法通过 npm 查询 ${packageName}，请检查网络后重试。`, `Unable to query ${packageName} through the configured npm registry. Check your connection and retry.`) })
         return
       }
       try {
@@ -274,59 +133,133 @@ export async function createProject(route: string, directory: string, options: C
     return { plan, dryRun: true }
   }
   const operationOptions: [ExecutionOptions?] = operations.signal ? [{ signal: operations.signal }] : []
-  const metadata = await (operations.query || queryScaffolder)(plan.package, ...operationOptions)
+  const metadata = await (operations.query || queryScaffolder)(plan.package, { cwd: plan.cwd, signal: operations.signal })
   checkCancellation(operations)
-  if (!metadata || !semver.valid(metadata.version)) {
-    throw new CreateError('脚手架版本元数据无效。', 'The scaffolder version metadata is invalid.')
-  }
-  const requirement = metadata.engines?.node
-  const nodeVersion = operations.nodeVersion || process.versions.node
-  if (requirement && (!semver.validRange(requirement) || !semver.satisfies(nodeVersion, requirement))) {
-    throw new CreateError(`${plan.package}@${metadata.version} 要求 Node ${requirement}；当前为 ${nodeVersion}。请升级 Node 后重试。`, `${plan.package}@${metadata.version} requires Node ${requirement}; current version is ${nodeVersion}. Upgrade Node and retry.`)
-  }
+  validateScaffolderMetadata(plan.package, metadata, operations.nodeVersion)
   if (await exists(plan.directory)) {
     throw new CreateError(`目标在创建前已出现，不能覆盖：${plan.directory}`, `The target appeared before creation and cannot be overwritten: ${plan.directory}`)
   }
   checkCancellation(operations)
-  const result = await (operations.execute || executeScaffolder)(plan, metadata.version, ...operationOptions)
+  const progress = { packageName: plan.package, cwd: plan.cwd, version: metadata.version }
+  const executionStartedAt = Date.now()
+  let executionElapsedMs: number
+  let result: ScaffolderExecution | number
+  operations.onProgress?.({ ...progress, phase: 'executing' })
+  try {
+    result = await (operations.execute || executeScaffolder)(plan, metadata.version, ...operationOptions)
+  }
+  finally {
+    executionElapsedMs = Date.now() - executionStartedAt
+    operations.onProgress?.({ ...progress, phase: 'executing', executionElapsedMs })
+  }
   checkCancellation(operations)
   const code = typeof result === 'number' ? result : result?.code
   if (code !== 0) {
     throw new CreateError(`官方脚手架未成功退出。已有文件保留在 ${plan.directory}，请检查后重试。`, `The official scaffolder did not finish successfully. Any generated files remain at ${plan.directory}; inspect them before retrying.`)
   }
-  let manifest: Record<string, unknown>
+  const validationStartedAt = Date.now()
+  let completed = false
+  operations.onProgress?.({ ...progress, phase: 'validating', executionElapsedMs })
   try {
-    const parsed: unknown = JSON.parse(await readFile(path.join(plan.directory, 'package.json'), 'utf8'))
-    if (!isRecord(parsed)) {
-      throw new Error('manifest')
+    let manifest: Record<string, unknown>
+    try {
+      const parsed: unknown = JSON.parse(await readFile(path.join(plan.directory, 'package.json'), 'utf8'))
+      if (!isRecord(parsed)) {
+        throw new Error('manifest')
+      }
+      manifest = parsed
     }
-    manifest = parsed
+    catch {
+      throw new CreateError(`脚手架未生成有效的 package.json。已有文件保留在 ${plan.directory}。`, `The scaffolder did not generate a valid package.json. Any generated files remain at ${plan.directory}.`)
+    }
+    const dependencies = { ...(isRecord(manifest.dependencies) ? manifest.dependencies : {}), ...(isRecord(manifest.devDependencies) ? manifest.devDependencies : {}) }
+    const frameworkDependency = dependencies[plan.dependency]
+    if (typeof frameworkDependency !== 'string' || !frameworkDependency.trim()) {
+      throw new CreateError(`生成项目缺少预期依赖 ${plan.dependency}，请检查 ${plan.directory}。`, `The generated project is missing the expected dependency ${plan.dependency}. Inspect ${plan.directory}.`)
+    }
+    completed = true
+    return { plan, version: metadata.version, manifest }
   }
-  catch {
-    throw new CreateError(`脚手架未生成有效的 package.json。已有文件保留在 ${plan.directory}。`, `The scaffolder did not generate a valid package.json. Any generated files remain at ${plan.directory}.`)
+  finally {
+    operations.onProgress?.({ ...progress, phase: completed ? 'complete' : 'failed', executionElapsedMs, validationElapsedMs: Date.now() - validationStartedAt })
   }
-  const dependencies = { ...(isRecord(manifest.dependencies) ? manifest.dependencies : {}), ...(isRecord(manifest.devDependencies) ? manifest.devDependencies : {}) }
-  const frameworkDependency = dependencies[plan.dependency]
-  if (typeof frameworkDependency !== 'string' || !frameworkDependency.trim()) {
-    throw new CreateError(`生成项目缺少预期依赖 ${plan.dependency}，请检查 ${plan.directory}。`, `The generated project is missing the expected dependency ${plan.dependency}. Inspect ${plan.directory}.`)
-  }
-  return { plan, version: metadata.version, manifest }
 }
+
 export async function runCreate(ctx: CliContext, args: string[], options: CliOptions = {}): Promise<number> {
   if (args.length > 2) {
     writeError(ctx, t(ctx, '用法：weapp create [路线] [新目录] [--template 模板] [--dry-run]', 'Usage: weapp create [route] [new-directory] [--template template] [--dry-run]'))
     return 1
   }
+  let preparation: CreatePreparation | undefined
+  let detachSignal: (() => void) | undefined
+  let unsubscribeProgress: (() => void) | undefined
+  let interruptedCode: (() => number | undefined) | undefined
+  let locallyCancelled = false
   try {
     let selectedArgs = args
     let selectedOptions = options
     const route = args[0] ?? 'weapp-vite'
-    validateSelection(route, options)
+    const selection = validateSelection(route, options)
+    const controller = new AbortController()
+    const sourceSignal = ctx.operationSignal || ctx.resources?.workbench?.abortSignal || ctx.createOperations?.signal
+    const abort = () => controller.abort()
+    sourceSignal?.addEventListener('abort', abort, { once: true })
+    detachSignal = () => sourceSignal?.removeEventListener('abort', abort)
+    if (sourceSignal?.aborted) {
+      abort()
+    }
+    const operations: CreateOperations = {
+      ...ctx.createOperations,
+      signal: controller.signal,
+      isCancelled: () => ctx.cancelled || ctx.createOperations?.isCancelled?.(),
+    }
+    preparation = new CreatePreparation({
+      ...operations,
+      query: operations.query || queryScaffolder,
+    })
+    const prepared = preparation
+    let lastProgress: CreateProgress | undefined
+    unsubscribeProgress = prepared.subscribe((state) => {
+      const history = state.phase === 'querying'
+        ? {}
+        : {
+            queryElapsedMs: lastProgress?.queryElapsedMs,
+            executionElapsedMs: lastProgress?.executionElapsedMs,
+            validationElapsedMs: lastProgress?.validationElapsedMs,
+          }
+      lastProgress = { ...history, ...state }
+      ctx.createOperations?.onProgress?.(lastProgress)
+      ctx.resources?.workbench?.setCreateProgress(lastProgress)
+      if (!ctx.resources?.workbench?.session.started) {
+        if (state.phase === 'querying') {
+          write(ctx, t(ctx, '正在查询脚手架版本与 Node 要求…', 'Checking the scaffolder version and Node requirement…'))
+        }
+        else if (state.phase === 'executing' && state.executionElapsedMs === undefined) {
+          write(ctx, t(ctx, `正在运行官方脚手架 ${state.packageName}@${state.version}…`, `Running the official scaffolder ${state.packageName}@${state.version}…`))
+        }
+        else if (state.phase === 'validating') {
+          write(ctx, t(ctx, '正在验证生成项目…', 'Validating the generated project…'))
+        }
+        else if (state.phase === 'complete') {
+          write(ctx, t(ctx, `版本查询 ${lastProgress.queryElapsedMs}ms · 脚手架 ${lastProgress.executionElapsedMs}ms · 项目验证 ${lastProgress.validationElapsedMs}ms`, `Version lookup ${lastProgress.queryElapsedMs}ms · Scaffolder ${lastProgress.executionElapsedMs}ms · Project validation ${lastProgress.validationElapsedMs}ms`))
+        }
+      }
+    })
+    const hooks: CreateWizardHooks = {
+      onPlan: (plan) => {
+        if (!options.dryRun) {
+          prepared.prepare(plan)
+        }
+      },
+      subscribeProgress: prepared.subscribe,
+      onCancel: abort,
+    }
     if (args.length < 2) {
       if (!ctx.interactive || typeof ctx.createWizard !== 'function') {
         throw new CreateError('非交互终端需要提供新项目目录。用法：weapp create <路线> <新目录>。', 'A non-interactive terminal requires a new project directory. Usage: weapp create <route> <new-directory>.')
       }
-      const selection = await ctx.createWizard(route, options)
+      checkCancellation(operations)
+      const selection = await ctx.createWizard(route, options, hooks)
       if (!selection) {
         return ctx.cancelledCode || (ctx.cancelled ? 130 : 0)
       }
@@ -336,11 +269,12 @@ export async function runCreate(ctx: CliContext, args: string[], options: CliOpt
         throw new CreateError('创建向导未提供有效的路线和目录。', 'The creation wizard did not provide a valid route and directory.')
       }
     }
-    const operations: CreateOperations = {
-      ...ctx.createOperations,
-      signal: ctx.operationSignal || ctx.resources?.workbench?.abortSignal || ctx.createOperations?.signal,
-      isCancelled: () => ctx.cancelled || ctx.createOperations?.isCancelled?.(),
+    const cancel = () => {
+      locallyCancelled = true
+      abort()
     }
+    operations.query = (packageName, queryOptions) => prepared.resolve({ package: packageName, cwd: queryOptions?.cwd || '.' })
+    operations.onProgress = state => prepared.progress(state)
     const execute = operations.execute || executeScaffolder
     operations.execute = (plan, version, ...executionOptions) => {
       const workbench = ctx.resources?.workbench
@@ -348,12 +282,25 @@ export async function runCreate(ctx: CliContext, args: string[], options: CliOpt
         checkCancellation(operations)
         return execute(plan, version, ...executionOptions)
       }
-      return workbench ? workbench.external(callback) : callback()
+      const notice = t(ctx, `正在交给官方脚手架 ${plan.package}@${version}。首次运行时，npm 可能需要下载依赖；终端输入现在由脚手架接管。`, `Starting the official scaffolder ${plan.package}@${version}. On first use, npm may download dependencies; the scaffolder now controls terminal input.`)
+      return workbench ? workbench.external(callback, notice) : callback()
     }
-    const result = await createProject(selectedArgs[0], selectedArgs[1], selectedOptions, operations)
+    const workbench = ctx.resources?.workbench
+    interruptedCode = () => workbench?.ctx.cancelledCode
+    if (!lastProgress) {
+      prepared.progress({ phase: 'planning', packageName: CREATE_ADAPTERS[selection.route].package, cwd: path.dirname(path.resolve(selectedArgs[1])) })
+    }
+    const pending = createProject(selectedArgs[0], selectedArgs[1], selectedOptions, operations)
+    const result = workbench ? await workbench.waitForCreate(pending, cancel, prepared.subscribe) : await pending
+    if (!result) {
+      throw cancellationError()
+    }
     if (result.dryRun) {
       write(ctx, `${t(ctx, '执行目录', 'Working directory')}: ${sanitize(result.plan.cwd)}\n${displayCommand(npmExecArgs(result.plan))}`)
       write(ctx, t(ctx, '实际运行会先检查官方版本和 Node 要求；此预览没有联网或写入文件。', 'Execution first checks the official version and Node requirements; this preview does not access the network or write files.'))
+    }
+    else if (ctx.hub && ctx.resources?.workbench?.session.started && !ctx.resources.workbench.session.closed) {
+      ctx.resources.workbench.showCreateSuccess(result.plan, lastProgress)
     }
     else {
       write(ctx, `${t(ctx, '项目已创建', 'Project created')}: ${sanitize(result.plan.directory)}`)
@@ -363,9 +310,14 @@ export async function runCreate(ctx: CliContext, args: string[], options: CliOpt
   }
   catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      return ctx.cancelledCode || 130
+      return ctx.cancelledCode || interruptedCode?.() || (locallyCancelled && !ctx.cancelled ? 0 : 130)
     }
     writeError(ctx, sanitize(error instanceof CreateError ? t(ctx, error.zh, error.en) : t(ctx, '无法创建项目，请检查目录权限。', 'Unable to create the project. Check directory permissions.')))
     return 1
+  }
+  finally {
+    unsubscribeProgress?.()
+    preparation?.dispose()
+    detachSignal?.()
   }
 }

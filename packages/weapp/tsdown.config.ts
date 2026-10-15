@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { defineConfig } from 'tsdown'
+import { bundledDependencies, bundlePolicyPlugin } from './scripts/bundle-policy.ts'
 
 export default defineConfig([
   {
@@ -12,7 +15,14 @@ export default defineConfig([
     clean: false,
     dts: false,
     exports: false,
-    outputOptions: { chunkFileNames: '[name]-[hash].js' },
+    deps: {
+      neverBundle: true,
+      alwaysBundle: id => Object.keys(bundledDependencies).some(name => id === name || id.startsWith(`${name}/`)),
+      onlyBundle: Object.keys(bundledDependencies),
+      onlyImport: ['open'],
+    },
+    plugins: [bundlePolicyPlugin()],
+    outputOptions: { chunkFileNames: '[name]-[hash].js', comments: { legal: true } },
   },
   {
     name: 'lab',
@@ -38,5 +48,9 @@ export default defineConfig([
     clean: true,
     dts: false,
     exports: false,
+    // The validation runner is uploaded independently of the npm tarball.
+    outputOptions: {
+      banner: `/*! jsQR 1.4.0 - Apache-2.0 - https://github.com/cozmo/jsQR\n${readFileSync(createRequire(import.meta.url).resolve('jsqr/LICENSE'), 'utf8')}\n*/`,
+    },
   },
 ])

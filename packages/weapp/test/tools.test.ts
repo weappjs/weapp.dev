@@ -99,7 +99,7 @@ describe('official scaffold adapters', () => {
     const adapter = CREATE_ADAPTERS[route]
     const operations = fakeOperations(adapter.dependency)
     const result = await createProject(route, path.join(directory, route), {}, operations)
-    expect(operations.query).toHaveBeenCalledWith(adapter.package)
+    expect(operations.query).toHaveBeenCalledWith(adapter.package, { cwd: await realpath(directory), signal: undefined })
     expect(operations.execute).toHaveBeenCalledWith(expect.objectContaining({ cwd: await realpath(directory), package: adapter.package, args: route === 'weapp-vite' ? [route, 'default', '--no-install-skills'] : [route] }), '1.2.3')
     expect(result.version).toBe('1.2.3')
     expect(npmExecArgs(result.plan, result.version)).toEqual(['exec', '--yes', `--package=${adapter.package}@1.2.3`, '--', adapter.bin, ...result.plan.args])
@@ -170,7 +170,7 @@ describe('interactive project creation', () => {
     ctx.createWizard = vi.fn(async () => ({ args: ['weapp-vite', path.join(directory, 'app')], options: { template: 'react' } }))
     const options = { dryRun: true }
     expect(await runCreate(ctx, [], options)).toBe(0)
-    expect(ctx.createWizard).toHaveBeenCalledWith('weapp-vite', options)
+    expect(ctx.createWizard).toHaveBeenCalledWith('weapp-vite', options, expect.objectContaining({ onPlan: expect.any(Function) }))
     expect(output.stdout).toContain('app react --no-install-skills')
     expect(output.stdout).toContain('does not access the network')
     expect(output.stderr).toBe('')
@@ -184,8 +184,8 @@ describe('interactive project creation', () => {
     ctx.createOperations = fakeOperations(CREATE_ADAPTERS[route].dependency)
     ctx.createWizard = vi.fn(async () => ({ args: [route, path.join(directory, 'app')], options: {} }))
     expect(await runCreate(ctx, [route], {})).toBe(0)
-    expect(ctx.createWizard).toHaveBeenCalledWith(route, {})
-    expect(ctx.createOperations.query).toHaveBeenCalledWith(CREATE_ADAPTERS[route].package)
+    expect(ctx.createWizard).toHaveBeenCalledWith(route, {}, expect.objectContaining({ onPlan: expect.any(Function) }))
+    expect(ctx.createOperations.query).toHaveBeenCalledWith(CREATE_ADAPTERS[route].package, { cwd: await realpath(directory), signal: expect.any(AbortSignal) })
     expect(ctx.createOperations.execute).toHaveBeenCalledOnce()
   })
   it('skips the wizard when both route and directory are explicit', async () => {
@@ -285,7 +285,7 @@ describe('interactive project creation', () => {
     expect(await runCreate(ctx, ['weapp-vite', path.join(directory, 'app')], {})).toBe(code === 0 ? 0 : 1)
     expect(lifecycle).toEqual(['query', 'release', 'execute', 'restore'])
     expect(external).toHaveBeenCalledOnce()
-    expect(operations.execute).toHaveBeenCalledWith(expect.objectContaining({ route: 'weapp-vite' }), '1.2.3', { signal: ctx.resources.workbench?.abortSignal })
+    expect(operations.execute).toHaveBeenCalledWith(expect.objectContaining({ route: 'weapp-vite' }), '1.2.3', { signal: expect.any(AbortSignal) })
   })
   it('does not suspend the workbench or query metadata for a dry-run', async () => {
     const { ctx } = context()
@@ -320,10 +320,13 @@ describe('interactive project creation', () => {
     controller.abort()
     resolveMetadata({ version: '1.2.3', engines: { node: '>=18' } })
     expect(await creating).toBe(143)
-    expect(ctx.createOperations.query).toHaveBeenCalledWith('create-weapp-vite', { signal: controller.signal })
+    expect(ctx.createOperations.query).toHaveBeenCalledWith('create-weapp-vite', { cwd: await realpath(directory), signal: expect.any(AbortSignal) })
+    expect(ctx.createOperations.query.mock.calls[0][1]?.signal?.aborted).toBe(true)
     expect(ctx.createOperations.execute).not.toHaveBeenCalled()
     expect(external).not.toHaveBeenCalled()
-    expect(output).toEqual({ stdout: '', stderr: '' })
+    expect(output.stderr).toBe('')
+    expect(output.stdout).toContain('Checking the scaffolder version')
+    expect(output.stdout).not.toContain('Running the official scaffolder')
     await expect(readFile(path.join(directory, 'app', 'package.json'))).rejects.toHaveProperty('code', 'ENOENT')
   })
   it('stops a delayed metadata result after context cancellation even without an AbortSignal', async () => {
@@ -335,7 +338,8 @@ describe('interactive project creation', () => {
     })
     expect(await runCreate(ctx, ['weapp-vite', path.join(directory, 'app')], {})).toBe(130)
     expect(ctx.createOperations.execute).not.toHaveBeenCalled()
-    expect(output).toEqual({ stdout: '', stderr: '' })
+    expect(output.stderr).toBe('')
+    expect(output.stdout).toContain('Checking the scaffolder version')
   })
   it('refuses a pre-aborted creation before looking up metadata', async () => {
     const controller = new AbortController()
@@ -358,7 +362,8 @@ describe('interactive project creation', () => {
     expect(await runCreate(ctx, ['weapp-vite', path.join(directory, 'app')], {})).toBe(130)
     expect(external).toHaveBeenCalledOnce()
     expect(ctx.createOperations.execute).not.toHaveBeenCalled()
-    expect(output).toEqual({ stdout: '', stderr: '' })
+    expect(output.stderr).toBe('')
+    expect(output.stdout).not.toContain('Project created:')
   })
 })
 describe('read-only doctor', () => {

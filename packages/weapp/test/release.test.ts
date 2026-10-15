@@ -1,6 +1,11 @@
 import type { PreflightFetcher, PreflightResponse } from '../scripts/preflight.js'
 import { readFileSync } from 'node:fs'
+import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
+import { bundledDependencies, bundleReportPath, noticesPath, thirdPartyNotices, validateBundleCode, validatePublishedBundle } from '../scripts/bundle-policy.js'
 import {
   PreflightError,
   requiredPaths,
@@ -101,6 +106,11 @@ describe('weapp publication identity and artifact boundaries', () => {
       ['engines.node', 'invalid'],
       ['bin.weapp', '../bin/weapp.js'],
       ['dependencies.local', 'workspace:*'],
+      ['dependencies.qrcode', '1.5.4'],
+      ['optionalDependencies.extra', '1.0.0'],
+      ['peerDependencies.extra', '1.0.0'],
+      ['bundledDependencies', ['qrcode']],
+      ['bundleDependencies', true],
       ['optionalDependencies.local', 'file:../local'],
       ['peerDependencies.@weapp-io/catalog', '*'],
     ] satisfies [string, unknown][]) {
@@ -125,6 +135,8 @@ describe('weapp publication identity and artifact boundaries', () => {
       'test/unit.js',
       'src/index.js',
       'scripts/publish.js',
+      'dist/qrcode.d.ts',
+      'dist/src/qr.js',
       '.env',
       'dist/.env.production',
       'node_modules/private/index.js',
@@ -132,6 +144,62 @@ describe('weapp publication identity and artifact boundaries', () => {
       expect(() => validatePaths([...requiredPaths, extra]), extra).toThrow(
         PreflightError,
       )
+    }
+  })
+
+  it('rejects external module leaks in both ESM and generated CommonJS calls', () => {
+    expect(() => validateBundleCode(`import open from 'open'; import fs from 'node:fs'; await import('./create.js'); const req = createRequire(import.meta.url); req('node:path');`, 'cli.js')).not.toThrow()
+    expect(() => validateBundleCode(`// require('pngjs')\nconst example = "import('qrcode')"; require_qrcode();`, 'cli.js')).not.toThrow()
+    for (const code of [
+      `import QRCode from 'qrcode'`,
+      `export { default } from 'semver/functions/valid.js'`,
+      `await import('string-width')`,
+      `__cjs_require('pngjs')`,
+      `require$1('yargs')`,
+      `require.resolve('cross-spawn')`,
+      `const load = createRequire(import.meta.url); load('dijkstrajs')`,
+      `require(process.env.MODULE)`,
+      `await import('../outside.js')`,
+    ]) {
+      expect(() => validateBundleCode(code, 'cli.js'), code).toThrow()
+    }
+  })
+
+  it('ships the actual bundled dependency licenses and validates built chunk bytes', async () => {
+    const notices = await thirdPartyNotices()
+    expect(notices.packages.map(dependency => dependency.name).sort()).toEqual(Object.keys(bundledDependencies).sort())
+    expect(notices.text).toContain('Copyright (c) 2009 Kazuhiko Arase')
+    expect(notices.text).toContain('Copyright (c) 2011 Ryan Day')
+    expect(notices.text).toContain('Wyatt Baldwin')
+    expect(notices.packages.find(dependency => dependency.name === 'semver')?.license).toBe('ISC')
+    await expect(validatePublishedBundle(fileURLToPath(new URL('../dist/', import.meta.url)))).resolves.toBeUndefined()
+  })
+
+  it('rejects a published artifact whose licenses, chunk bytes, or dependency inventory drift', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'weapp-bundle-guard-'))
+    try {
+      await cp(fileURLToPath(new URL('../dist/', import.meta.url)), directory, { recursive: true })
+      const filename = join(directory, noticesPath)
+      const notices = await readFile(filename, 'utf8')
+      await writeFile(filename, `${notices}\nchanged`)
+      await expect(validatePublishedBundle(directory)).rejects.toThrow('licenses changed')
+      await writeFile(filename, notices)
+      const entry = join(directory, 'cli.js')
+      const code = await readFile(entry, 'utf8')
+      await writeFile(entry, `${code}\n`)
+      await expect(validatePublishedBundle(directory)).rejects.toThrow('bundle changed')
+      await writeFile(entry, code)
+      const report: unknown = JSON.parse(await readFile(join(directory, bundleReportPath), 'utf8'))
+      expect(report).toHaveProperty('packages')
+      if (typeof report !== 'object' || report === null || !('packages' in report) || !Array.isArray(report.packages)) {
+        throw new Error('Expected built bundle report')
+      }
+      report.packages.pop()
+      await writeFile(join(directory, bundleReportPath), JSON.stringify(report))
+      await expect(validatePublishedBundle(directory)).rejects.toThrow('inventory differs')
+    }
+    finally {
+      await rm(directory, { recursive: true, force: true })
     }
   })
 

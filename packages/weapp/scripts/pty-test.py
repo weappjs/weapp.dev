@@ -16,9 +16,10 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / '.cache' / 'qa'
 EVIDENCE.mkdir(parents=True, exist_ok=True)
+METRICS = {}
 
 
-def exercise(name, args, events, width=90, height=28, expected=0, command=None):
+def exercise(name, args, events, width=90, height=28, expected=0, command=None, require_events=False):
     """Events can wait for elapsed time or for a marker from the actual child."""
     master, slave = pty.openpty()
     original = termios.tcgetattr(slave)
@@ -26,9 +27,10 @@ def exercise(name, args, events, width=90, height=28, expected=0, command=None):
     environment = dict(os.environ, TERM='xterm-256color', LANG='en_US.UTF-8', NO_COLOR='1')
     environment.pop('CI', None)
     executable = command or ['node', str(ROOT / 'dist/cli.js')]
+    start = time.monotonic()
     child = subprocess.Popen([*executable, '--lang', 'en', *args], stdin=slave, stdout=slave, stderr=slave, env=environment)
     chunks = []
-    start = time.monotonic()
+    first_actionable = None
     sent = 0
     try:
         while child.poll() is None and time.monotonic() - start < 12:
@@ -47,6 +49,9 @@ def exercise(name, args, events, width=90, height=28, expected=0, command=None):
                 sent += 1
             if select.select([master], [], [], .03)[0]:
                 chunks.append(os.read(master, 65536))
+                visible = b''.join(chunks)
+                if first_actionable is None and (not args or args == ['--no-motion']) and all(marker in visible for marker in [b'WORKBENCH', b'Create with weapp-vite', b'Enter / C']):
+                    first_actionable = round((time.monotonic() - start) * 1000, 2)
         if child.poll() is None:
             (EVIDENCE / f'terminal-{name}.txt').write_bytes(b''.join(chunks))
             raise AssertionError(f'{name}: terminal failed to exit after event {sent}/{len(events)}')
@@ -54,10 +59,13 @@ def exercise(name, args, events, width=90, height=28, expected=0, command=None):
             chunks.append(os.read(master, 65536))
         output = b''.join(chunks)
         (EVIDENCE / f'terminal-{name}.txt').write_bytes(output)
+        assert not require_events or sent == len(events), f'{name}: exited before the final input event'
         assert child.returncode == expected, f'{name}: exit {child.returncode}'
         assert termios.tcgetattr(slave) == original, f'{name}: raw mode not restored'
         assert b'\x1b[?25h' in output, f'{name}: cursor not restored'
         assert output.count(b'\x1b[?1049h') == output.count(b'\x1b[?1049l'), f'{name}: alternate screen not restored'
+        if first_actionable is not None:
+            METRICS[name] = {'firstActionableMs': first_actionable, 'columns': width, 'rows': height}
         return output
     finally:
         if child.poll() is None:
@@ -71,11 +79,38 @@ def single_screen(output, name):
     assert output.count(b'\x1b[?1049h') == 1, f'{name}: nested terminal ownership'
 
 
+def save_frame(output, name, title=None):
+    rows = {}
+    for match in re.finditer(rb'\x1b\[2J|\x1b\[(\d+);1H(.*?)\x1b\[K', output, re.S):
+        if match.group(1) is None:
+            if title and title in rows.get(1, ''):
+                break
+            rows.clear()
+        else:
+            row = int(match.group(1))
+            value = match.group(2).decode('utf-8')
+            if row == 1 and title and title in rows.get(1, '') and title not in value:
+                break
+            rows[row] = value
+    frame = '\n'.join(rows.get(index, '') for index in range(1, max(rows, default=0) + 1))
+    (EVIDENCE / f'terminal-{name}-frame.txt').write_text(frame + '\n')
+
+
 results = {}
-opening = exercise('opening', [], [(.25, b'x'), (.55, b'q')])
+opening = exercise('opening', [], [(b'WORKBENCH', b'\r'), (b'NEW PROJECT DIRECTORY', b'\x1b'), (.6, b'q')])
 single_screen(opening, 'opening')
 assert b'WORKBENCH' in opening and b'Create with weapp-vite' in opening
-results['opening-and-exit'] = len(opening)
+assert b'NEW PROJECT DIRECTORY' in opening and b'Press any key' not in opening
+results['first-enter-without-opening-gate'] = len(opening)
+for label, width, height in [('wide', 120, 30), ('normal', 80, 24), ('narrow', 44, 18)]:
+    hall = exercise(f'hall-{label}', [], [(b'Enter / C', b'q')], width=width, height=height)
+    single_screen(hall, f'hall-{label}')
+    assert b'Create with weapp-vite' in hall and b'Press any key' not in hall
+    save_frame(hall, f'hall-{label}')
+    results[f'actionable-{label}'] = len(hall)
+shortcut = exercise('hall-shortcut', [], [(b'WORKBENCH', b'c'), (b'NEW PROJECT DIRECTORY', b'\x1b'), (.6, b'q')])
+assert b'NEW PROJECT DIRECTORY' in shortcut
+results['hall-c-shortcut'] = len(shortcut)
 idle = exercise('idle', [], [(.15, b'x'), (.85, b'q')], width=120, height=30)
 scene_rows = [row for row in re.findall(rb'\x1b\[\d+;1H(.*?)\x1b\[K', idle) if re.search(rb'[\xe2][\xa0-\xa3]', row)]
 assert len(set(scene_rows)) > 5, 'idle: the live workbench did not animate'
@@ -102,6 +137,13 @@ results['project-search'] = len(exercise('projects', ['projects'], [(.3, b'tailw
 with tempfile.TemporaryDirectory(prefix='weapp-pty-') as temporary:
     parent = Path(temporary)
     target = parent / 'my-app'
+    for label, events in [
+        ('loading', [(b'WORKBENCH', b'\r\x1b'), (.6, b'q')]),
+    ]:
+        rapid = exercise(f'rapid-cancel-{label}', ['--no-motion'], events, require_events=True)
+        single_screen(rapid, f'rapid-cancel-{label}')
+        assert not target.exists()
+        results[f'rapid-create-cancel-{label}'] = len(rapid)
     cancelled = exercise('wizard-cancel', ['create', '--no-motion'], [(b'NEW PROJECT DIRECTORY', str(target).encode() + b'\r'), (b'CHOOSE A TEMPLATE', b'\x1b'), (.7, b'\x1b')])
     assert b'CHOOSE A TEMPLATE' in cancelled
     assert not target.exists(), 'wizard-cancel: a cancelled wizard created a directory'
@@ -112,6 +154,12 @@ with tempfile.TemporaryDirectory(prefix='weapp-pty-') as temporary:
     assert not target.exists(), 'wizard-preview: a dry run created a directory'
     single_screen(preview, 'wizard-preview')
     results['wizard-summary-preview'] = len(preview)
+    for label, width, height in [('wide', 120, 30), ('normal', 80, 24), ('narrow', 44, 18)]:
+        constellation = exercise(f'wizard-{label}', ['create', '--dry-run', '--no-motion'], [(b'NEW PROJECT DIRECTORY', str(target).encode() + b'\r'), (b'CHOOSE A TEMPLATE', b'\x1b[B\x1b[B\r'), (b'READY TO CREATE', b'\x1b')], width=width, height=height)
+        assert b'Template: react' in constellation and b'Enter create' in constellation
+        assert not target.exists()
+        save_frame(constellation, f'wizard-{label}', title='READY TO CREATE')
+        results[f'creation-layout-{label}'] = len(constellation)
 
     harness = parent / 'upstream.mjs'
     cli_url = (ROOT / 'dist/index.js').as_uri()
@@ -148,13 +196,20 @@ const code = await runCli(process.argv.slice(2), {{
 }})
 process.exitCode = code
 """)
-    inherited = exercise('upstream-input', ['--no-motion'], [(b'WORKBENCH', b'\r'), (b'NEW PROJECT DIRECTORY', str(target).encode() + b'\r'), (b'CHOOSE A TEMPLATE', b'\r'), (b'READY TO CREATE', b'\r'), (b'UPSTREAM_READY', b'accepted\r'), (b'Project created', b'\rq')], command=['node', str(harness)])
-    assert b'PARENT_INPUT raw=false flowing=false listeners=0' in inherited, 'upstream-input: parent still owns the terminal'
-    assert b'UPSTREAM_MODE raw=false' in inherited and b'UPSTREAM_READ=accepted' in inherited, 'upstream-input: upstream missed input'
-    assert b'Project created' in inherited and b'WORKBENCH' in inherited
-    assert inherited.count(b'\x1b[?1049h') == 2, 'upstream-input: workbench did not resume exactly once'
-    assert json.loads((target / 'package.json').read_text())['dependencies']['weapp-vite'] == '^1.0.0'
-    results['inherited-upstream-input-and-resume'] = len(inherited)
+    rapid = exercise('rapid-cancel-directory', ['--no-motion'], [(b'WORKBENCH', b'\r'), (b'NEW PROJECT DIRECTORY', str(target).encode() + b'\r\x1b'), (.6, b'q')], command=['node', str(harness)], require_events=True)
+    single_screen(rapid, 'rapid-cancel-directory')
+    assert not target.exists()
+    results['rapid-create-cancel-directory'] = len(rapid)
+    for label, width, height in [('wide', 120, 30), ('normal', 80, 24), ('narrow', 44, 18)]:
+        created = parent / f'created-{label}'
+        inherited = exercise(f'upstream-input-{label}', ['--no-motion'], [(b'WORKBENCH', b'\r'), (b'NEW PROJECT DIRECTORY', str(created).encode() + b'\r'), (b'CHOOSE A TEMPLATE', b'\r'), (b'READY TO CREATE', b'\r'), (b'UPSTREAM_READY', b'accepted\r'), (b'Project created', b'\rq')], width=width, height=height, command=['node', str(harness)])
+        assert b'PARENT_INPUT raw=false flowing=false listeners=0' in inherited, 'upstream-input: parent still owns the terminal'
+        assert b'UPSTREAM_MODE raw=false' in inherited and b'UPSTREAM_READ=accepted' in inherited, 'upstream-input: upstream missed input'
+        assert b'Project created' in inherited and b'WORKBENCH' in inherited
+        assert inherited.count(b'\x1b[?1049h') == 2, 'upstream-input: workbench did not resume exactly once'
+        assert json.loads((created / 'package.json').read_text())['dependencies']['weapp-vite'] == '^1.0.0'
+        save_frame(inherited, f'success-{label}', title='PROJECT CREATED')
+        results[f'inherited-upstream-input-and-resume-{label}'] = len(inherited)
 
     exception_harness = parent / 'exception.mjs'
     session_url = (ROOT / 'dist/terminal.js').as_uri()
@@ -174,4 +229,6 @@ catch (error) {{
     assert b'EXPECTED_CONTROLLER_FAILURE' in failure
     results['exception-restoration'] = len(failure)
 
+(EVIDENCE / 'terminal-metrics.json').write_text(json.dumps(METRICS, indent=2) + '\n')
 print('Real PTY checks passed:', json.dumps(results))
+print('Actionable terminal timings:', json.dumps(METRICS))

@@ -1,9 +1,14 @@
 import type { SpawnSyncOptionsWithStringEncoding } from 'node:child_process'
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { createHash } from 'node:crypto'
+import { constants } from 'node:fs'
+import { access, chmod, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
+import { delimiter, dirname, join, resolve } from 'node:path'
 import process from 'node:process'
+import jsQR from 'jsqr'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -30,8 +35,17 @@ const root = resolve(process.argv[2] || '.')
 const cli = resolve(root, 'dist/cli.js')
 const manifest: unknown = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8'))
 assert.ok(isRecord(manifest) && typeof manifest.name === 'string' && typeof manifest.version === 'string', 'Valid package manifest')
+assert.ok(isRecord(manifest.dependencies) && Object.keys(manifest.dependencies).join() === 'open', 'Only open may remain an external runtime dependency')
+const installedRequire = createRequire(resolve(root, 'package.json'))
+const openDirectory = dirname(installedRequire.resolve('open'))
+if (process.platform !== 'win32') {
+  const launcher = join(openDirectory, 'xdg-open')
+  await access(launcher, constants.R_OK | constants.X_OK)
+  assert.equal(createHash('sha256').update(await readFile(launcher)).digest('hex'), '7d759d54f0d4ce1beeb34ee62c587985b5042374e8de237b0dcb8cd47aa698cf', 'Preserve the open 10.2.0 launcher bytes and execute permission')
+}
+const defaultEnv = { ...process.env, NODE_PATH: '', NO_COLOR: '1', LC_ALL: 'en_US.UTF-8', LANG: 'en_US.UTF-8' }
 function run(args: string[], extra: Partial<SpawnSyncOptionsWithStringEncoding> = {}) {
-  const result = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', timeout: 15000, env: { ...process.env, NO_COLOR: '1', LANG: 'en_US.UTF-8' }, ...extra })
+  const result = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', timeout: 15000, env: defaultEnv, ...extra })
   assert.equal(result.status, 0, result.stderr || result.error?.message)
   assert.ok(!result.stdout.includes(String.fromCharCode(27)), 'Output must not contain ANSI')
   return result.stdout
@@ -53,7 +67,94 @@ for (const template of ['default', 'wevu', 'react', 'tailwindcss', 'multi-platfo
 const palette = parseJson(run(['palette', '#000000', '--json']))
 assert.ok(isRecord(palette) && Array.isArray(palette.colors))
 assert.equal(palette.colors.length, 5)
-assert.match(run(['qr', '-'], { input: 'https://weapp.js.org/' }), /[█▀▄]/)
+function decodeTerminal(text: string): string | undefined {
+  const rows = text.trimEnd().split(/\r?\n/)
+  const width = rows[0].length
+  const height = rows.length * 2
+  const scale = 8
+  const image = new Uint8ClampedArray(width * scale * height * scale * 4)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const character = rows[Math.floor(y / 2)][x]
+      const white = character === '█' || (y % 2 === 0 ? character === '▀' : character === '▄')
+      for (let dy = 0; dy < scale; dy++) {
+        for (let dx = 0; dx < scale; dx++) {
+          const offset = ((y * scale + dy) * width * scale + x * scale + dx) * 4
+          image[offset] = image[offset + 1] = image[offset + 2] = white ? 255 : 0
+          image[offset + 3] = 255
+        }
+      }
+    }
+  }
+  return jsQR(image, width * scale, height * scale, { inversionAttempts: 'dontInvert' })?.data
+}
+for (const content of ['https://weapp.js.org/', '中文 · weapp 🎆', 'Family 👨‍👩‍👧‍👦']) {
+  assert.equal(decodeTerminal(run(['qr', '-'], { input: content })), content, 'Decode the actual packed CLI QR independently')
+}
+
+// All fixture processes run locally. No registry or real scaffolder is invoked.
+const fixture = await mkdtemp(join(tmpdir(), 'weapp artifact & 中文 '))
+try {
+  const filename = join(fixture, 'code.svg')
+  run(['qr', 'https://weapp.js.org/', '--output', filename])
+  const svg = await readFile(filename, 'utf8')
+  assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)
+  assert.match(svg, /#ffffff/)
+  assert.doesNotMatch(svg, /<script|<image|<foreignObject|https?:\/\/weapp/)
+  assert.equal(spawnSync(process.execPath, [cli, 'qr', 'different', '--output', filename], { env: defaultEnv }).status, 1)
+  assert.equal(await readFile(filename, 'utf8'), svg, 'SVG overwrite protection survives packaging')
+
+  const bin = join(fixture, 'node_modules', '.bin')
+  await mkdir(bin, { recursive: true })
+  const capture = join(fixture, 'calls.jsonl')
+  const runner = join(bin, 'npm-fixture.cjs')
+  await writeFile(runner, `const fs = require('node:fs'); const path = require('node:path');
+const args = process.argv.slice(2);
+fs.appendFileSync(process.env.WEAPP_SMOKE_CAPTURE, JSON.stringify({args, cwd:process.cwd()}) + '\\n');
+if (args[0] === 'view') process.stdout.write(JSON.stringify({version:'1.2.3',engines:{node:'>=18'}}));
+else if (args[0] === '--version') process.stdout.write('10.0.0\\n');
+else if (args[0] === 'exec') {
+  const position = args.indexOf('--');
+  const target = path.resolve(args[position + 2]);
+  fs.mkdirSync(target);
+  fs.writeFileSync(path.join(target,'package.json'),JSON.stringify({name:'packed-fixture',devDependencies:{'weapp-vite':'1.0.0'}}));
+} else process.exitCode = 2;
+`)
+  if (process.platform === 'win32') {
+    await writeFile(join(bin, 'npm.cmd'), `@echo off\r\n"${process.execPath}" "%~dp0npm-fixture.cjs" %*\r\n`)
+  }
+  else {
+    const shim = join(bin, 'npm')
+    await writeFile(shim, `#!/usr/bin/env node\nrequire('./npm-fixture.cjs')\n`)
+    await chmod(shim, 0o755)
+  }
+  const env: NodeJS.ProcessEnv = { ...defaultEnv, WEAPP_SMOKE_CAPTURE: capture }
+  for (const key of Object.keys(env)) {
+    if (['path', 'pathext'].includes(key.toLowerCase())) {
+      delete env[key]
+    }
+  }
+  env[process.platform === 'win32' ? 'Path' : 'PATH'] = [bin, dirname(process.execPath)].join(delimiter)
+  env.PATHEXT = '.CMD;.EXE;.BAT;.COM'
+  run(['create', 'weapp-vite', 'packed-project', '--template', 'wevu'], { cwd: fixture, env })
+  const calls: unknown[] = (await readFile(capture, 'utf8')).trim().split('\n').map(parseJson)
+  assert.equal(calls.length, 2, 'Exactly one version lookup and one execution through the packaged launcher')
+  assert.ok(isRecord(calls[0]) && isRecord(calls[1]))
+  assert.deepEqual(calls[0].args, ['view', 'create-weapp-vite@latest', 'version', 'engines', '--json', '--fetch-retries=0', '--fetch-timeout=15000'])
+  assert.deepEqual(calls[1].args, ['exec', '--yes', '--package=create-weapp-vite@1.2.3', '--', 'create-weapp-vite', 'packed-project', 'wevu', '--no-install-skills'])
+  assert.equal(calls[0].cwd, await realpath(fixture))
+  assert.equal(calls[1].cwd, await realpath(fixture), 'Windows .cmd and POSIX shebang preserve the Unicode/metacharacter working directory')
+  assert.equal(parseProject(parseJson(run(['info', 'tw', '--json'], { cwd: fixture, env }))).slug, 'weapp-tailwindcss')
+  const empty = join(fixture, 'empty-path')
+  await mkdir(empty)
+  env[process.platform === 'win32' ? 'Path' : 'PATH'] = empty
+  const missing = spawnSync(process.execPath, [cli, 'create', 'weapp-vite', 'missing-npm'], { cwd: fixture, env, encoding: 'utf8', timeout: 5000 })
+  assert.equal(missing.status, 1)
+  assert.match(missing.stderr, /Unable to run npm/)
+}
+finally {
+  await rm(fixture, { recursive: true, force: true })
+}
 for (const effect of ['logo', 'orbit', 'matrix', 'fireworks']) {
   assert.ok(run(['fx', effect, '--seed', '42']).length > 20)
 }
@@ -65,7 +166,7 @@ for (const args of [[], ['weapp-vite']]) {
   assert.equal(result.stdout, '')
 }
 
-const child = spawn(process.execPath, [cli, 'lab', '--no-open', '--no-motion'], { stdio: ['ignore', 'pipe', 'pipe'] })
+const child = spawn(process.execPath, [cli, 'lab', '--no-open', '--no-motion'], { env: defaultEnv, stdio: ['ignore', 'pipe', 'pipe'] })
 let errorOutput = ''
 child.stderr.on('data', chunk => errorOutput += chunk)
 try {

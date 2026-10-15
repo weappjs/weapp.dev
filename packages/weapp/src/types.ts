@@ -2,6 +2,7 @@ import type { ProjectDefinition } from '@weapp-io/project-catalog/types'
 import type { EventEmitter } from 'node:events'
 import type { Readable } from 'node:stream'
 import type { CreateOperations, CreateWizardSelection } from './commands/create.js'
+import type { CreateWizardHooks } from './commands/create/plan.js'
 import type { LabHandle } from './lab.js'
 import type { Workbench } from './terminal/workbench.js'
 
@@ -78,7 +79,7 @@ export interface CliContext {
   cancelledCode?: number
   operationSignal?: AbortSignal
   createOperations?: CreateOperations
-  createWizard?: (route: string, options: CliOptions) => Promise<CreateWizardSelection | null>
+  createWizard?: (route: string, options: CliOptions, hooks?: CreateWizardHooks) => Promise<CreateWizardSelection | null>
 }
 
 export type CliOverrides = Partial<CliContext> & { env?: NodeJS.ProcessEnv }

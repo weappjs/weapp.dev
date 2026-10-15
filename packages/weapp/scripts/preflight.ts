@@ -9,6 +9,7 @@ import spawn from 'cross-spawn'
 // eslint-disable-next-line e18e/ban-dependencies -- Match the npm-compatible engine/version checks used by official scaffolds.
 import semver from 'semver'
 import { projectLogoFiles } from '../lab/project-logos.js'
+import { bundleReportPath, noticesPath, validatePublishedBundle } from './bundle-policy.js'
 
 const registry = 'https://registry.npmjs.org'
 const repository = 'weappjs/weapp.dev'
@@ -48,6 +49,8 @@ export const requiredPaths = Object.freeze([
   'dist/cli.js',
   'dist/index.js',
   'dist/terminal.js',
+  `dist/${noticesPath}`,
+  `dist/${bundleReportPath}`,
   'dist/data/catalog.json',
   'dist/data/logo.json',
   'dist/data/project-logos.json',
@@ -154,6 +157,17 @@ export function validateManifest(manifest: unknown): PackageIdentity {
       'published dependencies must not require the private workspace',
     )
   }
+  requireCheck(
+    isRecord(manifest.dependencies)
+    && Object.keys(manifest.dependencies).join() === 'open'
+    && typeof manifest.dependencies.open === 'string'
+    && Object.keys(manifest.optionalDependencies || {}).length === 0
+    && Object.keys(manifest.peerDependencies || {}).length === 0
+    && (!manifest.bundledDependencies || (Array.isArray(manifest.bundledDependencies) && manifest.bundledDependencies.length === 0))
+    && (!manifest.bundleDependencies || (Array.isArray(manifest.bundleDependencies) && manifest.bundleDependencies.length === 0)),
+    stage,
+    'open must be the only external runtime dependency; other runtime code must be bundled',
+  )
   return { name: manifest.name, version: manifest.version }
 }
 
@@ -181,6 +195,8 @@ export function validatePaths(paths: unknown): void {
     !paths.some(
       path =>
         /^(?:src|scripts|test|lab|node_modules)\//.test(path)
+        || path.startsWith('dist/src/')
+        || path.endsWith('.ts')
         || /(?:^|\/)\.env(?:\.|$)/.test(path),
     ),
     'artifact',
@@ -415,6 +431,7 @@ async function verifyArtifact(artifact: string, manifest: PackageIdentity): Prom
       target,
       'artifact-install',
     )
+    await validatePublishedBundle(join(target, 'node_modules/weapp/dist'))
     execute(
       process.execPath,
       [
@@ -547,6 +564,7 @@ export async function preflight({
       return file.path
     })
     validatePaths(paths)
+    await validatePublishedBundle(join(packageRoot, 'dist'))
     log('Local pack dry-run verified.')
   }
   if (ci) {

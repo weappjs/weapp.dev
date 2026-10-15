@@ -1,4 +1,5 @@
 import type { Key } from 'node:readline'
+import type { CreateWizardHooks } from '../commands/create/plan.js'
 import type { CatalogProject, CliContext, CliOptions } from '../types.js'
 import type { Effect } from './scenes.js'
 import type { ProjectBrowserOptions, WorkbenchDispatch } from './workbench.js'
@@ -184,12 +185,12 @@ export function selectProjects(ctx: CliContext, projects: CatalogProject[] = ctx
   return selectProject(ctx, projects, options)
 }
 
-export function runCreateWizard(ctx: CliContext, route = 'weapp-vite', options: CliOptions = {}) {
-  return createWizard(ctx, route, options)
+export function runCreateWizard(ctx: CliContext, route = 'weapp-vite', options: CliOptions = {}, hooks?: CreateWizardHooks) {
+  return createWizard(ctx, route, options, hooks)
 }
 
 export async function runHub(ctx: CliContext, dispatch: WorkbenchDispatch): Promise<number> {
-  const workbench = new Workbench(ctx, dispatch, { opening: true })
+  const workbench = new Workbench(ctx, dispatch)
   ctx.resources ||= {}
   ctx.resources.workbench = workbench
   try {

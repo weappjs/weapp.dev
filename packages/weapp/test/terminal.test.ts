@@ -7,6 +7,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { PassThrough } from 'node:stream'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { scaffoldPlan } from '../src/commands/create/plan.js'
 import { runCreateWizard, runFx, runHub, runSnake, selectProjects } from '../src/terminal/index.js'
 import { EFFECTS, renderScene } from '../src/terminal/scenes.js'
 import { clipLine, TerminalSession } from '../src/terminal/session.js'
@@ -325,7 +326,7 @@ describe('terminal ownership', () => {
 })
 
 describe('live workbench', () => {
-  it('skips the opening, prioritizes creation, and keeps one input owner', async () => {
+  it('shows actions in the first frame and sends the first Enter directly to creation', async () => {
     fakeClock()
     const io = terminal()
     const dispatch = vi.fn(async (argv: string[]) => {
@@ -335,11 +336,9 @@ describe('live workbench', () => {
       return 0
     })
     const result = runHub(io.ctx, dispatch)
-    expect(io.output.frame()).toContain('Press any key')
-    io.key('space', ' ')
-    await nextFrame()
     expect(io.output.frame()).toContain('WORKBENCH')
     expect(io.output.frame()).toContain('Create with weapp-vite')
+    expect(io.output.frame()).not.toContain('Press any key')
     expect(io.output.frame()).not.toMatch(/snake|game/i)
     io.key('return')
     await nextFrame()
@@ -348,6 +347,97 @@ describe('live workbench', () => {
     io.key('q', 'q')
     expect(await result).toBe(0)
     expect(io.input.isRaw).toBe(false)
+  })
+
+  it('limits the C shortcut to the hall and preserves project-search text', async () => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const dispatch = vi.fn(async () => 0)
+    const result = runHub(io.ctx, dispatch)
+    io.key('c', 'c')
+    await nextFrame()
+    expect(dispatch).toHaveBeenCalledExactlyOnceWith(['create'])
+    io.key('down')
+    io.key('return')
+    io.key('c', 'c')
+    await nextFrame()
+    expect(io.output.frame()).toContain('Search: c')
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    io.key('escape')
+    io.key('q', 'q')
+    await result
+  })
+
+  it('cancels only the pending creation on Esc and ignores its late rejection', async () => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const result = runHub(io.ctx, vi.fn())
+    const workbench = io.ctx.resources.workbench!
+    let rejectPreparation: (reason: Error) => void = () => {}
+    const preparation = new Promise<never>((_resolve, reject) => {
+      rejectPreparation = reject
+    })
+    const cancel = vi.fn()
+    const unsubscribe = vi.fn()
+    const pending = workbench.waitForCreate(preparation, cancel, (listener) => {
+      listener({ phase: 'querying', packageName: 'create-weapp-vite', cwd: '/tmp' })
+      return unsubscribe
+    })
+    await nextFrame()
+    expect(io.output.frame()).toContain('PREPARING TO CREATE')
+    io.key('escape')
+    expect(await pending).toBeNull()
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(unsubscribe).toHaveBeenCalledOnce()
+    expect(workbench.abortSignal.aborted).toBe(false)
+    expect(workbench.screen).toBe(workbench.hall)
+    expect(io.input.isRaw).toBe(true)
+    rejectPreparation(new Error('late metadata failure'))
+    await nextFrame()
+    expect(io.output.frame()).toContain('WORKBENCH')
+    io.key('q', 'q')
+    await result
+  })
+
+  it('reports elapsed query time on existing frames and completed timing without motion', async () => {
+    fakeClock()
+    const io = terminal()
+    const result = runHub(io.ctx, vi.fn())
+    const workbench = io.ctx.resources.workbench!
+    workbench.setCreateProgress({ phase: 'querying', packageName: 'create-weapp-vite', cwd: '/tmp' })
+    await vi.advanceTimersByTimeAsync(350)
+    expect(workbench.progressLabel()).toContain('350ms')
+    workbench.ctx.motion = false
+    workbench.setCreateProgress({ phase: 'ready', packageName: 'create-weapp-vite', cwd: '/tmp', version: '1.2.3', elapsedMs: 312, queryElapsedMs: 312 })
+    expect(workbench.progressLabel()).toContain('1.2.3 · 312ms')
+    io.key('q', 'q')
+    await result
+  })
+
+  it('keeps Esc local while the create command module is still loading', async () => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    let release: (value: number) => void = () => {}
+    let signal: AbortSignal | undefined
+    const hub = runHub(io.ctx, () => {
+      signal = io.ctx.operationSignal
+      return new Promise<number>((resolve) => {
+        release = resolve
+      })
+    })
+    const workbench = io.ctx.resources.workbench!
+    io.key('return')
+    io.key('escape')
+    expect(signal?.aborted).toBe(true)
+    expect(workbench.abortSignal.aborted).toBe(false)
+    expect(workbench.session.closed).toBe(false)
+    release(130)
+    await nextFrame()
+    expect(workbench.session.closed).toBe(false)
+    expect(workbench.abortSignal.aborted).toBe(false)
+    expect(workbench.screen).toBe(workbench.hall)
+    io.key('q', 'q')
+    await hub
   })
 
   it('animates idle frames, pauses, and resumes without elapsed-time jumps', async () => {
@@ -620,7 +710,7 @@ describe('interactive creation wizard', () => {
     expect(io.ctx.resources.workbench!).toBeUndefined()
   })
 
-  it('preserves defaults and directory when stepping back, and cancels without execution', async () => {
+  it('preserves the default template and cancels the wizard on Esc without execution', async () => {
     fakeClock()
     const io = terminal({ motion: false })
     const target = await directory()
@@ -635,12 +725,243 @@ describe('interactive creation wizard', () => {
     }
     expect(templateScreen.entries[templateScreen.selected || 0].value).toBe('default')
     io.key('escape')
-    await nextFrame()
-    expect((io.ctx.resources.workbench!.screen.type === 'input' ? io.ctx.resources.workbench!.screen.value : undefined)).toBe(target)
-    io.key('escape')
     expect(await result).toBeNull()
     expect(io.input.listenerCount('keypress')).toBe(0)
     expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('prepares after local validation, previews selections, and cancels on Esc', async () => {
+    fakeClock()
+    const io = terminal({ motion: false, width: 120, height: 30 })
+    const target = await directory()
+    const onPlan = vi.fn()
+    const onCancel = vi.fn()
+    const unsubscribe = vi.fn()
+    const result = runCreateWizard(io.ctx, 'weapp-vite', {}, { onPlan, onCancel, subscribeProgress: () => unsubscribe })
+    io.key('text', './invalid name')
+    io.key('return')
+    await nextFrame()
+    expect(onPlan).not.toHaveBeenCalled()
+    for (let index = 0; index < './invalid name'.length; index++) {
+      io.key('backspace')
+    }
+    io.key('text', target)
+    io.key('return')
+    await waitScreen(io, 'CHOOSE A TEMPLATE')
+    expect(onPlan).toHaveBeenCalledOnce()
+    const native = io.output.frame()
+    io.key('down')
+    await nextFrame()
+    expect(io.output.frame()).not.toBe(native)
+    expect(io.output.frame()).toContain('wevu · Your project constellation')
+    expect(onCancel).not.toHaveBeenCalled()
+    io.key('escape')
+    expect(await result).toBeNull()
+    expect(onCancel).toHaveBeenCalledOnce()
+    expect(unsubscribe).toHaveBeenCalledOnce()
+  })
+
+  it('cancels from the summary and returns to the same hall', async () => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const target = await directory()
+    const onCancel = vi.fn()
+    const hub = runHub(io.ctx, vi.fn())
+    const workbench = io.ctx.resources.workbench!
+    const wizard = runCreateWizard(io.ctx, 'weapp-vite', {}, { onCancel })
+    io.key('text', target)
+    io.key('return')
+    await waitScreen(io, 'CHOOSE A TEMPLATE')
+    io.key('return')
+    await waitScreen(io, 'READY TO CREATE')
+    io.key('escape')
+    expect(await wizard).toBeNull()
+    expect(onCancel).toHaveBeenCalledOnce()
+    expect(workbench.screen).toBe(workbench.hall)
+    expect(workbench.abortSignal.aborted).toBe(false)
+    io.key('q', 'q')
+    await hub
+  })
+
+  it('keeps Esc local while the directory is being validated', async () => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const target = await directory()
+    const onPlan = vi.fn()
+    const onCancel = vi.fn()
+    const hub = runHub(io.ctx, vi.fn())
+    const workbench = io.ctx.resources.workbench!
+    const wizard = runCreateWizard(io.ctx, 'weapp-vite', {}, { onPlan, onCancel })
+    io.key('text', target)
+    io.key('return')
+    await Promise.resolve()
+    expect(workbench.screen.type).toBe('preparing')
+    io.key('escape')
+    expect(await wizard).toBeNull()
+    expect(onPlan).not.toHaveBeenCalled()
+    expect(onCancel).toHaveBeenCalledOnce()
+    expect(workbench.abortSignal.aborted).toBe(false)
+    expect(workbench.session.closed).toBe(false)
+    expect(workbench.screen).toBe(workbench.hall)
+    await nextFrame()
+    expect(workbench.screen).toBe(workbench.hall)
+    io.key('q', 'q')
+    await hub
+  })
+
+  it.each(['directory', 'template', 'summary'])('cancels Enter followed immediately by Esc at the %s step', async (step) => {
+    fakeClock()
+    const io = terminal({ motion: false })
+    const target = await directory()
+    const onCancel = vi.fn()
+    const hub = runHub(io.ctx, vi.fn())
+    const workbench = io.ctx.resources.workbench!
+    const wizard = runCreateWizard(io.ctx, 'weapp-vite', {}, { onCancel })
+    io.key('text', target)
+    if (step !== 'directory') {
+      io.key('return')
+      await waitScreen(io, 'CHOOSE A TEMPLATE')
+    }
+    if (step === 'summary') {
+      io.key('return')
+      await waitScreen(io, 'READY TO CREATE')
+    }
+    io.key('return')
+    io.key('escape')
+    expect(await wizard).toBeNull()
+    expect(onCancel).toHaveBeenCalledOnce()
+    expect(workbench.session.closed).toBe(false)
+    expect(workbench.abortSignal.aborted).toBe(false)
+    expect(workbench.screen).toBe(workbench.hall)
+    io.key('q', 'q')
+    await hub
+  })
+
+  it.each([[120, 30], [80, 24], [44, 18]])('keeps the creation action visible at %i × %i', async (width, height) => {
+    fakeClock()
+    const io = terminal({ motion: false, width, height })
+    const target = await directory()
+    const result = runCreateWizard(io.ctx)
+    io.key('text', target)
+    io.key('return')
+    await waitScreen(io, 'CHOOSE A TEMPLATE')
+    expect(io.output.frame()).toContain('default')
+    expect(io.output.frame()).toContain('Enter')
+    io.key('return')
+    await waitScreen(io, 'READY TO CREATE')
+    expect(io.output.frame()).toContain('Template: default')
+    expect(io.output.frame()).toContain('Enter create')
+    io.key('return')
+    expect(await result).not.toBeNull()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('shows a verified success result immediately without a celebration timer', async () => {
+    fakeClock()
+    const io = terminal({ motion: false, width: 120, height: 30 })
+    const target = await directory()
+    const plan = await scaffoldPlan('weapp-vite', target, { template: 'react' })
+    const result = runHub(io.ctx, vi.fn())
+    const workbench = io.ctx.resources.workbench!
+    workbench.showCreateSuccess(plan, { phase: 'complete', packageName: plan.package, cwd: plan.cwd, queryElapsedMs: 112, executionElapsedMs: 2345, validationElapsedMs: 18 })
+    expect(workbench.screen.type).toBe('result')
+    await nextFrame()
+    expect(io.output.frame()).toContain('[ PROJECT CREATED ]')
+    expect(io.output.frame()).toContain('npm install')
+    expect(io.output.frame()).toContain('react · Your project constellation')
+    expect(io.output.frame()).toContain('Version query: 112ms')
+    expect(io.output.frame()).toContain('Official scaffold: 2.3s')
+    expect(io.output.frame()).toContain('Result validation: 18ms')
+    expect(vi.getTimerCount()).toBe(0)
+    io.key('return')
+    await nextFrame()
+    expect(workbench.screen).toBe(workbench.hall)
+    io.key('q', 'q')
+    await result
+  })
+
+  it('keeps success commands and return input available during the short star expansion', async () => {
+    fakeClock()
+    const io = terminal({ width: 120, height: 30 })
+    const target = await directory()
+    const plan = await scaffoldPlan('weapp-vite', target)
+    const hub = runHub(io.ctx, vi.fn())
+    const workbench = io.ctx.resources.workbench!
+    workbench.showCreateSuccess(plan)
+    const beginning = workbench.frame().join('\n')
+    expect(beginning).toContain('[ PROJECT CREATED ]')
+    expect(beginning).toContain('npm install')
+    await vi.advanceTimersByTimeAsync(350)
+    expect(workbench.frame().join('\n')).not.toBe(beginning)
+    io.key('return')
+    expect(workbench.screen).toBe(workbench.hall)
+    io.key('q', 'q')
+    await hub
+  })
+
+  it.each([[120, 30], [80, 24], [44, 18]])('preserves long result paths and commands through scrolling at %i × %i', async (width, height) => {
+    fakeClock()
+    const io = terminal({ motion: false, width, height })
+    io.ctx.color = true
+    const target = await directory()
+    const plan = await scaffoldPlan('weapp-vite', target, { template: 'react' })
+    plan.directory = `/中文👩🏽‍💻/${'long-parent/'.repeat(18)}demo parent/my-app`
+    const hub = runHub(io.ctx, vi.fn())
+    const workbench = io.ctx.resources.workbench!
+    workbench.showCreateSuccess(plan)
+    if (workbench.screen.type !== 'result') {
+      throw new Error('Expected a success result')
+    }
+    const screen = workbench.screen
+    const wide = width >= 88 && height >= 24
+    const start = !wide && height >= 24 ? 8 : 3
+    const end = height - 2
+    const rows = () => workbench.frame().slice(start, end).map((row) => {
+      const text = row.replace(colorPattern, '').slice(1)
+      return (wide ? clipLine(text, 38) : text).trimEnd()
+    })
+    const collected: string[] = []
+    for (let index = 0; index < 200; index++) {
+      const visible = rows()
+      const previous = screen.scroll || 0
+      io.key('down')
+      workbench.frame()
+      if (screen.scroll === previous) {
+        collected.push(...visible)
+        break
+      }
+      collected.push(visible[0])
+    }
+    const text = collected.join('').replaceAll(/\s/g, '')
+    expect(text).toContain(`Projectcreated:${plan.directory}`.replaceAll(/\s/g, ''))
+    expect(text).toContain(`cd'${plan.directory}'npminstall`.replaceAll(/\s/g, ''))
+    expect(text).toContain('Next:installdependenciesandfollowtheofficialguide.')
+    expect(text).not.toContain('\\u001b')
+    const bottom = screen.scroll
+    io.key('down')
+    expect(screen.scroll).toBe(bottom)
+    io.output.rows = 40
+    io.output.emit('resize')
+    expect(screen.scroll).toBeLessThanOrEqual(bottom!)
+    io.key('return')
+    io.key('q', 'q')
+    await hub
+  })
+
+  it('keeps the editable name tail and metadata status visible in a narrow terminal', async () => {
+    fakeClock()
+    const io = terminal({ motion: false, width: 44, height: 18 })
+    const wizard = runCreateWizard(io.ctx)
+    io.key('text', `/中文👩🏽‍💻/${'long-parent/'.repeat(12)}my-app`)
+    const workbench = io.ctx.resources.workbench!
+    workbench.setCreateProgress({ phase: 'ready', packageName: 'create-weapp-vite', cwd: '/tmp', version: '1.2.3', queryElapsedMs: 312 })
+    await nextFrame()
+    expect(io.output.frame()).toContain('…')
+    expect(io.output.frame()).toContain('my-app▏')
+    expect(io.output.frame()).toContain('1.2.3 · 312ms')
+    expect(io.output.frame()).toContain('Esc cancel')
+    io.key('escape')
+    expect(await wizard).toBeNull()
   })
 
   it('keeps validation errors editable and restores the terminal on Ctrl+C', async () => {

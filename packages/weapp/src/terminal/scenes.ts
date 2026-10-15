@@ -1,5 +1,10 @@
 import type { LogoPoint } from '../types.js'
+import type { ProjectPreview } from './preview.js'
+// eslint-disable-next-line e18e/ban-dependencies -- Version 7 preserves the CLI's Node 18 baseline.
+import stringWidth from 'string-width'
 import { sanitize } from '../shared.js'
+import { previewPoints } from './preview.js'
+import { clipLine, graphemes } from './session.js'
 
 export const EFFECTS = ['logo', 'orbit', 'matrix', 'fireworks'] as const
 export type Effect = typeof EFFECTS[number]
@@ -17,7 +22,7 @@ export interface SceneOptions {
   opening?: boolean
   focus?: number
 }
-interface SurfaceCell { char?: string, mask?: number, shade: number, brightness?: number }
+interface SurfaceCell { char?: string, mask?: number, shade: number, brightness?: number, continuation?: boolean }
 
 export function seedNumber(value: string | number = 'weapp'): number {
   if (typeof value === 'number') {
@@ -98,8 +103,12 @@ function surface(width: number, height: number, color: boolean, palette: string[
     put(x: number, y: number, char = '*', shade = 0) {
       x = Math.round(x)
       y = Math.round(y)
-      if (x >= 0 && x < width && y >= 0 && y < height) {
+      const size = stringWidth(char)
+      if (size > 0 && x >= 0 && x + size <= width && y >= 0 && y < height) {
         cells[y][x] = { char, shade }
+        for (let offset = 1; offset < size; offset++) {
+          cells[y][x + offset] = { shade, continuation: true }
+        }
       }
     },
     lines() {
@@ -107,6 +116,9 @@ function surface(width: number, height: number, color: boolean, palette: string[
         let previous: string | number = -1
         let line = ''
         for (const cell of row) {
+          if (cell?.continuation) {
+            continue
+          }
           if (!cell) {
             line += ' '
             continue
@@ -123,6 +135,56 @@ function surface(width: number, height: number, color: boolean, palette: string[
       })
     },
   }
+}
+
+export interface ProjectPreviewOptions {
+  width: number
+  height: number
+  from: ProjectPreview
+  to: ProjectPreview
+  transition?: number
+  time?: number
+  color?: boolean
+  celebration?: number
+}
+
+/** A name seeds the stars; each official template owns a different structure. */
+export function renderProjectPreview({ width, height, from, to, transition = 1, time = 0, color = false, celebration }: ProjectPreviewOptions): string[] {
+  width = Math.max(1, Math.min(110, Math.floor(width)))
+  height = Math.max(1, Math.min(35, Math.floor(height)))
+  const screen = surface(width, height, color, defaultPalette)
+  const amount = Math.max(0, Math.min(1, transition))
+  const eased = 1 - (1 - amount) ** 3
+  const before = previewPoints(from.template)
+  const after = previewPoints(to.template)
+  const seed = seedNumber(to.name)
+  const previousSeed = seedNumber(from.name)
+  for (let index = 0; index < Math.min(48, width); index++) {
+    const startX = variation(previousSeed, index * 2)
+    const startY = variation(previousSeed, index * 2 + 1)
+    screen.dot((startX + (variation(seed, index * 2) - startX) * eased) * (width - 1), (startY + (variation(seed, index * 2 + 1) - startY) * eased) * (height - 1), 3, 0.2)
+  }
+  for (let index = 0; index < after.length; index++) {
+    const point = after[index]
+    const previous = before[index]
+    const pulse = 0.62 + Math.sin(time * 1.6 + index / 12) * 0.12
+    screen.dot((previous.x + (point.x - previous.x) * eased) * (width - 1), (previous.y + (point.y - previous.y) * eased) * (height - 1), point.group % 4, pulse)
+  }
+  if (celebration !== undefined) {
+    const progress = Math.max(0, Math.min(1, celebration))
+    const radius = 0.12 + (1 - (1 - progress) ** 3) * 0.35
+    for (let index = 0; index < 28; index++) {
+      const angle = index / 28 * Math.PI * 2
+      screen.dot((0.5 + Math.cos(angle) * radius) * (width - 1), (0.5 + Math.sin(angle) * radius) * (height - 1), 3, 0.9 - progress * 0.7, progress < 0.7 ? 1 : 0)
+    }
+  }
+  const label = clipLine(sanitize(to.name), Math.max(0, width - 4))
+  let column = Math.max(0, Math.floor((width - stringWidth(label)) / 2))
+  for (const char of graphemes(label)) {
+    screen.put(column, Math.floor(height / 2), char, 3)
+    column += stringWidth(char)
+  }
+  return screen.lines()
 }
 
 /** Stateless seeded frames make replay, resize and snapshots reproducible. */

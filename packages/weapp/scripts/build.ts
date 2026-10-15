@@ -5,6 +5,7 @@ import { projectAssetsDirectory, projectsDirectory } from '@weapp-io/project-cat
 import { projectDefinitionSchema } from '@weapp-io/project-catalog/schemas'
 import { createHeroLogo, HERO_LOGO_PALETTE, HERO_LOGO_VIEWBOX } from '@weapp-io/site-ui/hero-logo'
 import { projectLogoFiles, projectLogos } from '../lab/project-logos.js'
+import { noticesPath, thirdPartyNotices } from './bundle-policy.js'
 import { syncCatalogReadme } from './catalog-readme.js'
 
 const root = new URL('../', import.meta.url)
@@ -31,6 +32,7 @@ else {
   }
   await rm(dist, { recursive: true, force: true })
   await mkdir(new URL('data/', dist), { recursive: true })
+  await writeFile(new URL(noticesPath, dist), (await thirdPartyNotices()).text)
   const logo = { viewBox: HERO_LOGO_VIEWBOX, palette: HERO_LOGO_PALETTE, points: createHeroLogo(false) }
   await writeFile(new URL('data/catalog.json', dist), `${JSON.stringify(projects)}\n`)
   await writeFile(new URL('data/logo.json', dist), `${JSON.stringify(logo)}\n`)

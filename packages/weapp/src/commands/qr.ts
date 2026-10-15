@@ -2,7 +2,8 @@ import type { CliContext, CliInput, CliOptions } from '../types.js'
 import { Buffer } from 'node:buffer'
 import path from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
-import QRCode from 'qrcode'
+import QRCode from 'qrcode/lib/core/qrcode.js'
+import SvgRenderer from 'qrcode/lib/renderer/svg-tag.js'
 import { safeWrite, sanitize, t, write, writeError } from '../shared.js'
 
 export function qrTerminal(content: string): string {
@@ -57,7 +58,7 @@ export async function runQr(ctx: CliContext, args: string[], options: CliOptions
         writeError(ctx, t(ctx, '二维码输出须使用 .svg 扩展名。', 'QR output must use the .svg extension.'))
         return 1
       }
-      const svg = await QRCode.toString(content, { type: 'svg', margin: 4, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } })
+      const svg = SvgRenderer.render(QRCode.create(content, { errorCorrectionLevel: 'M' }), { margin: 4, color: { dark: '#000000', light: '#ffffff' } })
       try {
         await safeWrite(path.resolve(options.output), svg, options.force)
       }

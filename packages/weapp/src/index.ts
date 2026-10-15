@@ -1,18 +1,9 @@
 import type { CatalogProject, CliContext, CliOverrides, LogoData } from './types.js'
 import { readFile } from 'node:fs/promises'
 import process from 'node:process'
-// eslint-disable-next-line e18e/ban-dependencies -- Cross-platform browser launching compatible with Node 18.
-import open from 'open'
-import { findProject, printProjects, renderProject, searchProjects } from './catalog.js'
-import { runCreate } from './commands/create.js'
-import { runDoctor } from './commands/doctor.js'
-import { runPalette } from './commands/palette.js'
-import { runQr } from './commands/qr.js'
-import { runLab } from './lab.js'
 import { parseArgs, renderHelp } from './registry.js'
 import { runtimeAsset } from './runtime.js'
 import { detectLanguage, errorMessage, isInteractive, requestedLanguage, sanitize, t, write, writeError } from './shared.js'
-import { runCreateWizard, runFx, runHub, runSnake, selectProjects } from './terminal/index.js'
 
 interface DataFiles { catalog: CatalogProject[], logo: LogoData, meta: { version: string } }
 async function loadData<K extends keyof DataFiles>(name: K): Promise<DataFiles[K]> {
@@ -25,6 +16,9 @@ export async function openUrl(url: string): Promise<void> {
   if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && parsed.hostname === '127.0.0.1')) {
     throw new Error('Only official HTTPS links and the local lab can be opened')
   }
+  // Keep platform-specific browser launching off every other command's path.
+  // eslint-disable-next-line e18e/ban-dependencies -- Cross-platform launching compatible with Node 18.
+  const { default: open } = await import('open')
   await open(parsed.href, { wait: false })
 }
 
@@ -32,7 +26,10 @@ export async function dispatch(argv: string[], ctx: CliContext): Promise<number>
   const parsed = parseArgs(argv)
   const { command, args, options } = parsed
   const current: CliContext = { ...ctx, lang: options.lang || ctx.lang, color: ctx.color && !options.noColor, motion: ctx.motion && !options.noMotion }
-  current.createWizard = (route, wizardOptions) => runCreateWizard(current, route, wizardOptions)
+  current.createWizard = async (route, wizardOptions, hooks) => {
+    const { runCreateWizard } = await import('./terminal/index.js')
+    return runCreateWizard(current, route, wizardOptions, hooks)
+  }
   if (options.version) {
     write(current, current.version || (await loadData('meta')).version)
     return 0
@@ -41,13 +38,19 @@ export async function dispatch(argv: string[], ctx: CliContext): Promise<number>
     write(current, renderHelp(current, command))
     return 0
   }
-  if (!current.catalog) {
-    current.catalog = await loadData('catalog')
-  }
-  if (!current.logo) {
-    current.logo = await loadData('logo')
-  }
+  const catalogCommand = command === 'projects' || command === 'info' || command === 'docs' || command === 'repo'
+  const visualCommand = !command || command === 'fx' || command === 'lab'
+  const projectBrowser = command === 'projects' && current.interactive && !args.length && !options.json
+  await Promise.all([
+    !current.catalog && (catalogCommand || visualCommand)
+      ? loadData('catalog').then(data => current.catalog = data)
+      : undefined,
+    !current.logo && (visualCommand || projectBrowser)
+      ? loadData('logo').then(data => current.logo = data)
+      : undefined,
+  ])
   if (!command) {
+    const { runHub } = await import('./terminal/index.js')
     return runHub(current, async (next) => {
       try {
         return await dispatch(next, { ...current, hub: true })
@@ -59,20 +62,25 @@ export async function dispatch(argv: string[], ctx: CliContext): Promise<number>
     })
   }
   if (command === 'fx') {
+    const { runFx } = await import('./terminal/index.js')
     return runFx(current, args, options)
   }
   if (command === 'play') {
     if (args[0] !== 'snake') {
       throw new Error(t(current, '目前支持 play snake。', 'The available game is play snake.'))
     }
+    const { runSnake } = await import('./terminal/index.js')
     return runSnake(current, args, options)
   }
   if (command === 'lab') {
+    const { runLab } = await import('./lab.js')
     return runLab(current, args, options)
   }
   if (command === 'projects') {
-    const matches = searchProjects(current.catalog, args[0], options)
+    const { printProjects, renderProject, searchProjects } = await import('./catalog.js')
+    const matches = searchProjects(current.catalog!, args[0], options)
     if (current.interactive && !args.length && !options.json && matches.length) {
+      const { selectProjects } = await import('./terminal/index.js')
       const project = await selectProjects(current, matches, { all: options.all || Boolean(options.ecosystem), filtered: Boolean(options.ecosystem || options.status) })
       if (project) {
         write(current, renderProject(current, project))
@@ -83,7 +91,8 @@ export async function dispatch(argv: string[], ctx: CliContext): Promise<number>
     return 0
   }
   if ((command === 'info' || command === 'docs' || command === 'repo')) {
-    const project = findProject(current.catalog, args[0])
+    const { findProject, renderProject } = await import('./catalog.js')
+    const project = findProject(current.catalog!, args[0])
     if (!project) {
       throw new Error(t(current, `找不到项目：${sanitize(args[0])}。运行 weapp projects 搜索。`, `Unknown project: ${sanitize(args[0])}. Search with weapp projects.`))
     }
@@ -98,8 +107,20 @@ export async function dispatch(argv: string[], ctx: CliContext): Promise<number>
     }
     return 0
   }
-  const tools = { create: runCreate, doctor: runDoctor, qr: runQr, palette: runPalette }
-  return tools[command](current, args, options)
+  if (command === 'create') {
+    const { runCreate } = await import('./commands/create.js')
+    return runCreate(current, args, options)
+  }
+  if (command === 'doctor') {
+    const { runDoctor } = await import('./commands/doctor.js')
+    return runDoctor(current, args, options)
+  }
+  if (command === 'qr') {
+    const { runQr } = await import('./commands/qr.js')
+    return runQr(current, args, options)
+  }
+  const { runPalette } = await import('./commands/palette.js')
+  return runPalette(current, args, options)
 }
 
 export async function runCli(argv: string[], overrides: CliOverrides = {}): Promise<number> {

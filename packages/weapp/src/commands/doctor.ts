@@ -6,7 +6,9 @@ import process from 'node:process'
 // eslint-disable-next-line e18e/ban-dependencies -- Preserve Windows-safe package manager probing on the Node 18 baseline.
 import spawn from 'cross-spawn'
 // eslint-disable-next-line e18e/ban-dependencies -- Validate npm engines with the complete semver grammar on Node 18.
-import semver from 'semver'
+import satisfies from 'semver/functions/satisfies.js'
+// eslint-disable-next-line e18e/ban-dependencies -- Preserve npm-compatible engine range parsing on Node 18.
+import validRange from 'semver/ranges/valid.js'
 import { sanitize, t, write, writeError } from '../shared.js'
 
 const LOCKFILES: Readonly<Record<string, string>> = { 'pnpm-lock.yaml': 'pnpm', 'package-lock.json': 'npm', 'npm-shrinkwrap.json': 'npm', 'yarn.lock': 'yarn', 'bun.lock': 'bun', 'bun.lockb': 'bun' }
@@ -82,7 +84,7 @@ export async function diagnose(directory: string | undefined, ctx: Pick<CliConte
     checks.push({ id, severity, message: t(ctx, zh, en), ...(zhAdvice && enAdvice ? { advice: t(ctx, zhAdvice, enAdvice) } : {}) })
   }
   const nodeVersion = operations.nodeVersion || process.versions.node
-  const nodeOk = semver.satisfies(nodeVersion, '>=18')
+  const nodeOk = satisfies(nodeVersion, '>=18')
   add('node', nodeOk ? 'ok' : 'error', `Node ${nodeVersion}`, `Node ${nodeVersion}`, nodeOk ? undefined : '请安装 Node 18 或更新版本。', nodeOk ? undefined : 'Install Node 18 or newer.')
   try {
     if (!(await lstat(root)).isDirectory()) {
@@ -108,8 +110,8 @@ export async function diagnose(directory: string | undefined, ctx: Pick<CliConte
   }
   if (isRecord(manifest?.engines) && manifest.engines.node) {
     const requirement = manifest.engines.node
-    const valid = typeof requirement === 'string' && semver.validRange(requirement)
-    const compatible = valid && semver.satisfies(nodeVersion, requirement)
+    const valid = typeof requirement === 'string' && validRange(requirement)
+    const compatible = valid && satisfies(nodeVersion, requirement)
     add('project-node', compatible ? 'ok' : 'error', `项目 Node 要求：${String(requirement)}`, `Project Node requirement: ${String(requirement)}`, compatible ? undefined : '使用满足 engines.node 的 Node 版本，并确保它是有效的 semver 范围。', compatible ? undefined : 'Use a Node version satisfying engines.node and ensure it is a valid semver range.')
   }
   const locks: string[] = []

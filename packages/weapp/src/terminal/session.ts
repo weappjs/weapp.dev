@@ -9,12 +9,18 @@ import stringWidth from 'string-width'
 // Node's type declaration requires a full readline Interface, while its decoder
 // only reads escapeCodeTimeout here. Keep the runtime option on this API boundary.
 const emitTerminalKeypressEvents = emitKeypressEvents as unknown as (input: CliInput, options: { escapeCodeTimeout: number }) => void
+const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+
+export function graphemes(value: string): string[] {
+  return Array.from(segmenter.segment(value), ({ segment }) => segment)
+}
 
 export function clipLine(value: unknown, columns: number): string {
   let output = ''
   let width = 0
   const escape = String.fromCharCode(27)
-  const tokens = String(value).match(new RegExp(`${escape}\\[[\\d;]*m|[^${escape}]`, 'gu')) || []
+  const tokens = (String(value).match(new RegExp(`${escape}\\[[\\d;]*m|[^${escape}]+`, 'gu')) || [])
+    .flatMap(token => token.startsWith('\u001B[') ? [token] : graphemes(token))
   for (const token of tokens) {
     if (token.startsWith('\u001B[')) {
       output += token

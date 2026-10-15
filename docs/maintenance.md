@@ -58,9 +58,13 @@ pnpm metrics:sync
 
 `.github/workflows/version-packages.yml` 在 `main` push 或手动运行时调用 `repo release ci --mode prepare`，创建或更新 `release/pnpm-version` → `main` 的版本 PR。repoctl 执行 `release:verify`，pnpm 消费 intent、升版、生成包内 `CHANGELOG.md` 和 `.changeset/ledger.yaml`，然后 `afterVersion` 构建最新版本的 CLI 快照。自动任务禁用开发者 Git hooks，使用显式质量脚本和 PR 的 CLI CI。版本 PR 不自动合并，prepare job 没有 OIDC 权限且不会发布 npm。
 
-仓库允许 GitHub Actions 创建 PR，但默认 token 权限仍为 read；只有 prepare job 授予 contents / pull-requests / actions write。它使用内置 `GITHUB_TOKEN`，不需要 PAT 或 npm token，并显式 dispatch 版本分支的 CLI CI 和 `publish-weapp.yml` 的 preflight，以便检查真正待合并的版本。后者的 `--ref` 与 `tag` 输入均为 `release/pnpm-version`。首版 `0.1.0` 的 npm、canonical tag 与 GitHub Release 已完成；本次 minor intent 由 repoctl 准备 `0.2.0`。版本 PR 与发布分别处理。
+仓库允许 GitHub Actions 创建 PR，但默认 token 权限仍为 read；只有 prepare job 授予 contents / pull-requests / actions write。它使用内置 `GITHUB_TOKEN`，不需要 PAT 或 npm token，并显式 dispatch 版本分支的 CLI CI 和 `publish-weapp.yml` 的 preflight，以便检查真正待合并的版本。后者的 `--ref` 与 `tag` 输入均为 `release/pnpm-version`。当前已发布基线为 `0.2.0`；本次 minor intent 的只读 release plan 预览为 `0.3.0`。版本 PR 与发布分别处理。
 
-weapp CLI 单独由 `.github/workflows/weapp-cli.yml` 验证：目录与 Logo 构建、双语命令/只读诊断/脚手架适配单测、真实 PTY 恢复、后台浏览器实验室及独立 tarball。Node 18 的兼容任务只安装真实 tarball 并运行 plain ESM smoke，不运行要求新 Node 的 Vitest。CLI 开发与命令说明见 `packages/weapp/README.md`，新增项目能力应从中立 catalog 生成，不另写手工名单。交互默认六项由 `ecosystem=weapp` 筛选，查询和 JSON 保留十一项；真实 Logo 构建时由公共 assets 导出打包，运行时只允许固定资源表。终端开场、大厅、目录和创建向导由一个状态机管理，20 FPS 上限同时约束按键更新，按行差分与背压避免输出积压。
+weapp CLI 单独由 `.github/workflows/weapp-cli.yml` 验证：目录与 Logo 构建、双语命令/只读诊断/脚手架适配单测、真实 PTY 恢复、后台浏览器实验室及独立 tarball。Node 18 的兼容任务只安装真实 tarball 并运行 plain ESM smoke，不运行要求新 Node 的 Vitest。CLI 开发与命令说明见 `packages/weapp/README.md`，新增项目能力应从中立 catalog 生成，不另写手工名单。交互默认六项由 `ecosystem=weapp` 筛选，查询和 JSON 保留十一项；真实 Logo 构建时由公共 assets 导出打包，运行时只允许固定资源表。大厅第一帧即可操作，目录与模板驱动星图，创建成功立即展示结果；整个状态机保留单一输入所有者，20 FPS 上限同时约束按键更新，按行差分与背压避免输出积压。
+
+CLI 命令与数据按需加载；QR core/SVG、semver、string-width 和 cross-spawn 的纯 JavaScript 闭包打包进产物，仅 open 保留运行时外部依赖及平台资源。构建图、隔离安装和 `dist/THIRD_PARTY_NOTICES.txt` 一起验证依赖边界。创建查询在有效目录确认后与模板选择并行，与执行统一使用目标父目录的 npm 配置；本次调用结束即清理预取，不建立持久版本缓存。`--dry-run` 保持零联网。性能记录须区分 CLI 执行、npm 全局扫描、registry 请求和脚手架安装，避免把外部等待或动画时长统称为启动耗时。
+
+[2026-10-15 CLI 启动与创建验收](weapp-startup-2026-10-15.md) 记录本机基线、依赖闭包、npx 对比、真实创建和平台验证范围。构建后用 `pnpm --filter weapp exec tsx scripts/benchmark-startup.ts` 测新进程帮助/版本/dry-run；真实 PTY 的首个可操作帧记录在 `packages/weapp/.cache/qa/terminal-metrics.json`。CI 检查行为与结构，不给不同机器设置同一毫秒硬门槛。
 
 CLI 发布与预检共用 `.github/workflows/publish-weapp.yml` 和 GitHub 托管 runner，`id-token: write` 仅授予其 publish job，不新增 environment。手动运行默认 `mode=preflight`、`tag=main`，tag 字段此时可为 Git ref。预检检查 manifest 的 weapp 身份、仓库、Node 18、public access、npm 版本未发布及 tarball 的运行时与实验室资源，安装并 smoke 测试同一 tarball 后上传产物。构建后本地 `pnpm --filter weapp preflight` 仅执行 npm metadata 与 pack dry-run，明确不检查 CI OIDC。
 

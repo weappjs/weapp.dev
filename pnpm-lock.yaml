@@ -362,21 +362,9 @@ importers:
 
   packages/weapp:
     dependencies:
-      cross-spawn:
-        specifier: 7.0.6
-        version: 7.0.6
       open:
         specifier: 10.2.0
         version: 10.2.0
-      qrcode:
-        specifier: 1.5.4
-        version: 1.5.4
-      semver:
-        specifier: 7.8.5
-        version: 7.8.5
-      string-width:
-        specifier: 7.2.0
-        version: 7.2.0
     devDependencies:
       '@playwright/test':
         specifier: 1.64.1
@@ -399,9 +387,21 @@ importers:
       '@weapp-io/site-ui':
         specifier: workspace:*
         version: link:../site-ui
+      cross-spawn:
+        specifier: 7.0.6
+        version: 7.0.6
       jsqr:
         specifier: 1.4.0
         version: 1.4.0
+      qrcode:
+        specifier: 1.5.4
+        version: 1.5.4
+      semver:
+        specifier: 7.8.5
+        version: 7.8.5
+      string-width:
+        specifier: 7.2.0
+        version: 7.2.0
       tsdown:
         specifier: 0.23.1
         version: 0.23.1(@arethetypeswrong/core@0.18.5)(@volar/typescript@2.4.28(typescript@6.0.3))(publint@0.3.25)(tsx@4.23.15)(typescript@6.0.3)
