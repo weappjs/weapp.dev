@@ -32,7 +32,7 @@ pnpm metrics:sync
 
 ## 依赖维护
 
-[2026-10-12 依赖升级验收](dependency-upgrade-2026-10-12.md) 记录当前版本、静态产物整理、限定 override 的删除条件和剩余安全告警；[2026-10-09 记录](dependency-upgrade-2026-10-09.md) 保留上一轮基线。后续升级应复查上游约束，满足删除条件后移除对应 override。
+[2026-10-15 依赖升级与样式构建迁移记录](dependency-upgrade-2026-10-15.md) 记录当前升级目标、兼容性保留项、发布冷却、限定 override 的删除条件和验收状态；[2026-10-12 记录](dependency-upgrade-2026-10-12.md) 保留上一轮基线。后续升级应复查上游约束，满足删除条件后移除对应 override。
 
 ## 内容与路由
 
@@ -54,7 +54,7 @@ pnpm metrics:sync
 
 ## CI 与发布
 
-版本由 repoctl 5.10.2 和 pnpm 原生 versioning 管理。功能或修复在开发分支记录 `pnpm change weapp --bump minor --summary "变更说明"`（修复使用 `patch`），提交 `.changeset/*.md` 后合入 `main`。这只是 pnpm 的 change intent 目录，不使用 Changesets CLI 或 action。`pnpm release:plan --json` 只读预览版本和 release notes，`pnpm change check` 检查 intent。`pnpm-workspace.yaml` 的 `versioning.ignore` 使用精确包名，排除私有 root 与四个 `@weapp-io/*` workspace；该字段不支持通配符，新增私有包时必须同步名单。
+版本由 repoctl 5.10.3 和 pnpm 原生 versioning 管理。功能或修复在开发分支记录 `pnpm change weapp --bump minor --summary "变更说明"`（修复使用 `patch`），提交 `.changeset/*.md` 后合入 `main`。这只是 pnpm 的 change intent 目录，不使用 Changesets CLI 或 action。`pnpm release:plan --json` 只读预览版本和 release notes，`pnpm change check` 检查 intent。`pnpm-workspace.yaml` 的 `versioning.ignore` 使用精确包名，排除私有 root 与四个 `@weapp-io/*` workspace；该字段不支持通配符，新增私有包时必须同步名单。
 
 `.github/workflows/version-packages.yml` 在 `main` push 或手动运行时调用 `repo release ci --mode prepare`，创建或更新 `release/pnpm-version` → `main` 的版本 PR。repoctl 执行 `release:verify`，pnpm 消费 intent、升版、生成包内 `CHANGELOG.md` 和 `.changeset/ledger.yaml`，然后 `afterVersion` 构建最新版本的 CLI 快照。自动任务禁用开发者 Git hooks，使用显式质量脚本和 PR 的 CLI CI。版本 PR 不自动合并，prepare job 没有 OIDC 权限且不会发布 npm。
 

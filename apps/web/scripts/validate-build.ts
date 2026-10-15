@@ -75,6 +75,18 @@ for (const name of ['CNAME', '.nojekyll', '.well-known/bimi']) {
   }
 }
 
+const cssFiles = (await readdir(dist, { recursive: true })).filter(file => file.endsWith('.css'))
+for (const file of cssFiles) {
+  const css = await readFile(resolve(dist, file), 'utf8')
+  const executableCss = css
+    .replace(/\/\*[\s\S]*?\*\/|"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'/g, '')
+    .replace(/\burl\((?:\\[\s\S]|[^\\)])*\)/gi, '')
+  const directives = [...new Set([...executableCss.matchAll(/(?<![\\\w-])@(?:theme|apply|source|tailwind|custom-variant|utility|variant|config|plugin|reference)(?![\w-])/gi)].map(match => match[0]))]
+  if (directives.length > 0) {
+    errors.push(`${file}: contains uncompiled Tailwind CSS directives: ${directives.join(', ')}`)
+  }
+}
+
 const htmlFiles = await collectHtml(dist)
 for (const file of htmlFiles) {
   const label = relative(dist, file)
