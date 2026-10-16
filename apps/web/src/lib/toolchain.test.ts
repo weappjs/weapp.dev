@@ -14,12 +14,41 @@ import { describe, expect, it } from 'vitest'
 import { projectDefinitionSchema } from '../content/schemas'
 import { getCatalogEcosystemGroups, getConstellationProjects, getEcosystemProjects, getToolchainProjects, validateToolchainCatalog } from './toolchain'
 
+function coreProjects() {
+  return [
+    ['weapp-vite', vite],
+    ['weapp-tailwindcss', tailwind],
+    ['varo', varo],
+    ['weapp-sqlite', sqlite],
+    ['vite-plugin-taro', taro],
+    ['weapp-pandacss', panda],
+    ['weapp-stylex', stylex],
+  ].map(([id, data]) => ({ id, data: projectDefinitionSchema.parse(data) })) as ProjectEntry[]
+}
+
+function plannedProject() {
+  return {
+    id: 'planned-example',
+    data: projectDefinitionSchema.parse({
+      ...vite,
+      order: 12,
+      packageName: 'planned-example',
+      status: 'planned',
+      maturity: 'planned',
+      dataCompleteness: 'planned',
+      platforms: undefined,
+      runtime: undefined,
+      npmUrl: undefined,
+      installCommand: undefined,
+      quickStart: undefined,
+      relatedProjects: ['weapp-vite'],
+    }),
+  } as ProjectEntry
+}
+
 describe('toolchain project ordering', () => {
   it('keeps the weapp stack in build-flow order', () => {
-    const projects = [stylex, panda, varo, sqlite, vite, tailwind].map(data => ({
-      id: data.packageName === '@varo-ui/cli' ? 'varo' : data.packageName,
-      data: projectDefinitionSchema.parse(data),
-    })) as ProjectEntry[]
+    const projects = coreProjects().filter(project => project.data.ecosystem === 'weapp').reverse()
     expect(getToolchainProjects(projects).map(item => item.project.id)).toEqual([
       'weapp-vite',
       'weapp-tailwindcss',
@@ -31,10 +60,7 @@ describe('toolchain project ordering', () => {
   })
 
   it('validates the core project catalog and related references', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
-      data: projectDefinitionSchema.parse(data),
-    })) as unknown as ProjectEntry[]
+    const projects = coreProjects()
     expect(() => validateToolchainCatalog(projects)).not.toThrow()
     const invalidOrder = structuredClone(projects) as ProjectEntry[]
     invalidOrder[0].data.order = 2
@@ -58,70 +84,56 @@ describe('toolchain project ordering', () => {
   })
 
   it('rejects a planned project marked as complete', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
-      data: projectDefinitionSchema.parse(data),
-    })) as unknown as ProjectEntry[]
-    projects[3].data.dataCompleteness = 'complete'
-    expect(() => validateToolchainCatalog(projects)).toThrow('Planned project cannot claim complete data')
+    const projects = coreProjects()
+    const planned = plannedProject()
+    planned.data.dataCompleteness = 'complete'
+    expect(() => validateToolchainCatalog([...projects, planned])).toThrow('Planned project cannot claim complete data')
   })
 
-  it('keeps unconfirmed scope absent for planned data projects', () => {
+  it('publishes only the verified scope for the Beta data project', () => {
     const parsed = projectDefinitionSchema.parse(sqlite)
-    expect(parsed.status).toBe('planned')
-    expect(parsed.platforms).toBeUndefined()
-    expect(parsed.runtime).toBeUndefined()
-    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
-      data: projectDefinitionSchema.parse(data),
-    })) as unknown as ProjectEntry[]
-    expect(() => validateToolchainCatalog(projects)).not.toThrow()
+    expect(parsed.status).toBe('beta')
+    expect(parsed.platforms).toEqual(['Web', 'WeChat DevTools'])
+    expect(parsed.runtime).toEqual(['SQLite WASM (sql.js)', 'IndexedDB', 'WXWebAssembly'])
+    expect(() => validateToolchainCatalog(coreProjects())).not.toThrow()
+  })
+
+  it('keeps unconfirmed scope absent for an independent planned fixture', () => {
+    const planned = plannedProject()
+    expect(planned.data.platforms).toBeUndefined()
+    expect(planned.data.runtime).toBeUndefined()
+    expect(() => validateToolchainCatalog([...coreProjects(), planned])).not.toThrow()
   })
 
   it('requires confirmed scope for released projects', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
-      data: projectDefinitionSchema.parse(data),
-    })) as unknown as ProjectEntry[]
+    const projects = coreProjects()
     projects[0].data.platforms = undefined
     expect(() => validateToolchainCatalog(projects)).toThrow('Active project is missing platform or runtime scope')
   })
 
   it('rejects package actions that contradict project status', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
-      data: projectDefinitionSchema.parse(data),
-    })) as unknown as ProjectEntry[]
-    projects[3].data.installCommand = 'pnpm add weapp-sqlite'
-    expect(() => validateToolchainCatalog(projects)).toThrow('Planned project cannot publish package actions')
-    projects[3].data.installCommand = undefined
+    const projects = coreProjects()
+    const planned = plannedProject()
+    planned.data.installCommand = 'pnpm add planned-example'
+    expect(() => validateToolchainCatalog([...projects, planned])).toThrow('Planned project cannot publish package actions')
     projects[0].data.npmUrl = undefined
     expect(() => validateToolchainCatalog(projects)).toThrow('Active project is missing package actions')
   })
 
   it('rejects an npm URL that points to a different package', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
-      data: projectDefinitionSchema.parse(data),
-    })) as unknown as ProjectEntry[]
+    const projects = coreProjects()
     projects[0].data.npmUrl = 'https://www.npmjs.com/package/weapp-tailwindcss'
     expect(() => validateToolchainCatalog(projects)).toThrow('Project npm URL does not match package name')
   })
 
   it('rejects status and maturity drift', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
-      data: projectDefinitionSchema.parse(data),
-    })) as unknown as ProjectEntry[]
+    const projects = coreProjects()
     projects[0].data.maturity = 'beta'
     expect(() => validateToolchainCatalog(projects)).toThrow('Project status and maturity differ')
   })
 
   it('rejects a declared role that differs from the flow role', () => {
-    const projects = [vite, tailwind, varo, sqlite, taro, panda, stylex].map((data, index) => ({
-      id: ['weapp-vite', 'weapp-tailwindcss', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'weapp-pandacss', 'weapp-stylex'][index],
-      data: projectDefinitionSchema.parse(data),
-    })) as unknown as ProjectEntry[]
+    const projects = coreProjects()
     projects[0].data.role = 'Styling'
     expect(() => validateToolchainCatalog(projects)).toThrow('Project role differs from toolchain role')
   })
@@ -152,17 +164,20 @@ describe('toolchain project ordering', () => {
       ['uni-app', ['uni-helper', 'wot-ui']],
     ])
     expect(getEcosystemProjects(projects).map(project => project.id)).toEqual(['uni-helper', 'wot-ui'])
+    const originalOrder = projects.map(project => project.id)
     expect(getConstellationProjects(projects).map(project => project.id)).toEqual([
       'weapp-vite',
       'weapp-tailwindcss',
       'weapp-pandacss',
       'weapp-stylex',
       'varo',
+      'weapp-sqlite',
       'vite-plugin-taro',
       'vue-mini',
       'rezor',
       'uni-helper',
       'wot-ui',
     ])
+    expect(projects.map(project => project.id)).toEqual(originalOrder)
   })
 })

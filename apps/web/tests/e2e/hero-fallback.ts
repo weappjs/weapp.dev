@@ -6,7 +6,7 @@ export async function expectGatedPlanets(page: Page) {
   const constellation = page.locator('hero-planets')
   await expect(constellation).toHaveJSProperty('inert', true)
   await expect(constellation).toHaveAttribute('aria-hidden', 'true')
-  await expect(page.locator('.home-hero-planet')).toHaveCount(10)
+  await expect(page.locator('.home-hero-planet')).toHaveCount(11)
   for (const planet of await page.locator('.home-hero-planet').all()) {
     await expect(planet).toBeHidden()
   }

@@ -47,6 +47,8 @@ interface LabData {
   logo: { points: LogoPoint[] }
 }
 
+const ORBIT_LOGO_SCALE = 1.38
+
 // The local server is a typed producer, but HTTP remains an unknown-data boundary.
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -671,15 +673,18 @@ function drawOrbit() {
   const nodes = projects.map((project, index) => {
     const base = nodeBase(index)
     const offset = offsets.get(project.slug) || { x: 0, y: 0 }
+    const depthRadius = (width < 600 ? 16 : 22) * (0.78 + base.depth * 0.28) * (selected === index ? 1.2 : 1)
+    // The official SQLite icon needs at least 32 CSS px, including on the far orbit.
+    const radius = project.slug === 'weapp-sqlite' ? Math.max(depthRadius, 32 / ORBIT_LOGO_SCALE) : depthRadius
+    const edge = project.slug === 'weapp-sqlite' ? Math.max(22, radius) : 22
     const x = Math.max(
-      22,
-      Math.min(width - 22, index === dragging ? pointer.x : width / 2 + (base.x - width / 2) * unfolded + offset.x),
+      edge,
+      Math.min(width - edge, index === dragging ? pointer.x : width / 2 + (base.x - width / 2) * unfolded + offset.x),
     )
     const y = Math.max(
       58,
       Math.min(height - 64, index === dragging ? pointer.y : height / 2 + (base.y - height / 2) * unfolded + offset.y),
     )
-    const radius = (width < 600 ? 16 : 22) * (0.78 + base.depth * 0.28) * (selected === index ? 1.2 : 1)
     return { project, index, x, y, radius, depth: base.depth, offset }
   })
   orbitalNodes = reveal > 0.95 ? nodes.map(({ x, y, radius }) => ({ x, y, radius: Math.max(22, radius + 8) })) : []
@@ -712,7 +717,7 @@ function drawOrbit() {
     const image = images.get(project.slug)
     if (image) {
       context.globalAlpha = reveal * (selected === index ? 1 : 0.65 + depth * 0.23)
-      const size = radius * 1.38
+      const size = radius * ORBIT_LOGO_SCALE
       const ratio = size / Math.max(image.naturalWidth, image.naturalHeight)
       const w = image.naturalWidth * ratio
       const h = image.naturalHeight * ratio

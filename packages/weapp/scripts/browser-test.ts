@@ -5,12 +5,14 @@ import { mkdir, readFile } from 'node:fs/promises'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
+import { projectLogos } from '../lab/project-logos.js'
 import { startLab } from '../src/lab.js'
 
 declare global {
   interface Window {
     __labFrames: number
     __labWordmarkColor: string | CanvasGradient | CanvasPattern
+    __labSqliteDraws: { width: number, height: number, radius: number }[]
   }
 }
 
@@ -39,6 +41,7 @@ try {
   const page = await context.newPage()
   await page.addInitScript(() => {
     window.__labFrames = 0
+    window.__labSqliteDraws = []
     const request = window.requestAnimationFrame.bind(window)
     window.requestAnimationFrame = callback => request((time) => {
       window.__labFrames++
@@ -50,6 +53,20 @@ try {
         window.__labWordmarkColor = this.fillStyle
       }
       return fillText.call(this, text, x, y, maxWidth)
+    }
+    const circles = new WeakMap<CanvasRenderingContext2D, number>()
+    const arc = CanvasRenderingContext2D.prototype.arc
+    CanvasRenderingContext2D.prototype.arc = function (x, y, radius, startAngle, endAngle, counterclockwise) {
+      circles.set(this, radius)
+      arc.call(this, x, y, radius, startAngle, endAngle, counterclockwise)
+    }
+    const drawImage = CanvasRenderingContext2D.prototype.drawImage
+    CanvasRenderingContext2D.prototype.drawImage = function (image: CanvasImageSource, ...coordinates: number[]) {
+      if (this.canvas.id === 'canvas' && image instanceof HTMLImageElement && image.src.endsWith('/logos/weapp-sqlite.svg') && coordinates.length === 4) {
+        // Orbit draw coordinates are CSS px; its context transform supplies device scaling.
+        window.__labSqliteDraws.push({ width: coordinates[2], height: coordinates[3], radius: circles.get(this) || 0 })
+      }
+      Reflect.apply(drawImage, this, [image, ...coordinates])
     }
   })
   page.on('pageerror', error => failures.push(error.message))
@@ -64,6 +81,14 @@ try {
   const ready = () => page.waitForSelector('html[data-ready="true"]')
   const screenshot = (name: string) => page.screenshot({ path: fileURLToPath(new URL(name, evidence)), fullPage: true })
   const selected = (slug: string) => page.locator('#project-select').selectOption(slug)
+  const assertSqliteLogoSize = async (label: string) => {
+    await page.waitForFunction(() => window.__labSqliteDraws.length > 0)
+    const draws = await page.evaluate(() => window.__labSqliteDraws)
+    for (const draw of draws) {
+      assert.ok(draw.width >= 32 - 0.001 && draw.height >= 32 - 0.001, `${label}: SQLite icon must be at least 32 CSS px (${draw.width} × ${draw.height})`)
+      assert.ok(Math.hypot(draw.width, draw.height) / 2 <= draw.radius, `${label}: SQLite sphere must contain its icon`)
+    }
+  }
   const fact = (slug: string) => {
     const project = catalog.find(project => project.slug === slug)
     assert.ok(project, `Catalog project: ${slug}`)
@@ -94,6 +119,7 @@ try {
     return drawing ? new Set(drawing.getImageData(0, 0, canvas.width, canvas.height).data).size > 10 : false
   }), true)
   await screenshot('lab-desktop.png')
+  await assertSqliteLogoSize('1440px weapp scope')
   await page.locator('#scope').selectOption('all')
   assert.equal(await page.locator('#project-select option').count(), 11)
   for (const project of catalog) {
@@ -106,24 +132,26 @@ try {
     wordmarkContrasts[project.slug] = { ink: renderedInk, contrast: Number(ratio.toFixed(2)) }
     assert.equal(await page.locator('#project-description').textContent(), project.locales['zh-CN'].description)
     assert.equal(await page.locator('#project-logo').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0), true)
+    assert.equal(await page.locator('#project-logo').getAttribute('src'), projectLogos[project.slug].url)
+    assert.equal(await page.locator('#logo-note').isVisible(), projectLogos[project.slug].fallback)
     if (project.status === 'planned') {
       assert.equal(await page.locator('#command-action').isVisible(), false)
       assert.equal(await page.locator('#planned-notice').isVisible(), true)
-      assert.equal(await page.locator('#logo-note').isVisible(), true)
-      assert.equal(await page.locator('#project-logo').getAttribute('src'), '/logos/miniprogram.svg')
     }
     else {
       assert.equal(await page.locator('#project-command').textContent(), project.slug === 'weapp-vite' ? 'npx weapp create weapp-vite my-app' : project.quickStart?.command || project.installCommand)
       assert.equal(await page.locator('#copy-command').isVisible(), true)
-      assert.equal(await page.locator('#logo-note').isVisible(), false)
+      assert.equal(await page.locator('#planned-notice').isVisible(), false)
     }
   }
+  await assertSqliteLogoSize('1440px all-project scope')
   await selected('vite-plugin-taro')
   await page.waitForFunction(() => document.querySelector('#phase')?.textContent === '由你来玩')
   await screenshot('lab-vpt.png')
   await selected('weapp-sqlite')
   await page.waitForFunction(() => document.querySelector('#phase')?.textContent === '由你来玩')
-  await screenshot('lab-planned.png')
+  assert.equal(await page.locator('#project-command').textContent(), 'pnpm add @weapp-sqlite/weapp-vite')
+  await screenshot('lab-sqlite.png')
   await selected('weapp-vite')
   await page.locator('#pause').click()
   await screenshot('lab-orbit.png')
@@ -214,7 +242,9 @@ try {
   assert.equal(await page.locator('#palette').inputValue(), 'ice')
   await page.locator('#scope').selectOption('weapp')
   for (const width of [320, 390]) {
+    await page.evaluate(() => window.__labSqliteDraws = [])
     await page.setViewportSize({ width, height: 844 })
+    await assertSqliteLogoSize(`${width}px weapp scope`)
     await screenshot(`lab-mobile-${width}.png`)
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `Overflow at ${width}px`)
     for (const selector of ['#pause', '#replay', '#download', '#palette', '#density', '#speed', '#scope', '#project-select', '#copy-command', '#project-docs', '#project-repo']) {
@@ -230,6 +260,21 @@ try {
   assert.equal(await page.getByRole('heading', { name: 'Make room for play.' }).count(), 1)
   assert.equal(await page.locator('#project-status').textContent(), 'Stable')
   await screenshot('lab-english.png')
+  const planned: CatalogProject = { ...fact('weapp-vite'), slug: 'planned-fixture', id: 'planned-fixture', packageName: 'planned-fixture', status: 'planned', maturity: 'planned', quickStart: { command: 'pnpm dlx planned-fixture' } }
+  await page.route('**/data.json', route => route.fulfill({ json: {
+    lang: 'en',
+    motion: false,
+    catalog: [planned],
+    logo,
+    projectLogos: { 'planned-fixture': projectLogos['weapp-vite'] },
+  } }))
+  await page.reload()
+  await ready()
+  assert.equal(await page.locator('#project-status').textContent(), 'Planned')
+  assert.equal(await page.locator('#command-action').isVisible(), false)
+  assert.equal(await page.locator('#planned-notice').isVisible(), true)
+  assert.equal(await page.locator('#logo-note').isVisible(), false, 'A planned project may already have an official mark')
+  await page.unroute('**/data.json')
   await page.addInitScript(() => {
     HTMLCanvasElement.prototype.getContext = () => null
   })

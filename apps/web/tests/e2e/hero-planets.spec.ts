@@ -5,6 +5,7 @@ import { expect, test } from './test'
 
 const constellation = 'hero-planets'
 const activePlanet = '.home-hero-planet[data-planet-active]'
+const projectOrder = ['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'varo', 'weapp-sqlite', 'vite-plugin-taro', 'vue-mini', 'rezor', 'uni-helper', 'wot-ui'] as const
 
 declare global {
   interface Window {
@@ -89,11 +90,12 @@ for (const path of ['/', '/en/']) {
       await page.addInitScript(value => localStorage.setItem('weapp-theme', value), theme)
       await page.goto(path)
       const planets = page.locator('.home-hero-planet')
-      await expect(planets).toHaveCount(10)
+      await expect(planets).toHaveCount(projectOrder.length)
+      expect(await planets.evaluateAll(elements => elements.map(element => (element as HTMLElement).dataset.analyticsProject))).toEqual(projectOrder)
       await expect(page.locator(constellation)).toHaveAttribute('data-planets-ready', '')
       await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
       await expect(page.locator(constellation)).toHaveJSProperty('inert', false)
-      for (const [id, docs] of [['weapp-pandacss', 'https://panda.weapp.dev/'], ['weapp-stylex', 'https://stylex.weapp.dev/']]) {
+      for (const [id, docs] of [['weapp-pandacss', 'https://panda.weapp.dev/'], ['weapp-stylex', 'https://stylex.weapp.dev/'], ['weapp-sqlite', 'https://sqlite.weapp.dev/']]) {
         const planet = page.locator(`.home-hero-planet[data-analytics-project="${id}"]`)
         await expect(planet).toHaveAttribute('href', docs)
         await expect(planet.locator('img')).toHaveAttribute('src', new RegExp(`(?:^|/)brands/${id}\\.svg$`))
@@ -104,7 +106,7 @@ for (const path of ['/', '/en/']) {
       for (const planet of await planets.all()) {
         await planet.locator('img').evaluate(async (image: HTMLImageElement) => image.decode())
         const width = await planet.locator('img').evaluate(image => image.getBoundingClientRect().width)
-        expect(width).toBeGreaterThanOrEqual(31)
+        expect(width).toBeGreaterThanOrEqual(await planet.getAttribute('data-analytics-project') === 'weapp-sqlite' ? 32 : 31)
         await planet.focus()
         await expect(planet).toBeFocused()
         const state = await planet.evaluate(async (element) => {
@@ -149,6 +151,10 @@ for (const path of ['/', '/en/']) {
         expect(await planet.locator('img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
         await expect(planet).toHaveCSS('animation-name', 'none')
       }
+      const sqliteRail = page.locator('.home-project-rail a[data-analytics-project="weapp-sqlite"]')
+      await expect(sqliteRail).toHaveAttribute('href', 'https://sqlite.weapp.dev/')
+      await sqliteRail.focus()
+      await expect(sqliteRail).toBeFocused()
       const rail = page.locator('.home-project-rail a').first()
       await rail.focus()
       await expect(rail).toBeFocused()
@@ -247,11 +253,11 @@ for (const path of ['/', '/en/']) {
       await expect(page.locator('[data-planet-caption]')).toHaveAttribute('aria-hidden', 'true')
       await expect(page.locator('[data-hero-logo]')).toHaveCount(0)
       await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-hero-phase', 'ready')
-      for (let index = 0; index <= 10; index += 1) {
-        await expectFreshDelay(page, index % 10)
+      for (let index = 0; index <= projectOrder.length; index += 1) {
+        await expectFreshDelay(page, index % projectOrder.length)
         expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true)
         await page.clock.fastForward(3999)
-        await expectSpotlight(page, index % 10)
+        await expectSpotlight(page, index % projectOrder.length)
         await page.clock.fastForward(1)
         await expect(page.locator(activePlanet)).toHaveCount(0)
         await expect(page.locator('[data-planet-caption]')).toBeHidden()

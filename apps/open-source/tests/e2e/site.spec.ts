@@ -5,18 +5,6 @@ import { heroWordmark, isOpenSourceSite, siteOrigin } from './site-target'
 import { expect, test } from './test'
 
 const retiredVisuals = 'canvas:not(.home-hero-particle-canvas), [data-shader-canvas], [data-shader], [data-shader-frame], [data-webgl-fallback], [data-art], .project-art, [class^="art-"], [class*=" art-"]'
-const constellationLinks = [
-  { href: 'https://vite.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
-  { href: 'https://tw.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
-  { href: 'https://panda.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
-  { href: 'https://stylex.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
-  { href: 'https://varo.weapp.dev/', target: '_blank', rel: 'noopener noreferrer' },
-  { href: 'https://vpt.js.org/', target: '_blank', rel: 'noopener noreferrer' },
-  { href: 'https://vuemini.org/', target: '_blank', rel: 'noopener noreferrer' },
-  { href: 'https://github.com/rezorjs/rezor', target: '_blank', rel: 'noopener noreferrer' },
-  { href: 'https://uni-helper.cn/', target: '_blank', rel: 'noopener noreferrer' },
-  { href: 'https://wot-ui.cn/', target: '_blank', rel: 'noopener noreferrer' },
-]
 const railLinks = [
   'https://vite.weapp.dev/',
   'https://tw.weapp.dev/',
@@ -30,12 +18,13 @@ const railLinks = [
   'https://uni-helper.cn/',
   'https://wot-ui.cn/',
 ]
+const constellationLinks = railLinks.map(href => ({ href, target: '_blank', rel: 'noopener noreferrer' }))
 
 async function expectHomeVisuals(page: import('@playwright/test').Page) {
   await expect(page.getByRole('heading', { level: 1, name: heroWordmark, exact: true })).toBeAttached()
   await expect(page.locator('#home-hero-title')).toHaveText(heroWordmark)
   await expect(page.locator('.home-hero-screen')).toBeVisible()
-  await expect(page.locator('.home-hero-constellation .home-hero-tile')).toHaveCount(10)
+  await expect(page.locator('.home-hero-constellation .home-hero-tile')).toHaveCount(11)
   await expect(page.locator('.home-hero-orbit-inner, .home-hero-orbit-mid, .home-hero-orbit-outer, .home-hero-planet--ring')).toHaveCount(0)
   await expect(page.locator('.home-hero-constellation a.home-hero-tile').evaluateAll(links => links.map(link => ({
     href: link.getAttribute('href'),
@@ -139,6 +128,11 @@ test('light and dark headers keep readable flyouts', async ({ page }) => {
     await page.locator('[data-project-menu] summary').click()
     const flyout = page.locator('[data-header-flyout]').first()
     await expect(flyout).toBeVisible()
+    const sqliteLogo = flyout.locator('img[src$="brands/weapp-sqlite.svg"]')
+    await expect(sqliteLogo).toBeVisible()
+    const sqliteBounds = await sqliteLogo.boundingBox()
+    expect(sqliteBounds?.width).toBeGreaterThanOrEqual(32)
+    expect(sqliteBounds?.height).toBeGreaterThanOrEqual(32)
     const colors = await flyout.evaluate((element) => {
       const panel = getComputedStyle(element)
       const link = getComputedStyle(element.querySelector('a')!)
@@ -379,6 +373,11 @@ test('provides a working mobile navigation menu', async ({ page }) => {
   const mobileNav = page.getByRole('navigation', { name: 'Mobile navigation' })
   await expect(mobileNav).toBeVisible()
   await expect(mobileNav.getByRole('link', { name: 'weapp-vite' })).toBeVisible()
+  const sqliteLogo = mobileNav.locator('img[src$="brands/weapp-sqlite.svg"]')
+  await expect(sqliteLogo).toBeVisible()
+  const sqliteBounds = await sqliteLogo.boundingBox()
+  expect(sqliteBounds?.width).toBeGreaterThanOrEqual(32)
+  expect(sqliteBounds?.height).toBeGreaterThanOrEqual(32)
   await menu.click()
   await expect(mobileNav).not.toBeVisible()
 })

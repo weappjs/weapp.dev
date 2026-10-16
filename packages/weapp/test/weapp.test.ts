@@ -106,7 +106,8 @@ describe('weapp CLI', () => {
       expect(readme).toMatch(new RegExp(`https://weapp\\.js\\.org/projects/${slug}/`))
     }
     expect(readme).not.toMatch(/npmjs\.com\/package\/weapp-sqlite/)
-    expect(readme).toMatch(/No install command is available yet\./)
-    expect(readme).toMatch(/当前还没有安装命令。/)
+    expect(readme.match(/pnpm add @weapp-sqlite\/weapp-vite/g)).toHaveLength(2)
+    expect(readme).toContain('weapp-sqlite is in beta')
+    expect(readme).toContain('weapp-sqlite 处于测试阶段')
   })
 })

@@ -138,6 +138,13 @@ describe('official scaffold adapters', () => {
     await expect(scaffoldPlan('weapp-vite', path.join(directory, 'app'), { template: 'unsafe' })).rejects.toThrow(/Unknown template/)
     await expect(scaffoldPlan('uni', path.join(directory, 'app'), { template: 'react' })).rejects.toThrow(/only available/)
   })
+  it.each(['sqlite', 'weapp-sqlite', '@weapp-sqlite/weapp-vite'])('keeps the SQLite integration outside scaffold routes: %s', async (route) => {
+    const operations = fakeOperations('@weapp-sqlite/weapp-vite')
+    await expect(createProject(route, path.join(directory, 'app'), { dryRun: true }, operations)).rejects.toThrow(/Unknown creation route/)
+    await expect(createProject(route, path.join(directory, 'app'), {}, operations)).rejects.toThrow(/Unknown creation route/)
+    expect(operations.query).not.toHaveBeenCalled()
+    expect(operations.execute).not.toHaveBeenCalled()
+  })
   it.each(['constructor', '__proto__', 'toString', 'valueOf', 'hasOwnProperty'])('rejects inherited pseudo-route %s before metadata or dry-run execution', async (route) => {
     const operations = fakeOperations('weapp-vite')
     await expect(createProject(route, path.join(directory, 'app'), { dryRun: true }, operations)).rejects.toThrow(/Unknown creation route/)
@@ -207,7 +214,7 @@ describe('interactive project creation', () => {
     expect(ctx.createOperations.query).not.toHaveBeenCalled()
     expect(ctx.createOperations.execute).not.toHaveBeenCalled()
   })
-  it.each(['my-app', 'vite', 'constructor', '__proto__'])('rejects non-whitelisted routes before prompting: %s', async (route) => {
+  it.each(['my-app', 'vite', 'weapp-sqlite', '@weapp-sqlite/weapp-vite', 'constructor', '__proto__'])('rejects non-whitelisted routes before prompting: %s', async (route) => {
     const { ctx, output } = context()
     ctx.interactive = true
     ctx.createWizard = vi.fn()

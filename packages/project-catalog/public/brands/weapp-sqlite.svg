@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">weapp-sqlite icon</title>
+  <desc id="desc">Two interlocking data blocks with an S-shaped channel for SQLite</desc>
+  <path d="M16 4H48A12 12 0 0 1 59.314 12H26A12 12 0 0 0 26 36H38A4 4 0 0 1 38 44H4V16A12 12 0 0 1 16 4Z" fill="#09b86c"/>
+  <path d="M16 4H48A12 12 0 0 1 59.314 12H26A12 12 0 0 0 26 36H38A4 4 0 0 1 38 44H4V16A12 12 0 0 1 16 4Z" fill="#078e8b" transform="rotate(180 32 32)"/>
+</svg>

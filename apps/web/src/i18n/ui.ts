@@ -66,7 +66,7 @@ export const siteCopy = {
       'weapp': {
         eyebrow: 'weapp 生态',
         title: '工程、组件与数据',
-        description: 'weapp-vite 负责工程构建，Varo 提供可编辑组件源码，weapp-sqlite 规划本地数据能力。',
+        description: 'weapp-vite 负责工程构建，Varo 提供可编辑组件源码，weapp-sqlite 提供测试版 SQLite 本地数据能力。',
       },
       'taro': {
         eyebrow: 'Taro 生态',
@@ -101,8 +101,8 @@ export const siteCopy = {
         buildFile: 'vite.config.ts',
         registryLabel: '组件注册',
         registryFile: 'registry.json',
-        sqliteLabel: '数据能力',
-        sqliteFile: 'database.ts',
+        sqliteLabel: '静态查询示例',
+        sqliteFile: 'sqlite.ts',
         migrationLabel: '迁移边界',
       },
     },
@@ -588,7 +588,7 @@ export const siteCopy = {
       'weapp': {
         eyebrow: 'weapp ecosystem',
         title: 'Builds, components, and data',
-        description: 'weapp-vite handles builds, Varo provides editable component source, and weapp-sqlite plans local data support.',
+        description: 'weapp-vite handles builds, Varo provides editable component source, and weapp-sqlite provides a Beta SQLite local data layer.',
       },
       'taro': {
         eyebrow: 'Taro ecosystem',
@@ -623,8 +623,8 @@ export const siteCopy = {
         buildFile: 'vite.config.ts',
         registryLabel: 'REGISTRY',
         registryFile: 'registry.json',
-        sqliteLabel: 'DATA LAYER',
-        sqliteFile: 'database.ts',
+        sqliteLabel: 'Static query example',
+        sqliteFile: 'sqlite.ts',
         migrationLabel: 'MIGRATION',
       },
     },

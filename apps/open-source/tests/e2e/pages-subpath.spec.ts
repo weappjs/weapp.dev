@@ -76,10 +76,20 @@ test.describe('Pages without JavaScript', () => {
     for (const prefix of ['', '/en']) {
       await page.goto(`/weapp.dev${prefix}/projects/`)
       await expect(page.locator('[data-project-card]:visible')).toHaveCount(11)
-      for (const id of ['weapp-vite', 'weapp-pandacss', 'weapp-stylex']) {
+      for (const id of ['weapp-vite', 'weapp-pandacss', 'weapp-stylex', 'weapp-sqlite']) {
         await page.locator(`[data-project-card][data-project-id="${id}"] a[data-analytics-event="select_project"]`).click()
         await expect(page).toHaveURL(`/weapp.dev${prefix}/projects/${id}/`)
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(id)
+        if (id === 'weapp-sqlite') {
+          const logo = page.locator('main img[src$="brands/weapp-sqlite.svg"]').first()
+          await expect(logo).toBeVisible()
+          await expect.poll(() => logo.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
+          const bounds = await logo.boundingBox()
+          expect(bounds?.width).toBeGreaterThanOrEqual(32)
+          expect(bounds?.height).toBeGreaterThanOrEqual(32)
+          await expect(page.locator('#quick-start-command')).toHaveText('pnpm add @weapp-sqlite/weapp-vite')
+          await expect(page.locator('#quick-start-note-weapp-sqlite')).toContainText(prefix ? 'WeChat devices await verification' : '微信真机仍待验证')
+        }
         await page.goto(`/weapp.dev${prefix}/projects/`)
       }
       for (const route of ['pricing', 'sponsors', 'contributors']) {

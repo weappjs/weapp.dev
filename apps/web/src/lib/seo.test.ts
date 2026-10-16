@@ -27,7 +27,7 @@ describe('SEO helpers', () => {
     expect(JSON.parse(serializeJsonLd(entity))).toEqual(entity)
   })
 
-  it('does not promise services for planned or unconfirmed projects', () => {
+  it('does not promise services for projects with unconfirmed implementation scope', () => {
     for (const [id, data] of [['varo', varo], ['weapp-sqlite', sqlite], ['weapp-pandacss', panda], ['weapp-stylex', stylex]] as const) {
       const entity = projectSchema('en', { id, data: data as unknown as ProjectDefinition }, fallbackMetrics.varo)
       expect(entity).not.toHaveProperty('mainEntity')

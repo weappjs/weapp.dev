@@ -54,7 +54,7 @@ describe('project metrics', () => {
 
   it('refreshes live metrics only for published packages', () => {
     expect(usesLiveMetrics({ status: 'planned' })).toBe(false)
-    expect(usesLiveMetrics({ status: 'planned', npmUrl: 'https://www.npmjs.com/package/weapp-sqlite' })).toBe(false)
+    expect(usesLiveMetrics({ status: 'planned', npmUrl: 'https://www.npmjs.com/package/planned-fixture' })).toBe(false)
     expect(usesLiveMetrics({ status: 'stable' })).toBe(false)
     expect(usesLiveMetrics({ status: 'stable', npmUrl: 'https://www.npmjs.com/package/weapp-vite' })).toBe(true)
     expect(usesLiveMetrics({ status: 'beta', npmUrl: 'https://www.npmjs.com/package/weapp-vite' })).toBe(true)

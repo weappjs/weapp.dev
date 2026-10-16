@@ -32,9 +32,10 @@ for (const prefix of ['', '/en']) {
   test(`keeps all eleven projects and their real status on ${prefix || 'zh-CN'}`, async ({ page }) => {
     await page.goto(`${prefix}/projects/`)
     await expect(page.locator('[data-project-card]')).toHaveCount(11)
-    const planned = page.locator('[data-project-card][data-project-id="weapp-sqlite"]')
-    await expect(planned).toContainText(prefix ? 'Planned' : '规划中')
-    await expect(planned).toContainText(prefix ? 'Details pending' : '资料待确认')
+    const sqlite = page.locator('[data-project-card][data-project-id="weapp-sqlite"]')
+    await expect(sqlite).toContainText(prefix ? 'Beta' : '测试版')
+    await expect(sqlite).toContainText('pnpm add @weapp-sqlite/weapp-vite')
+    await expect(sqlite).toContainText('WeChat DevTools')
     await expect(page.locator('[aria-labelledby="projects-support-title"]')).toHaveCount(0)
   })
 

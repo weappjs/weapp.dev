@@ -68,5 +68,12 @@
     "stars": 0,
     "weeklyDownloads": null,
     "fetchedAt": "2026-10-09T09:24:12.596923Z"
+  },
+  "weapp-sqlite": {
+    "version": "0.3.0",
+    "releasedAt": "2026-10-03T04:27:51.676Z",
+    "stars": 2,
+    "weeklyDownloads": 21,
+    "fetchedAt": "2026-10-16T03:48:21.857Z"
   }
 }
