@@ -6,7 +6,7 @@ export const projectLogoFiles = Object.freeze({
   'weapp-pandacss': 'weapp-pandacss.svg',
   'weapp-stylex': 'weapp-stylex.svg',
   'varo': 'varo.svg',
-  'weapp-sqlite': 'miniprogram.svg',
+  'weapp-sqlite': 'weapp-sqlite.svg',
   'vite-plugin-taro': 'vpt.svg',
   'vue-mini': 'vue-mini.png',
   'rezor': 'rezor.png',
@@ -23,6 +23,6 @@ export interface ProjectLogo {
 export const projectLogos: Readonly<Record<string, ProjectLogo>> = Object.freeze(Object.fromEntries(
   Object.entries(projectLogoFiles).map(([slug, file]) => [slug, {
     url: `/logos/${file}`,
-    fallback: slug === 'weapp-sqlite',
+    fallback: false,
   }]),
 ))

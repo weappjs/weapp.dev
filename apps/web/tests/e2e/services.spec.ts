@@ -21,7 +21,7 @@ for (const prefix of ['', '/en']) {
       const available = ['weapp-vite', 'weapp-tailwindcss'].includes(slug)
       await expect(page.locator('main a[href$="/pricing/#contact"]')).toHaveCount(available ? 1 : 0)
       if (slug === 'weapp-sqlite') {
-        await expect(page.locator('[data-service-scope]')).toContainText(prefix ? 'has not shipped' : '尚未发布')
+        await expect(page.locator('[data-service-scope]')).toContainText(prefix ? 'Implementation services for this tool are not confirmed.' : '尚未确认针对该工具的实施服务')
       }
       const schemas = await page.locator('script[type="application/ld+json"]').allTextContents()
       expect(schemas.join(' ')).not.toContain('SoftwareSourceCode')

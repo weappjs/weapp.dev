@@ -25,7 +25,7 @@ for (const { viewport, phase } of cases) {
     for (const path of ['/', '/en/']) {
       await page.goto(path)
       const planets = page.locator('.home-hero-planet')
-      await expect(planets).toHaveCount(10)
+      await expect(planets).toHaveCount(11)
       await expect(page.locator('hero-planets')).toHaveAttribute('data-planets-ready', '')
       if (phase === 'wordmark') {
         await expect(page.locator('.home-hero-screen')).toHaveAttribute('data-particles-ready', '')

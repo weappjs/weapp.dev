@@ -20,7 +20,7 @@ describe('project definitions', () => {
     'weapp-stylex': 'https://stylex.weapp.dev/',
     'weapp-vite': 'https://vite.weapp.dev/',
     'vite-plugin-taro': 'https://vpt.js.org/',
-    'weapp-sqlite': 'https://sqlite.weapp.dev/',
+    '@weapp-sqlite/weapp-vite': 'https://sqlite.weapp.dev/',
     '@varo-ui/cli': 'https://varo.weapp.dev/',
     '@vue-mini/core': 'https://vuemini.org/',
     'rezor': 'https://github.com/rezorjs/rezor',
@@ -88,13 +88,24 @@ describe('project definitions', () => {
     })
   })
 
-  it('keeps weapp-sqlite honest while it is planned', () => {
+  it('publishes SQLite package actions while retaining its verified runtime boundary', () => {
     const definition = projectDefinitionSchema.parse(sqlite)
-    expect(definition).toMatchObject({ status: 'planned', role: 'Local data', dataCompleteness: 'planned' })
-    expect(definition.npmUrl).toBeUndefined()
+    expect(definition).toMatchObject({
+      status: 'beta',
+      maturity: 'beta',
+      role: 'Local data',
+      dataCompleteness: 'partial',
+      packageName: '@weapp-sqlite/weapp-vite',
+      npmUrl: 'https://www.npmjs.com/package/@weapp-sqlite/weapp-vite',
+      installCommand: 'pnpm add @weapp-sqlite/weapp-vite',
+      logo: '/brands/weapp-sqlite.svg',
+      platforms: ['Web', 'WeChat DevTools'],
+      runtime: ['SQLite WASM (sql.js)', 'IndexedDB', 'WXWebAssembly'],
+    })
     expect(definition.visuals).toBeUndefined()
-    expect(definition.locales['zh-CN'].description).toContain('规划')
-    expect(definition.locales.en.description).toContain('planned')
+    expect(definition.locales['zh-CN'].description).toContain('微信真机仍待验证')
+    expect(definition.locales.en.description).toContain('WeChat devices await verification')
+    expect(definition.roadmap?.map(item => item.status)).toEqual(['shipped', 'planned'])
   })
 
   it('keeps published package links canonical and planned links empty', () => {
@@ -105,6 +116,7 @@ describe('project definitions', () => {
       'weapp-stylex': 'https://www.npmjs.com/package/weapp-stylex',
       'vite-plugin-taro': 'https://www.npmjs.com/package/vite-plugin-taro',
       '@varo-ui/cli': 'https://www.npmjs.com/package/@varo-ui/cli',
+      '@weapp-sqlite/weapp-vite': 'https://www.npmjs.com/package/@weapp-sqlite/weapp-vite',
       '@vue-mini/core': 'https://www.npmjs.com/package/@vue-mini/core',
       'rezor': 'https://www.npmjs.com/package/rezor',
       'create-uni': 'https://www.npmjs.com/package/create-uni',

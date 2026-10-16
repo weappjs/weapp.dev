@@ -2,21 +2,40 @@ import type { CatalogProject } from '../src/types.js'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { findProject, mainProjects, searchProjects } from '../src/catalog.js'
+import { findProject, mainProjects, renderProject, searchProjects } from '../src/catalog.js'
 import { parseArgs } from '../src/registry.js'
 import { detectLanguage, isInteractive, sanitize } from '../src/shared.js'
 
 const catalog = JSON.parse(readFileSync(new URL('../dist/data/catalog.json', import.meta.url), 'utf8')) as CatalogProject[]
 
 describe('catalog discovery', () => {
-  it('includes all eleven independently maintained projects and no install promise for planned SQLite', () => {
+  it('includes all eleven projects and the released SQLite integration package', () => {
     expect(catalog).toHaveLength(11)
     const sqlite = findProject(catalog, 'weapp-sqlite')
     assert(sqlite)
-    expect(sqlite.status).toBe('planned')
-    expect(sqlite.installCommand).toBeUndefined()
-    expect(sqlite.npmUrl).toBeUndefined()
-    expect(sqlite.platforms).toBeUndefined()
+    expect(sqlite).toMatchObject({
+      slug: 'weapp-sqlite',
+      packageName: '@weapp-sqlite/weapp-vite',
+      status: 'beta',
+      maturity: 'beta',
+      dataCompleteness: 'partial',
+      installCommand: 'pnpm add @weapp-sqlite/weapp-vite',
+      npmUrl: 'https://www.npmjs.com/package/@weapp-sqlite/weapp-vite',
+      platforms: ['Web', 'WeChat DevTools'],
+    })
+    expect(findProject(catalog, '@weapp-sqlite/weapp-vite')).toBe(sqlite)
+    expect(searchProjects(catalog, '', { status: 'beta' })).toContain(sqlite)
+    for (const lang of ['zh-CN', 'en'] as const) {
+      expect(renderProject({ lang }, sqlite)).toContain('pnpm add @weapp-sqlite/weapp-vite')
+    }
+  })
+
+  it.each(['zh-CN', 'en'] as const)('withholds install commands from a planned project in %s', (lang) => {
+    const planned: CatalogProject = { ...catalog[0], slug: 'planned-fixture', id: 'planned-fixture', status: 'planned', installCommand: 'pnpm add planned-fixture', quickStart: { command: 'pnpm dlx planned-fixture' } }
+    const rendered = renderProject({ lang }, planned)
+    expect(rendered).toContain(lang === 'en' ? 'No install command is available yet.' : '当前还没有安装命令。')
+    expect(rendered).not.toContain('pnpm add planned-fixture')
+    expect(rendered).not.toContain('pnpm dlx planned-fixture')
   })
 
   it('finds aliases, package names, Chinese content and combined filters', () => {

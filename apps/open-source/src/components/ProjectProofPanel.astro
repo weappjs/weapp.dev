@@ -9,7 +9,7 @@ const proof = {
   'weapp-vite': { zh: '单目标构建边界', en: 'Single-target build boundary', file: 'vite.config.ts', code: `weapp({\n  buildScope: 'wechat',\n  platforms: ['wechat'],\n})` },
   'weapp-tailwindcss': { zh: '小程序样式接入', en: 'Mini-app style integration', file: 'app.css', code: `@import 'tailwindcss';\n\n/* classes stay in your templates */\n<button class="px-4 py-2 text-white">\n  开始构建\n</button>` },
   varo: { zh: 'Registry 安装命令', en: 'Registry install command', file: 'terminal', code: `pnpm dlx @varo-ui/cli add \\\n  --target weapp \\\n  button input card` },
-  'weapp-sqlite': { zh: '本地数据能力（规划中）', en: 'Local data capability (planned)', file: 'planning.md', code: `status: planned\napi: to be confirmed\nplatforms: to be confirmed\n\n# no production API is promised yet` },
+  'weapp-sqlite': { zh: 'SQLite 本地数据边界', en: 'SQLite local data boundary', file: 'sqlite.ts', code: `import { openSqlite } from '@weapp-sqlite/weapp-vite/runtime'\n\nconst db = await openSqlite({ name: 'app.sqlite' })\ntry {\n  const result = await db.query('SELECT ? AS message', ['hello'])\n  console.log(result.rows)\n}\nfinally {\n  await db.close()\n}` },
   'vite-plugin-taro': { zh: 'Taro + Vite 迁移', en: 'Taro + Vite migration', file: 'package.json', code: `npm create vite-taro@latest my-app\n\n# keep React + Taro APIs\n# move the build pipeline to Vite` },
 }[project.id]
 const plannedProof = locale === 'zh-CN'

@@ -222,6 +222,11 @@
   object-fit: contain;
 }
 
+.home-hero-planet--weapp-sqlite img {
+  min-width: 32px;
+  min-height: 32px;
+}
+
 .home-hero-title {
   position: absolute;
   top: var(--hero-center-y);

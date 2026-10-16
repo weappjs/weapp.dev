@@ -39,9 +39,19 @@ describe('SEO helpers', () => {
     expect(entity.sameAs).toContain('https://www.npmjs.com/package/@varo-ui/cli')
   })
 
-  it('keeps the planned weapp-sqlite schema free of unconfirmed runtime claims', () => {
+  it('publishes the Beta SQLite package and verified runtime scope', () => {
     const project = { id: 'weapp-sqlite', data: sqlite as unknown as ProjectDefinition }
-    const entity = projectSchema('en', project, fallbackMetrics.varo)
+    const entity = projectSchema('en', project, fallbackMetrics['weapp-sqlite'])
+    expect(entity.url).toBe('https://weapp.js.org/en/projects/weapp-sqlite/')
+    expect(entity.runtimePlatform).toEqual(['Web', 'WeChat DevTools'])
+    expect(entity.version).toBe('0.3.0')
+    expect(entity.downloadUrl).toBe('https://www.npmjs.com/package/@weapp-sqlite/weapp-vite')
+    expect(entity.sameAs).toContain('https://sqlite.weapp.dev/')
+  })
+
+  it('keeps an independent planned fixture free of release and runtime claims', () => {
+    const data = { ...vite, status: 'planned', maturity: 'planned', platforms: undefined, runtime: undefined, npmUrl: undefined } as unknown as ProjectDefinition
+    const entity = projectSchema('en', { id: 'planned-example', data }, fallbackMetrics.varo)
     expect(entity).not.toHaveProperty('runtimePlatform')
     expect(entity).not.toHaveProperty('version')
     expect(entity).not.toHaveProperty('dateModified')

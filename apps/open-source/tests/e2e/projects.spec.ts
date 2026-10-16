@@ -23,7 +23,7 @@ for (const prefix of ['', '/en']) {
     const ids = ['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'varo', 'weapp-sqlite']
     const links = page.locator('.toolchain-map-list li a')
     await expect(links).toHaveCount(6)
-    const statusLabels = prefix ? { stable: 'Stable', planned: 'Planned' } : { stable: '稳定', planned: '规划中' }
+    const statusLabels = prefix ? { stable: 'Stable', beta: 'Beta' } : { stable: '稳定', beta: '测试版' }
     for (const id of ['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'varo']) {
       const node = page.locator(`.toolchain-map-list li[data-project-id="${id}"]`)
       await expect(node.locator('.toolchain-status')).toHaveText(statusLabels.stable)
@@ -31,8 +31,8 @@ for (const prefix of ['', '/en']) {
     }
     for (const id of ['weapp-sqlite']) {
       const node = page.locator(`.toolchain-map-list li[data-project-id="${id}"]`)
-      await expect(node.locator('.toolchain-status')).toHaveText(statusLabels.planned)
-      await expect(node.locator('.toolchain-status')).toHaveAttribute('aria-label', prefix ? 'Project status: Planned' : '项目状态: 规划中')
+      await expect(node.locator('.toolchain-status')).toHaveText(statusLabels.beta)
+      await expect(node.locator('.toolchain-status')).toHaveAttribute('aria-label', prefix ? 'Project status: Beta' : '项目状态: 测试版')
     }
     await expect(links.evaluateAll(items => items.map(item => new URL((item as HTMLAnchorElement).href).pathname))).resolves.toEqual(ids.map(id => `${prefix}/projects/${id}/`))
     for (const id of ids) {
@@ -70,7 +70,7 @@ for (const prefix of ['', '/en']) {
     await expect(page.locator('[data-project-card]').first().locator('img')).toHaveAttribute('fetchpriority', 'high')
     await expect(page.locator('[data-project-card]').nth(1).locator('img')).toHaveAttribute('loading', 'lazy')
     await expect(page.locator('[data-project-card][data-project-id="weapp-sqlite"]')).toHaveAttribute('data-roadmap-count', '2')
-    await expect(page.locator('[data-project-card][data-project-id="weapp-sqlite"]')).toContainText(zh ? '平台待确认' : 'Platforms pending')
+    await expect(page.locator('[data-project-card][data-project-id="weapp-sqlite"]')).toContainText('WeChat DevTools')
     await expect(page.locator('#toolchain-project-list [data-project-card] [data-project-status]')).toHaveCount(6)
     for (const id of ['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'varo', 'weapp-sqlite', 'vite-plugin-taro']) {
       await expect(page.locator(`[data-project-card][data-project-id="${id}"]`)).toHaveAttribute('aria-labelledby', `project-card-${id}`)
@@ -78,10 +78,10 @@ for (const prefix of ['', '/en']) {
     }
     await expect(page.locator('[data-project-card]').filter({ hasText: 'weapp-sqlite' })).toContainText(zh ? '2 项路线' : '2 roadmap items')
     await expect(page.locator('[data-project-card][data-project-id="weapp-vite"] .projects-index-quickstart code')).toHaveText('pnpm add -D weapp-vite')
-    await expect(page.locator('[data-project-card][data-project-id="weapp-sqlite"] .projects-index-quickstart')).toContainText(zh ? '资料待确认' : 'Details pending')
+    await expect(page.locator('[data-project-card][data-project-id="weapp-sqlite"] .projects-index-quickstart code')).toHaveText('pnpm add @weapp-sqlite/weapp-vite')
     await expect(page.locator('[data-project-card][data-project-id="weapp-vite"] .projects-index-audience')).toContainText(zh ? '适合' : 'For')
     await expect(page.locator('[data-project-card][data-project-id="weapp-vite"] .projects-index-runtime')).toContainText(zh ? '运行时' : 'Runtime')
-    await expect(page.locator('[data-project-card][data-project-id="weapp-sqlite"] .projects-index-runtime')).toHaveCount(0)
+    await expect(page.locator('[data-project-card][data-project-id="weapp-sqlite"] .projects-index-runtime')).toContainText('SQLite WASM (sql.js)')
     await role.selectOption('data')
     await expect(visible).toHaveCount(1)
     await expect(visible.getByRole('heading')).toHaveText('weapp-sqlite')
@@ -126,28 +126,35 @@ for (const prefix of ['', '/en']) {
     await expect(page.locator('[data-filter-maturity]')).toHaveValue('')
   })
 
-  test(`shows roadmap evidence for the planned data project on ${prefix || 'zh-CN'}`, async ({ page }) => {
+  test(`shows package actions and verified evidence for the Beta data project on ${prefix || 'zh-CN'}`, async ({ page }) => {
     await page.goto(`${prefix}/projects/weapp-sqlite/`)
-    await expect(page.locator('[data-project-status="planned"]')).toHaveAttribute('aria-label', prefix ? 'Project status: Planned' : '项目状态: 规划中')
-    await expect(page.locator('[data-project-status="planned"]')).toHaveCount(1)
+    await expect(page.locator('[data-project-status="beta"]')).toHaveAttribute('aria-label', prefix ? 'Project status: Beta' : '项目状态: 测试版')
+    await expect(page.locator('[data-project-status="beta"]')).toHaveCount(1)
+    await expect(page.locator('[data-project-status="planned"]')).toHaveCount(0)
     await expect(page.locator('.roadmap-strip')).toBeVisible()
     await expect(page.locator('.roadmap-strip li')).toHaveCount(2)
     await expect(page.locator('.roadmap-status[aria-label]')).toHaveCount(2)
     await expect(page.locator('.roadmap-strip li').first()).toHaveAttribute('aria-labelledby', 'roadmap-item-weapp-sqlite-1')
     await expect(page.locator('.roadmap-strip li').first()).toHaveAttribute('aria-describedby', 'roadmap-status-weapp-sqlite-1')
-    await expect(page.locator('.roadmap-status').first()).toHaveAttribute('aria-label', prefix ? 'Status: Planned' : '状态: 规划中')
-    await expect(page.locator('[data-roadmap-status="planned"]')).toHaveCount(2)
-    await expect(page.locator('.roadmap-strip li').first()).toContainText(prefix ? 'Confirm runtime and platform boundaries' : '确认运行时与平台边界')
-    const readiness = page.getByText(prefix ? 'The first release is being specified; no install command or production API is available yet.' : '首版资料整理中，暂不提供安装命令或生产 API。', { exact: true })
-    await expect(readiness).toBeVisible()
-    await expect(readiness).toHaveAttribute('role', 'status')
-    await expect(readiness).toHaveAttribute('aria-live', 'polite')
-    await expect(page.locator('section[aria-labelledby="quick-start-title"]')).toHaveCount(1)
-    await expect(page.locator('section[aria-labelledby="quick-start-title"]')).toHaveAttribute('aria-describedby', 'quick-start-audience-weapp-sqlite quick-start-note-weapp-sqlite')
-    await expect(page.locator('.project-proof-list')).toContainText(prefix ? 'Runtime boundaries are still being confirmed' : '运行时边界待确认')
-    await expect(page.locator('.project-proof-code-head span[aria-label]')).toHaveAttribute('aria-label', prefix ? 'Project status: Planned' : '项目状态: 规划中')
+    await expect(page.locator('.roadmap-status').first()).toHaveAttribute('aria-label', prefix ? 'Status: Shipped' : '状态: 已发布')
+    await expect(page.locator('[data-roadmap-status="shipped"]')).toHaveCount(1)
+    await expect(page.locator('[data-roadmap-status="planned"]')).toHaveCount(1)
+    await expect(page.locator('.roadmap-strip li').first()).toContainText(prefix ? 'Complete automated acceptance on Web and WeChat DevTools' : '完成 Web 与微信开发者工具自动验收')
+    await expect(page.locator('.roadmap-strip li').nth(1)).toContainText(prefix ? 'Complete acceptance on WeChat iOS and Android devices' : '完成微信 iOS 与 Android 真机验收')
+    const quickStart = page.locator('section[aria-labelledby="quick-start-title"]')
+    await expect(quickStart).toHaveCount(1)
+    await expect(quickStart).toHaveAttribute('aria-describedby', 'quick-start-audience-weapp-sqlite quick-start-note-weapp-sqlite')
+    await expect(quickStart.locator('code')).toHaveText('pnpm add @weapp-sqlite/weapp-vite')
+    await expect(quickStart.locator('[data-copy-command]')).toBeEnabled()
+    await expect(page.locator('#quick-start-note-weapp-sqlite')).toContainText('weappSqlite()')
+    await expect(page.locator('#quick-start-note-weapp-sqlite')).toContainText(prefix ? 'WeChat devices await verification' : '微信真机仍待验证')
+    await expect(page.locator('main [data-analytics-target="package"]')).toHaveAttribute('href', 'https://www.npmjs.com/package/@weapp-sqlite/weapp-vite')
+    await expect(page.locator('.project-proof-list')).toContainText(prefix ? 'Web and real WeChat DevTools' : 'Web 与真实微信开发者工具')
+    await expect(page.locator('.project-proof-code-head span[aria-label]')).toHaveAttribute('aria-label', prefix ? 'Project status: Beta' : '项目状态: 测试版')
     await expect(page.locator('.project-proof-panel')).toHaveAttribute('aria-describedby', 'project-proof-description project-proof-status-weapp-sqlite')
-    await expect(page.locator('.project-proof-panel')).toHaveAttribute('data-proof-count', '2')
+    await expect(page.locator('.project-proof-panel')).toHaveAttribute('data-proof-count', '3')
+    const metadata = page.locator(`[role="list"][aria-label="${prefix ? 'Platforms and runtimes' : '平台与运行时'}"]`)
+    await expect(metadata.locator('[role="listitem"]')).toHaveText(['Web', 'WeChat DevTools', 'SQLite WASM (sql.js)', 'IndexedDB', 'WXWebAssembly'])
   })
 
   test(`marks the current project navigation entry on ${prefix}/projects/`, async ({ page }) => {
@@ -269,7 +276,7 @@ test.describe('project catalog without JavaScript', () => {
 
 for (const width of [1440, 768, 390]) {
   for (const theme of ['light', 'dark'] as const) {
-    test(`keeps the planned project detail compact at ${width}px in ${theme}`, async ({ page }, testInfo) => {
+    test(`keeps the Beta data project detail compact at ${width}px in ${theme}`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 1000 })
       await applyTheme(page, theme, { reducedMotion: 'reduce' })
       await page.goto('/en/projects/weapp-sqlite/')
@@ -277,9 +284,9 @@ for (const width of [1440, 768, 390]) {
       await expect(page.getByRole('region', { name: 'Project data', exact: true })).toBeVisible()
       await expect(page.locator('main figure')).toHaveCount(0)
       expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
-      const readiness = page.getByText('Stability and release status follow the project repository and version data.', { exact: true })
-      await expect(readiness).toHaveCount(1)
-      await page.screenshot({ path: testInfo.outputPath('planned-project-detail.png') })
+      await expect(page.locator('[data-project-status="beta"]')).toBeVisible()
+      await expect(page.locator('#quick-start-note-weapp-sqlite')).toContainText('WeChat devices await verification')
+      await page.screenshot({ path: testInfo.outputPath('beta-data-project-detail.png') })
     })
 
     test(`keeps project filters readable at ${width}px in ${theme}`, async ({ page }, testInfo) => {

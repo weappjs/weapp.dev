@@ -11,19 +11,21 @@ const fallbackNote = status === 'planned' ? copy.project.plannedSetupNote : copy
 const audienceId = `quick-start-audience-${projectId ?? 'project'}`
 const noteId = `quick-start-note-${projectId ?? 'project'}`
 ---
-<section class="border-y border-line bg-panel" aria-labelledby="quick-start-title" aria-describedby={canInstall ? audienceId : `${audienceId} ${noteId}`}>
+<section class="border-y border-line bg-panel" aria-labelledby="quick-start-title" aria-describedby={note || !canInstall ? `${audienceId} ${noteId}` : audienceId}>
   <div class="mx-auto grid w-[calc(100%-3rem)] max-w-[1240px] grid-cols-[.9fr_1.1fr] items-center gap-12 py-10 max-[800px]:grid-cols-1 max-[800px]:gap-7">
     <div data-reveal>
       <h2 id="quick-start-title" class="mb-3 text-2xl font-[660]">{canInstall ? copy.project.install : copy.project.setupStatus}</h2>
       <p id={audienceId} class="quick-start-audience mb-0 text-sm text-copy-muted"><span>{locale === 'zh-CN' ? '适合' : 'For'}</span>{audience}</p>
     </div>
-    {!canInstall ? <div id={noteId} data-reveal role="status" aria-live="polite" class="rounded-panel border border-line bg-panel-soft px-5 py-4 text-sm leading-[1.7] text-copy-muted">{note || fallbackNote}</div> : <div data-reveal class="grid grid-cols-[1fr_auto] overflow-hidden rounded-panel border border-line bg-canvas">
+    {!canInstall ? <div id={noteId} data-reveal role="status" aria-live="polite" class="rounded-panel border border-line bg-panel-soft px-5 py-4 text-sm leading-[1.7] text-copy-muted">{note || fallbackNote}</div> : <div data-reveal class="min-w-0"><div class="grid grid-cols-[1fr_auto] overflow-hidden rounded-panel border border-line bg-canvas">
       <pre id="quick-start-command" tabindex="0" aria-label={locale === 'zh-CN' ? '安装命令' : 'Install command'} class="m-0 min-w-0 overflow-x-auto px-5 py-4 text-sm"><code>{command}</code></pre>
       <button class="inline-flex min-w-[116px] items-center justify-center gap-2 border-l border-line bg-panel-soft px-4 text-sm font-[650] transition-colors enabled:hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-60 max-[480px]:min-w-11 max-[480px]:px-3" type="button" disabled data-copy-command={command} data-copy-label={copy.project.copyInstall} data-copied-label={copy.project.copied} data-copy-failed-label={locale === 'zh-CN' ? '请手动复制' : 'Copy manually'} data-analytics-event="copy_command" data-analytics-project={projectId} aria-label={copy.project.copyInstall} aria-describedby="quick-start-command">
         <Copy data-copy-icon size={17} stroke-width={1.9} aria-hidden="true" />
         <Check data-copied-icon class="hidden" size={17} stroke-width={2} aria-hidden="true" />
         <span data-copy-text role="status" aria-live="polite" class="max-[480px]:sr-only">{copy.project.copyInstall}</span>
       </button>
+      </div>
+      {note && <p id={noteId} class="mt-3 mb-0 text-sm leading-[1.7] text-copy-muted">{note}</p>}
     </div>}
   </div>
 </section>

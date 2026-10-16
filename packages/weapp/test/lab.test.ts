@@ -99,12 +99,12 @@ describe('offline visual lab', () => {
     expect(new URL(lab.url).searchParams.get('motion')).toBe('0')
   })
 
-  it('serves eleven real project logos offline and explicitly identifies the planned fallback', async () => {
+  it('serves eleven official project logos offline, including the SQLite mark', async () => {
     const lab = await start()
     const { projectLogos: logos } = await (await fetch(new URL('/data.json', lab.url))).json() as { projectLogos: typeof projectLogos }
     expect(Object.keys(logos)).toHaveLength(11)
-    expect(logos['weapp-sqlite']).toEqual({ url: '/logos/miniprogram.svg', fallback: true })
-    expect(Object.values(logos).filter(logo => logo.fallback)).toHaveLength(1)
+    expect(logos['weapp-sqlite']).toEqual({ url: '/logos/weapp-sqlite.svg', fallback: false })
+    expect(Object.values(logos).filter(logo => logo.fallback)).toHaveLength(0)
     for (const [slug, logo] of Object.entries(logos)) {
       const response = await fetch(new URL(logo.url, lab.url))
       expect(response.status, slug).toBe(200)
@@ -132,6 +132,7 @@ describe('offline visual lab', () => {
       '/logos/../../package.json',
       '/logos/%2e%2e%2fsrc/lab.js',
       '/logos/react.svg',
+      '/logos/miniprogram.svg',
       '/logos/unknown.svg',
     ]) {
       const response = await fetch(new URL(path, lab.url))

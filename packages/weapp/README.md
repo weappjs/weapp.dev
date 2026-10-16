@@ -71,7 +71,7 @@ The directory name seeds a repeatable star chart; choosing a template rearranges
 
 Other creators retain their own prompts. A target must not exist and its parent must exist. The CLI resolves the latest creator version, checks its Node requirement, executes that exact version, and verifies the generated manifest and dependency before reporting success. Query, execution and validation show their actual stage and elapsed time. In the workbench, Esc cancels a pending creation without closing the hall, and success immediately displays the project badge and next commands. Standalone creation returns to your shell. The CLI does not install project dependencies or initialize an existing project. Partial output remains available if an upstream creator fails.
 
-Each ecosystem project keeps its own release cadence and API. An install command is not a complete integration. Planned SQLite has no install command or production API: **No install command is available yet.**
+Each ecosystem project keeps its own release cadence and API. An install command is not a complete integration. weapp-sqlite is in beta: install its weapp-vite integration with `pnpm add @weapp-sqlite/weapp-vite`, then follow the [official guide](https://sqlite.weapp.dev/). The verified scope covers Web and WeChat DevTools; check the guide before using it on a physical device. This integration is available through `weapp info weapp-sqlite`; it has no `weapp create` route.
 
 ## Project catalog
 
@@ -79,19 +79,19 @@ Generated from the repository's neutral public project catalog during builds.
 
 <!-- catalog:en:start -->
 
-| Project                                                                  | Status  | Purpose                                                  |
-| ------------------------------------------------------------------------ | ------- | -------------------------------------------------------- |
-| [weapp-vite](https://weapp.js.org/en/projects/weapp-vite/)               | stable  | Vite builds for mini-app projects                        |
-| [weapp-tailwindcss](https://weapp.js.org/en/projects/weapp-tailwindcss/) | stable  | Use Tailwind classes in mini-app styles                  |
-| [weapp-pandacss](https://weapp.js.org/en/projects/weapp-pandacss/)       | stable  | Bring Panda CSS generation to mini-apps                  |
-| [weapp-stylex](https://weapp.js.org/en/projects/weapp-stylex/)           | beta    | Compile official StyleX to WeChat WXSS                   |
-| [Varo](https://weapp.js.org/en/projects/varo/)                           | stable  | Registry-first mobile UI for two runtimes                |
-| [weapp-sqlite](https://weapp.js.org/en/projects/weapp-sqlite/)           | planned | A local data layer for mini-app projects                 |
-| [VPT](https://weapp.js.org/en/projects/vite-plugin-taro/)                | stable  | Vite for Taro projects                                   |
-| [Vue Mini](https://weapp.js.org/en/projects/vue-mini/)                   | stable  | A Vue 3 framework for mini programs                      |
-| [Rezor](https://weapp.js.org/en/projects/rezor/)                         | beta    | A React framework for mini programs                      |
-| [Uni Helper](https://weapp.js.org/en/projects/uni-helper/)               | stable  | Better DX for the uni-app family                         |
-| [Wot UI](https://weapp.js.org/en/projects/wot-ui/)                       | stable  | A light, polished, AI-friendly uni-app component library |
+| Project                                                                  | Status | Purpose                                                  |
+| ------------------------------------------------------------------------ | ------ | -------------------------------------------------------- |
+| [weapp-vite](https://weapp.js.org/en/projects/weapp-vite/)               | stable | Vite builds for mini-app projects                        |
+| [weapp-tailwindcss](https://weapp.js.org/en/projects/weapp-tailwindcss/) | stable | Use Tailwind classes in mini-app styles                  |
+| [weapp-pandacss](https://weapp.js.org/en/projects/weapp-pandacss/)       | stable | Bring Panda CSS generation to mini-apps                  |
+| [weapp-stylex](https://weapp.js.org/en/projects/weapp-stylex/)           | beta   | Compile official StyleX to WeChat WXSS                   |
+| [Varo](https://weapp.js.org/en/projects/varo/)                           | stable | Registry-first mobile UI for two runtimes                |
+| [weapp-sqlite](https://weapp.js.org/en/projects/weapp-sqlite/)           | beta   | A local data layer for mini-app projects                 |
+| [VPT](https://weapp.js.org/en/projects/vite-plugin-taro/)                | stable | Vite for Taro projects                                   |
+| [Vue Mini](https://weapp.js.org/en/projects/vue-mini/)                   | stable | A Vue 3 framework for mini programs                      |
+| [Rezor](https://weapp.js.org/en/projects/rezor/)                         | beta   | A React framework for mini programs                      |
+| [Uni Helper](https://weapp.js.org/en/projects/uni-helper/)               | stable | Better DX for the uni-app family                         |
+| [Wot UI](https://weapp.js.org/en/projects/wot-ui/)                       | stable | A light, polished, AI-friendly uni-app component library |
 
 <!-- catalog:en:end -->
 
@@ -166,7 +166,7 @@ npx weapp palette '#07c160' --output colors.css --format css
 
 实验室默认进入生态星系并选中 weapp-vite，打包真实 Logo、字体和固定资源表，离线可用。选中项目同步更新成熟度、能力、配色和操作；weapp-vite 可复制创建命令，其他已发布项目可复制官方开始命令，浏览器不会执行本地脚手架。规划项目没有安装或创建操作。粒子场景在 WEAPP 与项目标识之间变形，保留指针流场与拖拽；重播保留项目和控制设置，重置动画与偏移。支持手机、减少动态效果、后台暂停、Canvas 降级与 PNG 下载。`weapp play snake` 和专属帮助仍可使用，游戏从主大厅和总帮助隐藏。
 
-每个项目保留自己的仓库、发布节奏和 API 边界。安装依赖不代表已经完成接入。weapp-sqlite 仍在规划中：**当前还没有安装命令。**
+每个项目保留自己的仓库、发布节奏和 API 边界。安装依赖不代表已经完成接入。weapp-sqlite 处于测试阶段：运行 `pnpm add @weapp-sqlite/weapp-vite` 安装 weapp-vite 集成包，再按[官方指南](https://sqlite.weapp.dev/)完成接入。目前验证范围为 Web 和微信开发者工具；真机使用前请核对官方边界说明。通过 `weapp info weapp-sqlite` 查看接入资料，CLI 不提供它的 `weapp create` 路线。
 
 开发代码、实验室、测试和验收脚本统一使用严格 TypeScript，`pnpm --filter weapp check` 检查 Node／工具脚本和浏览器类型。`tsdown` 分别打包 Node 18 CLI、浏览器实验室及可直接在 Node 18 执行的 artifact smoke。运行 `pnpm --filter weapp build` 后可执行 `node packages/weapp/dist/cli.js`；npm 包只交付 JavaScript bundles 与目录、Logo、字体和许可证等静态资源。
 
@@ -178,19 +178,19 @@ npx weapp palette '#07c160' --output colors.css --format css
 
 <!-- catalog:zh-CN:start -->
 
-| 项目                                                                  | 状态    | 定位                                 |
-| --------------------------------------------------------------------- | ------- | ------------------------------------ |
-| [weapp-vite](https://weapp.js.org/projects/weapp-vite/)               | stable  | 用 Vite 做小程序工程构建             |
-| [weapp-tailwindcss](https://weapp.js.org/projects/weapp-tailwindcss/) | stable  | 把 Tailwind 写进小程序样式里         |
-| [weapp-pandacss](https://weapp.js.org/projects/weapp-pandacss/)       | stable  | 把 Panda CSS 的生成样式带进小程序    |
-| [weapp-stylex](https://weapp.js.org/projects/weapp-stylex/)           | beta    | 把官方 StyleX 编译为微信小程序 WXSS  |
-| [Varo](https://weapp.js.org/projects/varo/)                           | stable  | 双端移动 UI Registry                 |
-| [weapp-sqlite](https://weapp.js.org/projects/weapp-sqlite/)           | planned | 面向小程序工程的本地数据层           |
-| [VPT](https://weapp.js.org/projects/vite-plugin-taro/)                | stable  | 给 Taro 接上 Vite                    |
-| [Vue Mini](https://weapp.js.org/projects/vue-mini/)                   | stable  | 基于 Vue 3 的小程序框架              |
-| [Rezor](https://weapp.js.org/projects/rezor/)                         | beta    | 基于 React 的小程序框架              |
-| [Uni Helper](https://weapp.js.org/projects/uni-helper/)               | stable  | 增强 uni-app 系列产品的开发体验      |
-| [Wot UI](https://weapp.js.org/projects/wot-ui/)                       | stable  | 轻量、美观、AI 友好的 uni-app 组件库 |
+| 项目                                                                  | 状态   | 定位                                 |
+| --------------------------------------------------------------------- | ------ | ------------------------------------ |
+| [weapp-vite](https://weapp.js.org/projects/weapp-vite/)               | stable | 用 Vite 做小程序工程构建             |
+| [weapp-tailwindcss](https://weapp.js.org/projects/weapp-tailwindcss/) | stable | 把 Tailwind 写进小程序样式里         |
+| [weapp-pandacss](https://weapp.js.org/projects/weapp-pandacss/)       | stable | 把 Panda CSS 的生成样式带进小程序    |
+| [weapp-stylex](https://weapp.js.org/projects/weapp-stylex/)           | beta   | 把官方 StyleX 编译为微信小程序 WXSS  |
+| [Varo](https://weapp.js.org/projects/varo/)                           | stable | 双端移动 UI Registry                 |
+| [weapp-sqlite](https://weapp.js.org/projects/weapp-sqlite/)           | beta   | 面向小程序工程的本地数据层           |
+| [VPT](https://weapp.js.org/projects/vite-plugin-taro/)                | stable | 给 Taro 接上 Vite                    |
+| [Vue Mini](https://weapp.js.org/projects/vue-mini/)                   | stable | 基于 Vue 3 的小程序框架              |
+| [Rezor](https://weapp.js.org/projects/rezor/)                         | beta   | 基于 React 的小程序框架              |
+| [Uni Helper](https://weapp.js.org/projects/uni-helper/)               | stable | 增强 uni-app 系列产品的开发体验      |
+| [Wot UI](https://weapp.js.org/projects/wot-ui/)                       | stable | 轻量、美观、AI 友好的 uni-app 组件库 |
 
 <!-- catalog:zh-CN:end -->
 

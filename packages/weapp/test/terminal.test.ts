@@ -27,7 +27,7 @@ function catalog(): CatalogProject[] {
     slug,
     id: slug,
     order: index + 1,
-    packageName: slug,
+    packageName: slug === 'weapp-sqlite' ? '@weapp-sqlite/weapp-vite' : slug,
     github: `weappjs/${slug}`,
     docsUrl: `https://example.com/${slug}`,
     maintainer: 'weappjs',
@@ -35,12 +35,12 @@ function catalog(): CatalogProject[] {
     logo: `/logos/${slug}.svg`,
     accent: '#2ba245',
     role: 'Engineering',
-    maturity: index === 5 ? 'planned' : 'stable',
+    maturity: index === 5 ? 'beta' : 'stable',
     relatedProjects: ['weapp-vite'],
     dataCompleteness: 'complete',
     ecosystem: index < 6 ? 'weapp' : 'uni-app',
-    status: index === 5 ? 'planned' : 'stable',
-    installCommand: `npm install ${slug}`,
+    status: index === 5 ? 'beta' : 'stable',
+    installCommand: slug === 'weapp-sqlite' ? 'pnpm add @weapp-sqlite/weapp-vite' : `npm install ${slug}`,
     ...(index === 0 ? { quickStart: { command: 'npm create weapp-vite@latest' } } : {}),
     locales: {
       'en': { name: slug, tagline: `Build with ${slug}`, description: `Project ${index} description`, audience: 'Mini-app developers', capabilities: ['Fast builds', 'Component tooling'], useCases: ['Build a mini-app'], faqs: [{ question: 'How?', answer: 'Use the CLI.' }] },
@@ -582,6 +582,31 @@ describe('live workbench', () => {
     expect(io.ctx.resources.workbench!.entries()).toHaveLength(1)
     io.key('return')
     expect(await filtered).toBe(io.ctx.catalog![6])
+  })
+
+  it('shows the beta SQLite installation while retaining its project slug', async () => {
+    fakeClock()
+    const io = terminal({ motion: false, width: 140, height: 30 })
+    const sqlite = io.ctx.catalog![5]
+    const result = selectProjects(io.ctx, [sqlite], { all: true, filtered: true })
+    await nextFrame()
+    expect(io.output.frame()).toContain('weapp-sqlite')
+    expect(io.output.frame()).toContain('Status: beta')
+    expect(io.output.frame()).toContain('pnpm add @weapp-sqlite/weapp-vite')
+    io.key('return')
+    expect(await result).toBe(sqlite)
+  })
+
+  it('withholds a planned fixture command independently of SQLite maturity', async () => {
+    fakeClock()
+    const io = terminal({ motion: false, width: 140, height: 30 })
+    const planned: CatalogProject = { ...io.ctx.catalog![0], slug: 'planned-fixture', id: 'planned-fixture', status: 'planned', maturity: 'planned', quickStart: { command: 'pnpm dlx planned-fixture' } }
+    const result = selectProjects(io.ctx, [planned], { all: true, filtered: true })
+    await nextFrame()
+    expect(io.output.frame()).toContain('Planned · No installation command')
+    expect(io.output.frame()).not.toContain('pnpm dlx planned-fixture')
+    io.key('return')
+    expect(await result).toBe(planned)
   })
 
   it('permits q in project search and handles an empty result', async () => {

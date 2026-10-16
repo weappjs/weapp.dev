@@ -15,13 +15,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 interface SmokeProject {
   slug: string
+  packageName: string
   ecosystem: string
+  status: string
   installCommand?: string
 }
 function parseProject(value: unknown): SmokeProject {
-  assert.ok(isRecord(value) && typeof value.slug === 'string' && typeof value.ecosystem === 'string', 'Valid catalog project')
+  assert.ok(isRecord(value) && typeof value.slug === 'string' && typeof value.packageName === 'string'
+    && typeof value.ecosystem === 'string' && typeof value.status === 'string', 'Valid catalog project')
   assert.ok(value.installCommand === undefined || typeof value.installCommand === 'string')
-  return { slug: value.slug, ecosystem: value.ecosystem, installCommand: value.installCommand }
+  return { slug: value.slug, packageName: value.packageName, ecosystem: value.ecosystem, status: value.status, installCommand: value.installCommand }
 }
 function parseProjects(value: unknown): SmokeProject[] {
   assert.ok(Array.isArray(value), 'Valid project list')
@@ -60,7 +63,17 @@ assert.equal(projects.length, 11)
 assert.equal(projects.filter(project => project.ecosystem === 'weapp').length, 6)
 assert.equal(parseProjects(parseJson(run(['projects', '--all', '--json']))).length, 11)
 assert.equal(parseProject(parseJson(run(['info', 'tw', '--json']))).slug, 'weapp-tailwindcss')
-assert.equal(parseProject(parseJson(run(['info', 'weapp-sqlite', '--json']))).installCommand, undefined)
+const sqlite = parseProject(parseJson(run(['info', 'weapp-sqlite', '--json'])))
+assert.equal(sqlite.packageName, '@weapp-sqlite/weapp-vite')
+assert.equal(sqlite.status, 'beta')
+assert.equal(sqlite.installCommand, 'pnpm add @weapp-sqlite/weapp-vite')
+assert.equal(parseProject(parseJson(run(['info', '@weapp-sqlite/weapp-vite', '--json']))).slug, 'weapp-sqlite')
+for (const route of ['sqlite', 'weapp-sqlite', '@weapp-sqlite/weapp-vite']) {
+  const result = spawnSync(process.execPath, [cli, 'create', route, 'unsupported-sqlite', '--dry-run'], { encoding: 'utf8', timeout: 5000, env: defaultEnv })
+  assert.equal(result.status, 1)
+  assert.equal(result.stdout, '')
+  assert.match(result.stderr, /Unknown creation route/)
+}
 for (const template of ['default', 'wevu', 'react', 'tailwindcss', 'multi-platform-sfc']) {
   assert.match(run(['create', 'weapp-vite', `smoke-${template}`, '--template', template, '--dry-run']), /create-weapp-vite@latest/)
 }
@@ -203,7 +216,8 @@ try {
   assert.equal(Object.keys(data.projectLogos).length, 11)
   const sqliteLogo = data.projectLogos['weapp-sqlite']
   assert.ok(isRecord(sqliteLogo))
-  assert.equal(sqliteLogo.fallback, true)
+  assert.equal(sqliteLogo.url, '/logos/weapp-sqlite.svg')
+  assert.equal(sqliteLogo.fallback, false)
   for (const project of parseProjects(data.catalog)) {
     const logo: unknown = data.projectLogos[project.slug]
     assert.ok(isRecord(logo) && typeof logo.url === 'string', 'Valid project logo')
@@ -213,6 +227,7 @@ try {
     assert.ok((await asset.arrayBuffer()).byteLength > 100)
   }
   assert.equal((await fetch(new URL('/package.json', url))).status, 404)
+  assert.equal((await fetch(new URL('/logos/miniprogram.svg', url))).status, 404)
   assert.equal((await fetch(new URL('/%2e%2e/package.json', url))).status, 404)
 }
 finally {

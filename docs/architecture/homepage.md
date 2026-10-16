@@ -6,6 +6,8 @@
 
 两站正文将工程、组件与数据（weapp-vite、Varo、weapp-sqlite）放在 #projects，随后以独立的 #styling 样式章节集中展示 weapp-tailwindcss、weapp-pandacss 与 weapp-stylex。样式章节使用共享的柔和背景 token，保留项目状态、事实证明、文档和详情入口；选型介绍可直接跳转到该章节，章节内可进入同语种的样式项目筛选目录。该展示分组由应用维护，不改变项目目录的生态归属或商业服务范围。交互演示的 tab 顺序独立于章节阅读顺序。
 
+两站首屏展示目录中的十一个项目星球，weapp-sqlite 沿用排序 6，位于 Varo 之后，并使用官方独立图标。它按本站的保守分类展示为 Beta，推荐安装 @weapp-sqlite/weapp-vite；已验收平台为 Web 与真实微信开发者工具，微信真机仍待验证。数据演示展示官方异步查询与关闭连接的静态代码，注明 weappSqlite() 插件配置前提，页面不执行数据库。项目 ID 与详情路由独立于 npm 包名。
+
 Vue Mini 与 Rezor 在 #runtime 合并为运行时选型章节，按项目目录中的 Framework 角色选取并按目录顺序排列。桌面并排展示，手机纵向排列；项目卡片标出 Vue 3 / React 和真实成熟度，分别链接官方资料及站内详情。旧的 #ecosystem-vue-mini 与 #ecosystem-rezor 锚点保留在各自卡片上。目录生态归属和星球导航继续独立维护。
 
 ## 共同视觉语言

@@ -1,55 +1,73 @@
 {
   "order": 6,
-  "status": "planned",
-  "packageName": "weapp-sqlite",
+  "status": "beta",
+  "packageName": "@weapp-sqlite/weapp-vite",
   "github": "weapp-sqlite/weapp-sqlite",
   "docsUrl": "https://sqlite.weapp.dev/",
+  "npmUrl": "https://www.npmjs.com/package/@weapp-sqlite/weapp-vite",
+  "license": "https://opensource.org/license/mit",
   "maintainer": "weapp-sqlite contributors",
   "keywords": [
     "SQLite",
     "mini-program",
     "local data",
-    "planned"
+    "WASM",
+    "weapp-vite"
   ],
+  "installCommand": "pnpm add @weapp-sqlite/weapp-vite",
   "futureDocsPath": "/docs/weapp-sqlite/",
-  "logo": "/logo.svg",
+  "logo": "/brands/weapp-sqlite.svg",
   "accent": "#0e7958",
+  "platforms": [
+    "Web",
+    "WeChat DevTools"
+  ],
   "role": "Local data",
   "ecosystem": "weapp",
-  "maturity": "planned",
+  "maturity": "beta",
+  "runtime": [
+    "SQLite WASM (sql.js)",
+    "IndexedDB",
+    "WXWebAssembly"
+  ],
   "relatedProjects": [
     "weapp-vite",
     "weapp-tailwindcss"
   ],
-  "dataCompleteness": "planned",
+  "dataCompleteness": "partial",
   "quickStart": {
+    "command": "pnpm add @weapp-sqlite/weapp-vite",
     "note": {
-      "zh-CN": "首版资料整理中，暂不提供安装命令或生产 API。",
-      "en": "The first release is being specified; no install command or production API is available yet."
+      "zh-CN": "先在 Vite 配置中注册 weappSqlite()，再从 @weapp-sqlite/weapp-vite/runtime 导入 openSqlite。Web 与微信开发者工具已通过自动验收，微信真机仍待验证。",
+      "en": "Register weappSqlite() in your Vite config, then import openSqlite from @weapp-sqlite/weapp-vite/runtime. Web and WeChat DevTools pass automated acceptance; WeChat devices await verification."
     }
   },
   "proof": [
     {
-      "zh-CN": "运行时边界待确认",
-      "en": "Runtime boundaries are still being confirmed"
+      "zh-CN": "统一异步查询、事务与迁移 API",
+      "en": "Unified asynchronous queries, transactions, and migrations"
     },
     {
-      "zh-CN": "迁移与同步策略待确认",
-      "en": "Migration and sync strategy are still being confirmed"
+      "zh-CN": "Web 使用 IndexedDB，微信使用文件系统持久化",
+      "en": "IndexedDB persistence on Web and file-system persistence on WeChat"
+    },
+    {
+      "zh-CN": "Web 与真实微信开发者工具已通过自动验收；微信真机仍待验证",
+      "en": "Automated acceptance passes on Web and real WeChat DevTools; WeChat devices await verification"
     }
   ],
   "roadmap": [
     {
       "label": {
-        "zh-CN": "确认运行时与平台边界",
-        "en": "Confirm runtime and platform boundaries"
+        "zh-CN": "完成 Web 与微信开发者工具自动验收",
+        "en": "Complete automated acceptance on Web and WeChat DevTools"
       },
-      "status": "planned"
+      "status": "shipped"
     },
     {
       "label": {
-        "zh-CN": "发布可验证的 API 契约",
-        "en": "Publish a verifiable API contract"
+        "zh-CN": "完成微信 iOS 与 Android 真机验收",
+        "en": "Complete acceptance on WeChat iOS and Android devices"
       },
       "status": "planned"
     }
@@ -58,44 +76,52 @@
     "zh-CN": {
       "name": "weapp-sqlite",
       "tagline": "面向小程序工程的本地数据层",
-      "description": "为小程序工程提供可规划、可迁移的 SQLite 本地数据能力。项目正在整理运行时边界、同步策略和跨平台接口，当前不承诺稳定 API。",
-      "audience": "需要本地结构化数据、离线能力或可控迁移路径的小程序团队。",
+      "description": "通过 weapp-vite 集成 SQLite WASM，提供统一异步查询、事务、迁移与本地持久化。Web 与微信开发者工具已通过自动验收，微信真机仍待验证；当前以测试版展示。",
+      "audience": "需要在 weapp-vite 工程中评估结构化本地数据、离线存储和数据库迁移的小程序团队。",
       "useCases": [
-        "规划本地结构化数据存储",
-        "评估离线和迁移能力",
-        "与 weapp-vite 工程边界协同"
+        "在 weapp-vite 工程中接入本地 SQLite",
+        "查询结构化数据并管理事务与迁移",
+        "在 Web 与微信开发者工具中验证持久化行为"
       ],
       "capabilities": [
-        "本地 SQLite 能力（规划中）",
-        "运行时边界设计",
-        "迁移路径设计"
+        "统一异步查询、事务与迁移",
+        "Web IndexedDB 与微信文件系统持久化",
+        "weapp-vite 插件与运行时集成"
       ],
       "faqs": [
         {
-          "question": "现在可以直接用于生产吗？",
-          "answer": "还不可以。项目目前处于规划阶段，稳定 API、性能指标和完整文档会在确认后公开。"
+          "question": "目前验证了哪些运行环境？",
+          "answer": "Web 与真实微信开发者工具已通过自动验收，微信 iOS 与 Android 真机仍待验证。本站按测试版展示；其他小程序平台目前仅提供构建与 unsupported 契约，不代表正式运行支持。"
+        },
+        {
+          "question": "应该安装哪个包？",
+          "answer": "weapp-vite 工程推荐安装 @weapp-sqlite/weapp-vite，注册 weappSqlite() 插件后从其 runtime 入口导入 openSqlite。具体配置和平台边界以官方文档为准。"
         }
       ]
     },
     "en": {
       "name": "weapp-sqlite",
       "tagline": "A local data layer for mini-app projects",
-      "description": "A planned SQLite capability for structured local data in mini-app projects. Runtime boundaries, sync strategy, and cross-platform APIs are still being defined.",
-      "audience": "Mini-app teams that need structured local data, offline behavior, or a controlled migration path.",
+      "description": "Integrate SQLite WASM through weapp-vite for unified asynchronous queries, transactions, migrations, and local persistence. Web and WeChat DevTools pass automated acceptance; WeChat devices await verification. Listed here as Beta.",
+      "audience": "Mini-app teams evaluating structured local data, offline storage, and database migrations in weapp-vite projects.",
       "useCases": [
-        "Plan structured local storage",
-        "Evaluate offline and migration needs",
-        "Coordinate with weapp-vite project boundaries"
+        "Integrate local SQLite into a weapp-vite project",
+        "Query structured data and manage transactions and migrations",
+        "Verify persistence on Web and WeChat DevTools"
       ],
       "capabilities": [
-        "Local SQLite capability (planned)",
-        "Runtime boundary design",
-        "Migration path design"
+        "Unified asynchronous queries, transactions, and migrations",
+        "IndexedDB on Web and file-system persistence on WeChat",
+        "weapp-vite plugin and runtime integration"
       ],
       "faqs": [
         {
-          "question": "Can I use it in production today?",
-          "answer": "Not yet. The project is planned; stable APIs, performance numbers, and complete documentation will be published after they are confirmed."
+          "question": "Which environments have been verified?",
+          "answer": "Web and real WeChat DevTools pass automated acceptance. WeChat iOS and Android devices await verification, so this site lists the project as Beta. Other mini-app platforms currently provide build output and an unsupported contract, which does not imply official runtime support."
+        },
+        {
+          "question": "Which package should I install?",
+          "answer": "For weapp-vite projects, install @weapp-sqlite/weapp-vite, register weappSqlite(), then import openSqlite from its runtime entry. Follow the official documentation for configuration and platform boundaries."
         }
       ]
     }
