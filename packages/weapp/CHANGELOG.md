@@ -1,5 +1,15 @@
 # weapp
 
+## 0.3.0
+
+### Minor Changes
+
+- Make the terminal workbench immediately usable, add project-driven creation visuals, and reduce startup and scaffolding overhead.
+
+### Patch Changes
+
+- 更新 weapp-sqlite 测试版资料、官方标识和安装指引
+
 ## 0.2.0
 
 ### Minor Changes
