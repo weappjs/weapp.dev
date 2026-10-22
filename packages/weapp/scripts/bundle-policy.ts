@@ -14,6 +14,7 @@ export const bundledDependencies = Object.freeze({
   'get-east-asian-width': 'MIT',
   'isexe': 'ISC',
   'path-key': 'MIT',
+  'picomatch': 'MIT',
   'qrcode': 'MIT',
   'semver': 'ISC',
   'shebang-command': 'MIT',
@@ -21,6 +22,7 @@ export const bundledDependencies = Object.freeze({
   'string-width': 'MIT',
   'strip-ansi': 'MIT',
   'which': 'ISC',
+  'yaml': 'ISC',
 } as const)
 
 export const bundleReportPath = 'data/bundle.json'
@@ -96,7 +98,7 @@ async function bundledSources(): Promise<Map<string, PackageSource>> {
   // Only QR core and the SVG tag renderer are bundled, not qrcode's PNG/CLI graph.
   await visit('qrcode', packageRequire, false)
   await visit('dijkstrajs', createRequire(path.join(sources.get('qrcode')!.directory, 'package.json')))
-  for (const name of ['cross-spawn', 'semver', 'string-width']) {
+  for (const name of ['cross-spawn', 'semver', 'string-width', 'picomatch', 'yaml']) {
     await visit(name, packageRequire)
   }
   if (sources.size !== packageNames.length) {

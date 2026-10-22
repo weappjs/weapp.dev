@@ -64,18 +64,21 @@
     "@playwright/test": "1.64.1",
     "@types/cross-spawn": "6.0.6",
     "@types/node": "24.19.2",
+    "@types/picomatch": "4.0.3",
     "@types/qrcode": "1.5.6",
     "@types/semver": "7.8.0",
     "@weapp-io/project-catalog": "workspace:*",
     "@weapp-io/site-ui": "workspace:*",
     "cross-spawn": "7.0.6",
     "jsqr": "1.4.0",
+    "picomatch": "4.0.7",
     "qrcode": "1.5.4",
     "semver": "7.8.5",
     "string-width": "7.2.0",
     "tsdown": "0.23.1",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
-    "vitest": "5.0.5"
+    "vitest": "5.0.5",
+    "yaml": "2.9.1"
   }
 }

@@ -1,10 +1,13 @@
 import type { Key } from 'node:readline'
 import type { CreateProgress, CreateWizardHooks, ScaffoldPlan } from '../commands/create/plan.js'
+import type { PackageManagerName, ProjectContext } from '../project/context.js'
 import type { CatalogProject, CliContext, CliOptions, CliOutput } from '../types.js'
 import type { ProjectPreview } from './preview.js'
 import type { TerminalFinish } from './session.js'
+import path from 'node:path'
 import { mainProjects } from '../catalog.js'
 import { displayCommand, npmExecArgs, scaffoldPlan } from '../commands/create/plan.js'
+import { issueLines, projectLines } from '../project/presentation.js'
 import { sanitize, t } from '../shared.js'
 import { TEMPLATE_DETAILS, TEMPLATES } from '../templates.js'
 import { projectPreview } from './preview.js'
@@ -80,9 +83,9 @@ export interface ProjectsScreen extends ScreenBase {
   complete?: (value: CatalogProject | null) => void
 }
 export interface InputScreen extends ScreenBase { type: 'input', hint?: string, value: string, error?: string, complete?: (value: string | null) => void }
-export interface SummaryScreen extends ScreenBase { type: 'summary', lines: string[], scroll?: number, complete?: (value: boolean | null) => void }
+export interface SummaryScreen extends ScreenBase { type: 'summary', confirmation?: string, lines: string[], scroll?: number, complete?: (value: boolean | null) => void }
 export interface DetailScreen extends ScreenBase { type: 'detail', project: CatalogProject, complete?: undefined }
-export interface ResultScreen extends ScreenBase { type: 'result', lines: string[], scroll?: number, successAt?: number, complete?: undefined }
+export interface ResultScreen extends ScreenBase { type: 'result', context?: ProjectContext, lines: string[], scroll?: number, successAt?: number, complete?: undefined }
 export interface PreparingScreen extends ScreenBase { type: 'preparing', cancel: () => void, complete?: undefined }
 export type WorkbenchScreen = MenuScreen | ProjectsScreen | InputScreen | SummaryScreen | DetailScreen | ResultScreen | PreparingScreen
 export type RequestScreen = MenuScreen | ProjectsScreen | InputScreen | SummaryScreen
@@ -107,11 +110,25 @@ export class Workbench {
   busy: boolean
   screen: WorkbenchScreen
   createProgress?: CreateProgress
+  projectContext?: ProjectContext
+  projectPending = true
+  private hallTouched = false
   private progressAt = 0
   private previewFrom: ProjectPreview = projectPreview()
   private previewTo: ProjectPreview = projectPreview()
   private previewAt = 0
   private createCancellations = new Set<() => void>()
+  private layoutCache?: {
+    width: number
+    height: number
+    screen: WorkbenchScreen
+    lang: CliContext['lang']
+    color: boolean
+    motion: boolean
+    progressLabel: string
+    value: ReturnType<Workbench['layout']>
+  }
+
   finish: TerminalFinish = () => {}
 
   constructor(ctx: CliContext, dispatch: WorkbenchDispatch = () => 0) {
@@ -162,32 +179,28 @@ export class Workbench {
     return pool.filter(project => !query || JSON.stringify([projectId(project), project.locales, project.keywords]).toLowerCase().includes(query)).map(project => ({ value: project, label: content(this.ctx, project).name || projectId(project), description: content(this.ctx, project).tagline, project }))
   }
 
-  frame() {
-    const { width, height } = this.session.dimensions()
+  private hideVisual(height: number): boolean {
+    const screen = this.screen
+    return ((screen.type === 'result' || screen.type === 'input' || screen.type === 'summary') && !screen.preview)
+      || ((screen.type === 'summary' || screen.type === 'result') && height < 24)
+  }
+
+  private layout(width: number, height: number, progressLabel: string) {
     const screen = this.screen
     const entries = this.entries()
     screen.selected = Math.max(0, Math.min(screen.selected || 0, entries.length - 1))
     const current = screen.project || entries[screen.selected || 0]?.project
     const detail = content(this.ctx, current)
-    const focusTo = current ? mainProjects(this.ctx.catalog || []).indexOf(current) : 0
-    if (focusTo !== this.focusTo) {
-      this.focusFrom = this.focus
-      this.focusTo = focusTo
-      this.focusAt = this.time
-    }
-    if (!this.ctx.motion || this.paused) {
-      this.focusFrom = this.focusTo
-    }
-    const transition = this.ctx.motion && !this.paused ? Math.min(1, (this.time - this.focusAt) / 0.25) : 1
-    this.focus = this.focusFrom + (this.focusTo - this.focusFrom) * transition * transition * (3 - 2 * transition)
-    const hideVisual = ((screen.type === 'result' || screen.type === 'input') && !screen.preview) || ((screen.type === 'summary' || screen.type === 'result') && height < 24)
+    const projects = mainProjects(this.ctx.catalog || [])
+    const focusTo = current ? projects.indexOf(current) : 0
+    const hideVisual = this.hideVisual(height)
     const wide = width >= 87 && height >= 24 && !hideVisual
     const compact = width < 60 || height < 18
     const leftWidth = wide ? Math.min(38, Math.floor(width * 0.38)) : width - 2
     const visualWidth = wide ? width - leftWidth - 5 : width - 2
     const visualHeight = wide ? Math.min(16, height - 9) : compact ? 3 : Math.min(screen.preview ? 5 : 7, height - 14)
     const available = Math.max(1, height - 5 - (wide || hideVisual ? 0 : Math.max(1, visualHeight)))
-    const progress = screen.preview && screen.type !== 'preparing' && this.createProgress ? ['', ...wrap(this.progressLabel(), leftWidth)] : []
+    const progress = screen.preview && screen.type !== 'preparing' && this.createProgress ? ['', ...wrap(progressLabel, leftWidth)] : []
     const contentAvailable = Math.max(1, available - progress.length)
     const heading = ` ${this.accent('WEAPP')}  /  ${screen.title || this.hall.title}`
     const lines = [heading, ` ${screen.subtitle || this.hall.subtitle}`, '']
@@ -196,7 +209,7 @@ export class Workbench {
       left = [...wrap(screen.hint, leftWidth), '', this.accent(inputLine(screen.value, leftWidth), true), '', ...(screen.error ? wrap(screen.error, leftWidth) : [])]
     }
     else if (screen.type === 'preparing') {
-      left = [t(this.ctx, '正在准备创建项目', 'Preparing your project'), '', ...wrap(this.progressLabel(), leftWidth), '', t(this.ctx, 'Esc 取消本次创建', 'Esc cancels this creation')]
+      left = [t(this.ctx, '正在准备创建项目', 'Preparing your project'), '', ...wrap(progressLabel, leftWidth), '', t(this.ctx, 'Esc 取消本次创建', 'Esc cancels this creation')]
     }
     else if (screen.type === 'result') {
       const rows = resultLines(screen.lines, leftWidth)
@@ -208,7 +221,7 @@ export class Workbench {
     }
     else if (screen.type === 'summary') {
       left = screen.lines.flatMap(line => wrap(line, leftWidth))
-      left.push('', this.accent(t(this.ctx, '› Enter 创建项目', '› Enter creates the project'), true))
+      left.push('', this.accent(screen.confirmation || t(this.ctx, '› Enter 创建项目', '› Enter creates the project'), true))
       screen.scroll = Math.max(0, Math.min(screen.scroll || 0, left.length - contentAvailable))
       left = left.slice(screen.scroll, screen.scroll + contentAvailable)
     }
@@ -236,17 +249,9 @@ export class Workbench {
       left = [...left.slice(0, contentAvailable), ...progress]
     }
     const preview = screen.preview && projectPreview(screen.type === 'input' ? screen.value : screen.preview.directory, screen.type === 'menu' && screen.templates ? screen.entries[screen.selected || 0]?.value : screen.preview.template)
-    if (preview && (preview.name !== this.previewTo.name || preview.template !== this.previewTo.template)) {
-      this.previewFrom = this.previewTo
-      this.previewTo = preview
-      this.previewAt = this.time
-    }
-    const previewTransition = !this.ctx.motion || this.paused ? 1 : Math.min(1, (this.time - this.previewAt) / 0.25)
-    const visual = (artWidth: number, artHeight: number) => preview
-      ? renderProjectPreview({ width: artWidth, height: artHeight, from: this.previewFrom, to: this.previewTo, transition: previewTransition, time: this.ctx.motion ? this.time : 0, color: this.ctx.color, celebration: screen.type === 'result' && screen.successAt !== undefined ? this.ctx.motion ? (this.time - screen.successAt) / 0.8 : 1 : undefined })
-      : renderScene(screen === this.hall && this.ctx.motion && this.time < 1.2 ? 'logo' : 'orbit', { width: artWidth, height: artHeight, time: this.ctx.motion ? this.time : 1.2, opening: screen === this.hall, catalog: mainProjects(this.ctx.catalog || []), logo: this.ctx.logo, color: this.ctx.color, focus: this.focus })
-    if (wide && !hideVisual) {
-      const right = [...visual(visualWidth, visualHeight), '', this.accent(preview?.name || detail.name || 'weapp-vite', true), ...wrap(preview ? `${preview.template} · ${t(this.ctx, '你的项目星图', 'Your project constellation')}` : detail.tagline || t(this.ctx, '用 Vite 做小程序工程构建', 'Vite builds for mini-app projects'), visualWidth)]
+    let right: string[] = []
+    if (wide) {
+      right = ['', this.accent(preview?.name || detail.name || 'weapp-vite', true), ...wrap(preview ? `${preview.template} · ${t(this.ctx, '你的项目星图', 'Your project constellation')}` : detail.tagline || t(this.ctx, '用 Vite 做小程序工程构建', 'Vite builds for mini-app projects'), visualWidth)]
       if (current && !preview) {
         right.push(`${t(this.ctx, '状态', 'Status')}: ${current.status}`)
         right.push(...wrap(current.status === 'planned' ? t(this.ctx, '规划中 · 暂无安装命令', 'Planned · No installation command') : current.quickStart?.command || current.installCommand || '', visualWidth))
@@ -254,15 +259,6 @@ export class Workbench {
       else if (!preview) {
         right.push('npx weapp create')
       }
-      for (let row = 0; row < Math.min(height - 6, Math.max(left.length, right.length)); row++) {
-        lines.push(` ${padLine(left[row] || '', leftWidth)}  ${right[row] || ''}`)
-      }
-    }
-    else {
-      if (!hideVisual) {
-        lines.push(...visual(visualWidth, Math.max(1, visualHeight)))
-      }
-      lines.push(...left.map(line => ` ${line}`))
     }
     let footer = this.ctx.motion
       ? t(this.ctx, '↑/↓ 选择 · Enter 打开 · 空格 暂停 · Q 退出', '↑/↓ select · Enter open · Space pause · Q quit')
@@ -280,13 +276,13 @@ export class Workbench {
       footer = screen.preview ? t(this.ctx, 'Enter 继续 · Esc 取消', 'Enter continue · Esc cancel') : t(this.ctx, 'Enter 继续 · Esc 返回', 'Enter continue · Esc back')
     }
     if (screen.type === 'summary') {
-      footer = t(this.ctx, '↑/↓ 滚动 · Enter 创建 · Esc 取消', '↑/↓ scroll · Enter create · Esc cancel')
+      footer = screen.confirmation ? t(this.ctx, '↑/↓ 滚动 · Enter 执行 · Esc 取消', '↑/↓ scroll · Enter run · Esc cancel') : t(this.ctx, '↑/↓ 滚动 · Enter 创建 · Esc 取消', '↑/↓ scroll · Enter create · Esc cancel')
     }
     if (screen.type === 'detail') {
       footer = `${t(this.ctx, 'D 文档 · R 源码', 'D docs · R source')} · Esc`
     }
     if (screen.type === 'result') {
-      footer = t(this.ctx, '↑/↓ 滚动 · Enter / Esc 返回', '↑/↓ scroll · Enter / Esc back')
+      footer = screen.context?.manifest ? t(this.ctx, 'I 安装 · S 脚本 · D 诊断 · ↑/↓ · Esc 返回', 'I install · S scripts · D doctor · ↑/↓ · Esc back') : screen.context ? t(this.ctx, 'D 诊断 · ↑/↓ · Esc 返回', 'D doctor · ↑/↓ · Esc back') : t(this.ctx, '↑/↓ 滚动 · Enter / Esc 返回', '↑/↓ scroll · Enter / Esc back')
     }
     if (screen === this.hall) {
       footer = width < 60 ? 'Enter / C · ↑/↓ · Q' : t(this.ctx, 'Enter / C 创建 · ↑/↓ 选择 · 空格 暂停 · Q 退出', 'Enter / C create · ↑/↓ select · Space pause · Q quit')
@@ -294,22 +290,80 @@ export class Workbench {
         footer = width < 60 ? 'Enter / C · ↑/↓ · Q' : t(this.ctx, 'Enter / C 创建 · ↑/↓ 选择 · Q 退出', 'Enter / C create · ↑/↓ select · Q quit')
       }
     }
+    if (screen === this.hall) {
+      footer = this.projectPending ? t(this.ctx, '正在识别项目… · C 创建 · Q 退出', 'Detecting project… · C create · Q quit') : t(this.ctx, 'Enter / C 创建 · ↑/↓ 选择 · Q 退出', 'Enter / C create · ↑/↓ select · Q quit')
+      if (this.projectContext?.kind !== 'unknown' && !this.projectPending) {
+        footer = t(this.ctx, 'Enter 打开 / C 创建 · ↑/↓ · Q 退出', 'Enter open / C create · ↑/↓ · Q quit')
+      }
+    }
     if (screen.type === 'preparing') {
       footer = t(this.ctx, 'Esc 取消本次创建', 'Esc cancels this creation')
+    }
+    return { screen, width, height, projects, focusTo, hideVisual, wide, leftWidth, visualWidth, visualHeight, lines, left: wide ? left.map(line => padLine(line, leftWidth)) : left.map(line => ` ${line}`), right, footer, preview }
+  }
+
+  frame() {
+    const { width, height } = this.session.dimensions()
+    const progressLabel = this.progressLabel()
+    const cached = this.layoutCache
+    const layout = cached && cached.width === width && cached.height === height
+      && cached.screen === this.screen && cached.lang === this.ctx.lang
+      && cached.color === this.ctx.color && cached.motion === this.ctx.motion
+      && cached.progressLabel === progressLabel
+      ? cached.value
+      : this.layout(width, height, progressLabel)
+    this.layoutCache = { width, height, screen: this.screen, lang: this.ctx.lang, color: this.ctx.color, motion: this.ctx.motion, progressLabel, value: layout }
+    const { screen, projects, focusTo, hideVisual, wide, leftWidth, visualWidth, visualHeight, left, right, footer, preview } = layout
+    if (focusTo !== this.focusTo) {
+      this.focusFrom = this.focus
+      this.focusTo = focusTo
+      this.focusAt = this.time
+    }
+    if (!this.ctx.motion || this.paused) {
+      this.focusFrom = this.focusTo
+    }
+    const transition = this.ctx.motion && !this.paused ? Math.min(1, (this.time - this.focusAt) / 0.25) : 1
+    this.focus = this.focusFrom + (this.focusTo - this.focusFrom) * transition * transition * (3 - 2 * transition)
+    if (preview && (preview.name !== this.previewTo.name || preview.template !== this.previewTo.template)) {
+      this.previewFrom = this.previewTo
+      this.previewTo = preview
+      this.previewAt = this.time
+    }
+    const previewTransition = !this.ctx.motion || this.paused ? 1 : Math.min(1, (this.time - this.previewAt) / 0.25)
+    const visual = (artWidth: number, artHeight: number) => preview
+      ? renderProjectPreview({ width: artWidth, height: artHeight, from: this.previewFrom, to: this.previewTo, transition: previewTransition, time: this.ctx.motion ? this.time : 0, color: this.ctx.color, celebration: screen.type === 'result' && screen.successAt !== undefined ? this.ctx.motion ? (this.time - screen.successAt) / 0.8 : 1 : undefined })
+      : renderScene(screen === this.hall && this.ctx.motion && this.time < 1.2 ? 'logo' : 'orbit', { width: artWidth, height: artHeight, time: this.ctx.motion ? this.time : 1.2, opening: screen === this.hall, catalog: projects, logo: this.ctx.logo, color: this.ctx.color, focus: this.focus })
+    const lines = [...layout.lines]
+    if (wide) {
+      const rightLines = [...visual(visualWidth, visualHeight), ...right]
+      const emptyLeft = ' '.repeat(leftWidth)
+      for (let row = 0; row < Math.min(height - 6, Math.max(left.length, rightLines.length)); row++) {
+        lines.push(` ${left[row] || emptyLeft}  ${rightLines[row] || ''}`)
+      }
+    }
+    else {
+      if (!hideVisual) {
+        lines.push(...visual(visualWidth, Math.max(1, visualHeight)))
+      }
+      lines.push(...left)
     }
     const body = lines.slice(0, Math.max(0, height - 2))
     while (body.length < height - 2) {
       body.push('')
     }
-    body.push(this.busy && screen === this.hall ? ` ${this.progressLabel()}` : this.paused ? t(this.ctx, ' 动效已暂停', ' Motion paused') : '', ` ${footer}`)
+    body.push(this.busy && screen === this.hall && this.createProgress ? ` ${progressLabel}` : this.paused ? t(this.ctx, ' 动效已暂停', ' Motion paused') : '', ` ${footer}`)
     return body
   }
 
+  private requestFrame() {
+    this.session.render(() => this.frame())
+  }
+
   render() {
-    if (this.session.closed) {
-      return
-    }
-    this.session.render(this.frame())
+    // State changes invalidate the one current layout. Animation ticks reuse
+    // its search results, wrapped copy and padded columns until the next event.
+    this.layoutCache = undefined
+    this.requestFrame()
   }
 
   progressLabel(): string {
@@ -392,7 +446,7 @@ export class Workbench {
     })
   }
 
-  showCreateSuccess(plan: ScaffoldPlan, progress?: CreateProgress): void {
+  showCreateSuccess(plan: ScaffoldPlan, progress?: CreateProgress, context?: ProjectContext, nextSteps?: string[]): void {
     if (this.session.closed) {
       return
     }
@@ -401,15 +455,16 @@ export class Workbench {
     this.screen = {
       type: 'result',
       title: t(this.ctx, '项目已创建', 'PROJECT CREATED'),
+      context,
       subtitle: `${plan.route}${plan.route === 'weapp-vite' ? ` · ${template}` : ''}`,
       parent: this.hall,
       preview: { directory: plan.directory, template },
       successAt: this.time,
-      lines: [this.accent(t(this.ctx, '[ 项目已创建 ]', '[ PROJECT CREATED ]'), true), '', `${t(this.ctx, '项目已创建', 'Project created')}: ${sanitize(plan.directory)}`, '', `cd ${displayCommand([plan.directory]).slice(4)}`, 'npm install', '', ...[
+      lines: [this.accent(t(this.ctx, '[ 项目已创建 ]', '[ PROJECT CREATED ]'), true), '', `${t(this.ctx, '项目已创建', 'Project created')}: ${sanitize(plan.directory)}`, '', ...(nextSteps || [t(this.ctx, '请通过项目诊断查看生成的配置。', 'Inspect the generated configuration with doctor.')]), '', ...[
         [t(this.ctx, '版本查询', 'Version query'), progress?.queryElapsedMs],
         [t(this.ctx, '官方脚手架', 'Official scaffold'), progress?.executionElapsedMs],
         [t(this.ctx, '结果验证', 'Result validation'), progress?.validationElapsedMs],
-      ].flatMap(([label, milliseconds]) => typeof milliseconds === 'number' ? [`${label}: ${this.duration(milliseconds)}`] : []), '', t(this.ctx, '下一步：安装依赖，再按官方文档启动。', 'Next: install dependencies and follow the official guide.')],
+      ].flatMap(([label, milliseconds]) => typeof milliseconds === 'number' ? [`${label}: ${this.duration(milliseconds)}`] : []), '', t(this.ctx, 'I 安装 · S 查看脚本 · D 诊断；执行前将展示确认页。', 'I install · S scripts · D doctor; review the confirmation before execution.')],
       scroll: 0,
     }
     this.render()
@@ -446,20 +501,31 @@ export class Workbench {
     }
   }
 
-  async external<T>(callback: () => T | Promise<T>, notice?: string): Promise<T> {
+  async external<T>(callback: () => T | Promise<T>, notice?: string, interrupt?: () => void): Promise<T> {
     if (this.session.closed || this.abortSignal.aborted) {
       const error = new Error('The terminal session has ended.')
       error.name = 'AbortError'
       throw error
     }
+    const previousInterrupt = this.session.externalInterrupt
+    if (interrupt) {
+      this.session.externalInterrupt = (signal) => {
+        if (signal !== 'SIGINT') {
+          return false
+        }
+        interrupt()
+        return true
+      }
+    }
     this.session.suspend()
     try {
       if (notice) {
-        this.session.output.write(`${sanitize(notice)}\n`)
+        this.session.output.write(`${notice.split('\n').map(line => sanitize(line)).join('\n')}\n`)
       }
       return await callback()
     }
     finally {
+      this.session.externalInterrupt = previousInterrupt
       this.lastTime = performance.now()
       this.session.resume()
       this.render()
@@ -535,6 +601,20 @@ export class Workbench {
   }
 
   async activate(entry: MenuEntry): Promise<void> {
+    if (entry.value === 'project-status' && this.projectContext) {
+      this.screen = { type: 'result', title: t(this.ctx, '当前项目', 'CURRENT PROJECT'), lines: projectLines(this.ctx, this.projectContext), context: this.projectContext, parent: this.hall }
+      return
+    }
+    if (entry.value === 'project-install' || entry.value === 'project-scripts') {
+      if (this.projectContext) {
+        await this.projectAction(this.projectContext, entry.value === 'project-install' ? 'install' : 'scripts')
+      }
+      return
+    }
+    if (entry.value === 'doctor' && this.projectContext && this.projectContext.kind !== 'unknown') {
+      await this.command(['doctor', '--', this.projectContext.projectRoot])
+      return
+    }
     if (entry.value === 'ecosystem') {
       this.screen = this.projects(this.ctx.catalog || [], {}, true)
       return
@@ -572,8 +652,145 @@ export class Workbench {
     }
   }
 
+  async discoverCurrentProject(directory?: string): Promise<void> {
+    try {
+      const discover = this.ctx.discoverProject || (await import('../project/context.js')).discoverProject
+      const context = await discover(directory)
+      if (this.session.closed) {
+        return
+      }
+      const selected = this.hall.entries[this.hall.selected || 0]?.value
+      this.projectContext = context
+      this.projectPending = false
+      const base = this.hall.entries.filter(entry => !entry.value.startsWith('project-'))
+      if (context.kind !== 'unknown') {
+        this.hall.subtitle = sanitize(context.manifest?.name || context.projectRoot)
+        this.hall.entries = [
+          { value: 'project-status', label: t(this.ctx, '当前项目状态', 'Current project status'), description: context.kind === 'invalid' ? t(this.ctx, '项目配置无效，请查看诊断。', 'Invalid project configuration; inspect the diagnostics.') : context.frameworks.join(' · ') || context.kind },
+          base.find(entry => entry.value === 'doctor')!,
+          ...(context.manifest
+            ? [
+                { value: 'project-install', label: t(this.ctx, '安装项目依赖', 'Install project dependencies'), description: t(this.ctx, '确认目录与命令后安装。', 'Review the directory and command before installing.') },
+                { value: 'project-scripts', label: t(this.ctx, '运行项目脚本', 'Run project scripts'), description: Object.keys(context.manifest.scripts || {}).join(' · ') || t(this.ctx, '尚未声明脚本。', 'No scripts declared.') },
+              ]
+            : []),
+          ...base.filter(entry => entry.value !== 'doctor'),
+        ]
+      }
+      else {
+        this.hall.entries = base
+      }
+      this.hall.selected = this.hallTouched ? Math.max(0, this.hall.entries.findIndex(entry => entry.value === selected)) : 0
+      this.render()
+    }
+    catch {
+      if (this.session.closed) {
+        return
+      }
+      const selected = this.hall.entries[this.hall.selected || 0]?.value
+      const requestedDirectory = path.resolve(directory || '.')
+      this.projectContext = { requestedDirectory, projectRoot: requestedDirectory, kind: 'invalid', packageManager: { source: 'unresolved', conflicts: [] }, frameworks: [], configs: [], lockfiles: [], issues: [{ id: 'discovery', severity: 'error', message: 'Unable to read the project. Use doctor to check directory access.', messageZh: '无法读取项目，请使用 doctor 检查目录权限。' }] }
+      this.projectPending = false
+      this.hall.subtitle = t(this.ctx, '无法读取项目，请使用 doctor 检查目录权限。', 'Unable to read the project; use doctor to check directory access.')
+      this.hall.entries = [
+        { value: 'project-status', label: t(this.ctx, '项目读取失败', 'Project discovery failed'), description: this.hall.subtitle },
+        ...this.hall.entries.filter(entry => !entry.value.startsWith('project-')),
+      ]
+      this.hall.selected = this.hallTouched ? Math.max(0, this.hall.entries.findIndex(entry => entry.value === selected)) : 0
+      this.render()
+    }
+  }
+
+  async projectAction(context: ProjectContext, kind: 'install' | 'scripts'): Promise<void> {
+    if (this.busy || this.session.closed) {
+      return
+    }
+    this.busy = true
+    const previous = this.screen
+    const controller = new AbortController()
+    const abort = () => controller.abort()
+    this.abortSignal.addEventListener('abort', abort, { once: true })
+    const active = () => !this.session.closed && !controller.signal.aborted && this.screen === previous
+    const show = (lines: string[]) => {
+      if (!this.session.closed && this.screen === previous) {
+        this.screen = { type: 'result', title: t(this.ctx, '项目操作', 'PROJECT ACTION'), lines, context, parent: previous }
+      }
+    }
+    try {
+      const { discoverProject } = await import('../project/context.js')
+      const { projectActions, executeProjectAction, actionDisplayCommand } = await import('../project/actions.js')
+      if (!active()) {
+        return
+      }
+      const discover = this.ctx.discoverProject || discoverProject
+      context = await discover(context.projectRoot, { packageManager: context.packageManager.source === 'explicit' ? context.packageManager.name : undefined })
+      if (!active()) {
+        return
+      }
+      if (!context.manifest) {
+        show([t(this.ctx, '此项目没有可执行的 package.json，请使用只读诊断。', 'This project has no executable package.json. Use the read-only diagnostics.')])
+        return
+      }
+      if (context.packageManager.conflicts.some(issue => issue.id === 'package-manager-lockfiles')) {
+        const choice = await this.request({ type: 'menu', title: t(this.ctx, '选择包管理器', 'CHOOSE PACKAGE MANAGER'), subtitle: t(this.ctx, '检测到多种锁文件；不会删除或改写现有声明。', 'Multiple lockfiles detected. Choose the manager for this action.'), entries: ['npm', 'pnpm', 'yarn', 'bun'].map(value => ({ value, label: value })) })
+        if (!choice) {
+          return
+        }
+        context = await discover(context.projectRoot, { packageManager: choice as PackageManagerName })
+        if (!active()) {
+          return
+        }
+      }
+      const conflicts = [...context.issues.filter(issue => issue.severity === 'error'), ...context.packageManager.conflicts]
+      if (conflicts.length) {
+        show(issueLines(this.ctx, conflicts))
+        return
+      }
+      const actions = projectActions(context)
+      let action = actions.find(action => action.kind === 'install')
+      if (kind === 'scripts') {
+        const scripts = actions.filter(action => action.kind === 'script')
+        if (!scripts.length) {
+          show([t(this.ctx, 'package.json 未声明可运行脚本。', 'package.json declares no runnable scripts.')])
+          return
+        }
+        const choice = await this.request({ type: 'menu', title: t(this.ctx, '项目脚本', 'PROJECT SCRIPTS'), entries: scripts.map(action => ({ value: action.id, label: action.script!, description: context.manifest?.scripts?.[action.script!] })) })
+        action = scripts.find(action => action.id === choice)
+      }
+      if (!action || !active()) {
+        return
+      }
+      const confirmed = await this.request({ type: 'summary', title: t(this.ctx, '确认项目操作', 'CONFIRM PROJECT ACTION'), confirmation: t(this.ctx, '› Enter 执行命令', '› Enter runs the command'), lines: [
+        `${t(this.ctx, '执行目录', 'Working directory')}: ${action.cwd}`,
+        actionDisplayCommand(action),
+        ...(action.script ? ['', `${t(this.ctx, '脚本内容', 'Script content')}:`, context.manifest?.scripts?.[action.script] || ''] : []),
+        '',
+        t(this.ctx, '执行前检查 Node 与包管理器版本。任务接管终端；Ctrl+C 取消后返回。', 'Check Node and package manager versions before execution. The task takes over the terminal; Ctrl+C cancels and returns.'),
+      ] })
+      if (!confirmed || !active()) {
+        return
+      }
+      const result = await this.external(() => executeProjectAction(action, { ...this.ctx.projectOperations, signal: controller.signal }), `${action.cwd}\n${actionDisplayCommand(action)}`, abort)
+      show([result.status === 'success' ? t(this.ctx, '操作完成。', 'Action completed.') : result.status === 'cancelled' ? t(this.ctx, '已取消，子进程已清理。', 'Cancelled; child processes cleaned up.') : t(this.ctx, '操作未完成，项目文件已保留。', 'Action did not complete; project files were retained.'), ...issueLines(this.ctx, result.errors)])
+    }
+    catch (error) {
+      show([t(this.ctx, '操作未完成。', 'Action did not complete.'), sanitize(error instanceof Error ? error.message : String(error))])
+    }
+    finally {
+      this.abortSignal.removeEventListener('abort', abort)
+      this.busy = false
+      this.render()
+    }
+  }
+
   key(value: string, key: Key, finish: TerminalFinish): void | Promise<void> {
     const screen = this.screen
+    if (screen === this.hall && ['up', 'down', 'c', 'return'].includes(key.name || '')) {
+      if (this.projectPending && key.name === 'return') {
+        return
+      }
+      this.hallTouched = true
+    }
     if (screen === this.hall && key.name === 'escape' && this.createCancellations.size) {
       for (const cancel of this.createCancellations) {
         cancel()
@@ -592,7 +809,7 @@ export class Workbench {
       return
     }
     if (screen === this.hall && key.name === 'c' && !key.ctrl && !key.meta && !this.busy) {
-      return this.activate(this.hall.entries[0]).then(() => this.render())
+      return this.activate(this.hall.entries.find(entry => entry.value === 'create')!).then(() => this.render())
     }
     const entries = this.entries()
     if (this.ctx.motion && key.name === 'space' && ['menu', 'detail'].includes(screen.type)) {
@@ -616,6 +833,12 @@ export class Workbench {
       return
     }
     if (screen.type === 'result') {
+      if (screen.context && key.name === 'd') {
+        return this.command(['doctor', '--', screen.context.projectRoot])
+      }
+      if (screen.context?.manifest && (key.name === 'i' || key.name === 's')) {
+        return this.projectAction(screen.context, key.name === 'i' ? 'install' : 'scripts')
+      }
       if (key.name === 'return') {
         this.screen = screen.parent || this.hall
       }
@@ -699,8 +922,13 @@ export class Workbench {
     return this.session.run({
       start: (finish) => {
         this.finish = finish
+        if (this.screen === this.hall) {
+          this.session.timeout(() => {
+            void this.discoverCurrentProject()
+          }, 0)
+        }
       },
-      render: () => this.render(),
+      render: () => this.requestFrame(),
       tick: this.ctx.motion
         ? () => {
             const now = performance.now()
@@ -708,10 +936,15 @@ export class Workbench {
               this.time += Math.max(0, Math.min(0.15, (now - this.lastTime) / 1000))
             }
             this.lastTime = now
+            const progressVisible = this.screen.type === 'preparing' || Boolean(this.screen.preview && this.createProgress) || (this.busy && this.screen === this.hall)
+            const changingProgress = progressVisible && this.createProgress && ['planning', 'querying', 'executing', 'validating'].includes(this.createProgress.phase)
+            return !this.paused && (!this.hideVisual(this.session.dimensions().height) || Boolean(changingProgress))
           }
         : undefined,
       key: (value, key, finish) => this.key(value, key, finish),
       cancel: () => this.cancel(),
+    }).finally(() => {
+      this.layoutCache = undefined
     })
   }
 }
@@ -814,7 +1047,7 @@ export async function createWizard(ctx: CliContext, route = 'weapp-vite', option
           displayCommand(npmExecArgs(plan)),
           '',
           options.dryRun ? t(ctx, '离线预览，不联网、不创建目录。', 'Offline preview. No network access or directory creation.') : t(ctx, '确认后运行官方脚手架。', 'Confirm to run the official scaffold.'),
-          t(ctx, '依赖由你稍后安装；已有目录不会被覆盖。', 'Install dependencies afterward. Existing directories are preserved.'),
+          options.install && !options.dryRun ? t(ctx, '创建成功后安装依赖；包管理器与兼容要求以生成项目为准。', 'Install dependencies after creation, using the generated project requirements.') : t(ctx, '依赖由你稍后安装；已有目录不会被覆盖。', 'Install dependencies afterward. Existing directories are preserved.'),
         ] })
         if (confirmed && !cancelled && !ctx.operationSignal?.aborted) {
           confirmedCreation = true

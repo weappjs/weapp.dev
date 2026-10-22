@@ -3,8 +3,11 @@ import type { CliContext, CliOptions } from '../types.js'
 import type { CreateOperations, CreateProgress, CreateResult, CreateWizardHooks, ExecutionOptions, QueryOptions, ScaffolderExecution, ScaffolderMetadata, ScaffoldPlan } from './create/plan.js'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+import process from 'node:process'
 // eslint-disable-next-line e18e/ban-dependencies -- Preserve Windows-safe npm spawning on the Node 18 baseline.
 import spawn from 'cross-spawn'
+import { issueLines, projectLines } from '../project/presentation.js'
+import { runProjectProcess } from '../project/process.js'
 import { sanitize, t, write, writeError } from '../shared.js'
 import { cancellationError, checkCancellation, CreateError } from './create/errors.js'
 import { CREATE_ADAPTERS, displayCommand, exists, npmExecArgs, scaffoldPlan, validateSelection } from './create/plan.js'
@@ -100,30 +103,19 @@ export function queryScaffolder(packageName: string, { timeout = 15000, signal, 
     })
   })
 }
-export function executeScaffolder(plan: ScaffoldPlan, version: string, { signal }: ExecutionOptions = {}): Promise<ScaffolderExecution> {
-  return new Promise((resolve, reject) => {
-    checkCancellation({ signal })
-    const child = spawn('npm', npmExecArgs(plan, version), { cwd: plan.cwd, stdio: 'inherit' })
-    const abort = () => child.kill()
-    signal?.addEventListener('abort', abort, { once: true })
-    if (signal?.aborted) {
-      abort()
-    }
-    child.on('error', () => {
-      signal?.removeEventListener('abort', abort)
-      reject(signal?.aborted ? cancellationError() : new CreateError('无法启动官方脚手架，请确认 npm 已安装。', 'Unable to start the official scaffolder. Ensure npm is installed.'))
-    })
-    // Wait for inherited terminal input to be released before restoring the workbench.
-    child.on('close', (code, childSignal) => {
-      signal?.removeEventListener('abort', abort)
-      if (signal?.aborted) {
-        reject(cancellationError())
-      }
-      else {
-        resolve({ code, signal: childSignal })
-      }
-    })
-  })
+export async function executeScaffolder(plan: ScaffoldPlan, version: string, { signal }: ExecutionOptions = {}): Promise<ScaffolderExecution> {
+  checkCancellation({ signal })
+  const result = await runProjectProcess('npm', npmExecArgs(plan, version), plan.cwd, { signal })
+  if (result.cleanupFailed) {
+    throw new CreateError('官方脚手架已停止，但未能完整清理其子进程树。', 'The official scaffolder stopped, but its process tree could not be fully cleaned up.')
+  }
+  if (result.cancelled) {
+    throw cancellationError()
+  }
+  if (result.failedToStart) {
+    throw new CreateError('无法启动官方脚手架，请确认 npm 已安装。', 'Unable to start the official scaffolder. Ensure npm is installed.')
+  }
+  return { code: result.code, signal: result.signal }
 }
 export async function createProject(route: string, directory: string, options: CliOptions = {}, operations: CreateOperations = {}): Promise<CreateResult> {
   checkCancellation(operations)
@@ -192,9 +184,11 @@ export async function runCreate(ctx: CliContext, args: string[], options: CliOpt
   }
   let preparation: CreatePreparation | undefined
   let detachSignal: (() => void) | undefined
+  let detachProcessSignals: (() => void) | undefined
   let unsubscribeProgress: (() => void) | undefined
   let interruptedCode: (() => number | undefined) | undefined
   let locallyCancelled = false
+  let createdDirectory: string | undefined
   try {
     let selectedArgs = args
     let selectedOptions = options
@@ -207,6 +201,28 @@ export async function runCreate(ctx: CliContext, args: string[], options: CliOpt
     detachSignal = () => sourceSignal?.removeEventListener('abort', abort)
     if (sourceSignal?.aborted) {
       abort()
+    }
+    const terminalSession = ctx.resources?.workbench?.session
+    if (!ctx.hub && !(terminalSession?.started && !terminalSession.closed)) {
+      // Standalone commands own signal forwarding while their detached children run.
+      // An active wizard owns terminal signals until it returns to this command.
+      const interrupt = (code: number) => {
+        const session = ctx.resources?.workbench?.session
+        if (session?.started && !session.closed) {
+          return
+        }
+        ctx.cancelled = true
+        ctx.cancelledCode = code
+        abort()
+      }
+      const onInterrupt = () => interrupt(130)
+      const onTerminate = () => interrupt(143)
+      process.on('SIGINT', onInterrupt)
+      process.on('SIGTERM', onTerminate)
+      detachProcessSignals = () => {
+        process.removeListener('SIGINT', onInterrupt)
+        process.removeListener('SIGTERM', onTerminate)
+      }
     }
     const operations: CreateOperations = {
       ...ctx.createOperations,
@@ -297,14 +313,49 @@ export async function runCreate(ctx: CliContext, args: string[], options: CliOpt
     }
     if (result.dryRun) {
       write(ctx, `${t(ctx, '执行目录', 'Working directory')}: ${sanitize(result.plan.cwd)}\n${displayCommand(npmExecArgs(result.plan))}`)
-      write(ctx, t(ctx, '实际运行会先检查官方版本和 Node 要求；此预览没有联网或写入文件。', 'Execution first checks the official version and Node requirements; this preview does not access the network or write files.'))
-    }
-    else if (ctx.hub && ctx.resources?.workbench?.session.started && !ctx.resources.workbench.session.closed) {
-      ctx.resources.workbench.showCreateSuccess(result.plan, lastProgress)
+      write(ctx, t(ctx, '此预览没有联网、写入文件或安装依赖。包管理器、脚本和项目要求在创建后判断。', 'This preview does not access the network, write files, or install dependencies. Package manager, scripts, and project requirements are determined after creation.'))
     }
     else {
-      write(ctx, `${t(ctx, '项目已创建', 'Project created')}: ${sanitize(result.plan.directory)}`)
-      write(ctx, `cd ${displayCommand([result.plan.directory]).slice(4)}\nnpm install`)
+      // Creation has succeeded. A failed optional installation must never be reported as a failed scaffold.
+      createdDirectory = result.plan.directory
+      const { discoverProject } = await import('../project/context.js')
+      const project = await discoverProject(result.plan.directory, { packageManager: selectedOptions.packageManager })
+      const { projectActions, executeProjectAction, actionDisplayCommand } = await import('../project/actions.js')
+      let installCode = 0
+      let installation: string[] = []
+      if (selectedOptions.install) {
+        const install = projectActions(project).find(action => action.kind === 'install')
+        if (!install) {
+          installCode = 1
+          installation = [t(ctx, '项目已创建，但不能安装依赖。请先解决项目或包管理器声明。', 'Project created, but installation is unavailable. Resolve the project or package manager declaration first.')]
+        }
+        else {
+          const execute = () => executeProjectAction(install, { ...ctx.projectOperations, signal: controller.signal })
+          const notice = `${install.cwd}\n${actionDisplayCommand(install)}`
+          const outcome = workbench ? await workbench.external(execute, notice, () => controller.abort()) : await execute()
+          // A locally cancelled follow-up leaves a usable, successfully created project in the hub.
+          // Standalone commands and global interrupts still report their actual exit status.
+          const returnToProject = outcome.status === 'cancelled' && ctx.hub && workbench?.session.started && !workbench.session.closed && !workbench.abortSignal.aborted
+          installCode = ctx.cancelledCode || interruptedCode?.() || (returnToProject ? 0 : outcome.code)
+          installation = [outcome.status === 'success'
+            ? t(ctx, '依赖安装完成。', 'Dependencies installed.')
+            : t(ctx, '项目已创建；安装未完成，生成文件已保留，可重新选择安装。', 'Project created; installation did not finish. Generated files are preserved; you can retry installation.'), ...issueLines(ctx, outcome.errors)]
+        }
+      }
+      const nextSteps = [
+        ...projectLines(ctx, project),
+        ...installation,
+        ...(!selectedOptions.install ? projectActions(project).filter(action => action.kind === 'install').map(action => `${action.cwd}\n${actionDisplayCommand(action)}`) : []),
+        `weapp doctor ${displayCommand([project.projectRoot]).slice(4)}`,
+      ]
+      if (ctx.hub && workbench?.session.started && !workbench.session.closed) {
+        workbench.showCreateSuccess(result.plan, lastProgress, project, nextSteps)
+      }
+      else {
+        write(ctx, `${t(ctx, '项目已创建', 'Project created')}: ${sanitize(result.plan.directory)}`)
+        write(ctx, nextSteps.join('\n'))
+      }
+      return installCode
     }
     return 0
   }
@@ -312,12 +363,15 @@ export async function runCreate(ctx: CliContext, args: string[], options: CliOpt
     if (error instanceof Error && error.name === 'AbortError') {
       return ctx.cancelledCode || interruptedCode?.() || (locallyCancelled && !ctx.cancelled ? 0 : 130)
     }
-    writeError(ctx, sanitize(error instanceof CreateError ? t(ctx, error.zh, error.en) : t(ctx, '无法创建项目，请检查目录权限。', 'Unable to create the project. Check directory permissions.')))
+    writeError(ctx, sanitize(createdDirectory
+      ? t(ctx, `项目已创建于 ${createdDirectory}，后续操作未完成。请运行 doctor 检查后重试；生成文件已保留。`, `Project created at ${createdDirectory}, but the follow-up action did not finish. Run doctor before retrying; generated files were retained.`)
+      : error instanceof CreateError ? t(ctx, error.zh, error.en) : t(ctx, '无法创建项目，请检查目录权限。', 'Unable to create the project. Check directory permissions.')))
     return 1
   }
   finally {
     unsubscribeProgress?.()
     preparation?.dispose()
     detachSignal?.()
+    detachProcessSignals?.()
   }
 }
