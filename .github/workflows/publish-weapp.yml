@@ -55,7 +55,7 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Install npm with trusted publishing support
-        run: npm install --global npm@12.2.0
+        run: npm install --global npm@12.2.1
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

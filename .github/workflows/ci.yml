@@ -7,6 +7,7 @@ on:
       - 'apps/web/**'
       - 'packages/**'
       - 'scripts/**'
+      - 'patches/**'
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
@@ -21,6 +22,7 @@ on:
       - 'apps/web/**'
       - 'packages/**'
       - 'scripts/**'
+      - 'patches/**'
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml

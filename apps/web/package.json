@@ -25,23 +25,23 @@
     "@astrojs/sitemap": "3.7.4",
     "@fontsource-variable/geist": "5.3.0",
     "@fontsource-variable/geist-mono": "5.3.0",
-    "@lucide/astro": "1.57.0",
+    "@lucide/astro": "1.61.0",
     "@weapp-io/project-catalog": "workspace:*",
     "@weapp-io/site-ui": "workspace:*",
-    "astro": "7.3.8",
-    "echarts": "^6.1.0"
+    "astro": "7.4.1",
+    "echarts": "6.1.0"
   },
   "devDependencies": {
-    "@astrojs/check": "0.9.10",
-    "@axe-core/playwright": "4.13.0",
+    "@astrojs/check": "0.9.11",
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.64.1",
-    "node-html-parser": "9.0.4",
+    "node-html-parser": "9.0.5",
     "sharp": "0.35.5",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
-    "vitest": "5.0.4",
-    "weapp-tailwindcss": "5.6.2",
-    "wrangler": "4.151.0"
+    "vitest": "5.0.5",
+    "weapp-tailwindcss": "5.6.3",
+    "wrangler": "4.151.3"
   }
 }

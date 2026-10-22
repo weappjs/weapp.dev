@@ -1,7 +1,8 @@
 import { strict as assert } from 'node:assert'
 import { spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -109,6 +110,11 @@ async function withFixture(intent, run) {
     }
     const rootManifest = await json(repository, 'package.json')
     await write(cwd, 'pnpm-workspace.yaml', await readFile(path.join(repository, 'pnpm-workspace.yaml'), 'utf8'))
+    // Keep files referenced by the real workspace configuration available to native pnpm.
+    const patches = path.join(repository, 'patches')
+    if (existsSync(patches)) {
+      await cp(patches, path.join(cwd, 'patches'), { recursive: true })
+    }
     await write(cwd, '.npmrc', `registry=${registryUrl}\n`)
     await write(cwd, 'package.json', `${JSON.stringify({
       name: rootManifest.name,

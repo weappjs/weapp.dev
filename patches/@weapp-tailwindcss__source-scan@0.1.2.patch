@@ -1,0 +1,24 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index dde4f9d515e528e65ca575eb2eee275ed84671e3..9a89c5af3680aed25433ec452506672959e5f78e 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -86,6 +86,7 @@ const FULL_SOURCE_SCAN_EXTENSIONS = [
+ 	"uvue",
+ 	"nvue",
+ 	"svelte",
++	"astro",
+ 	"mpx",
+ 	"html",
+ 	"wxml",
+diff --git a/dist/index.js b/dist/index.js
+index e56399ead3638048cb54dba40159e53f473c2756..48a5334c81c6d870ac4384bc5afb5a5473eb158e 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -61,6 +61,7 @@ const FULL_SOURCE_SCAN_EXTENSIONS = [
+ 	"uvue",
+ 	"nvue",
+ 	"svelte",
++	"astro",
+ 	"mpx",
+ 	"html",
+ 	"wxml",
