@@ -39,18 +39,18 @@ export async function runFx(ctx: CliContext, args: string[] = [], options: CliOp
   let paused = !ctx.motion
   let previous = performance.now()
   const session = new TerminalSession(ctx)
-  const render = () => {
+  const render = () => session.render(() => {
     const { width, height } = session.dimensions()
     const help = ctx.motion
       ? t(ctx, '空格 暂停 · R 重播 · ←/→ 切换 · Q 返回', 'Space pause · R replay · ←/→ switch · Q back')
       : t(ctx, '静态预览 · R 重播 · ←/→ 切换 · Q 返回', 'Static preview · R replay · ←/→ switch · Q back')
-    session.render([
+    return [
       ` WEAPP / ${EFFECTS[effectIndex].toUpperCase()}   ${paused ? t(ctx, '已暂停', 'PAUSED') : t(ctx, '播放中', 'LIVE')}`,
       ...scene(width, Math.max(1, height - 4), elapsed),
       '',
       ` ${help}`,
-    ])
-  }
+    ]
+  })
   return status(ctx, await session.run({
     start(finish) {
       if (options.duration) {
@@ -65,6 +65,7 @@ export async function runFx(ctx: CliContext, args: string[] = [], options: CliOp
             elapsed += Math.min(0.15, (now - previous) / 1000)
           }
           previous = now
+          return !paused
         }
       : undefined,
     key(value, key, finish) {
@@ -114,19 +115,18 @@ export async function runSnake(ctx: CliContext, args: string[] = ['snake'], opti
   let note = ''
   let accumulator = 0
   let previous = performance.now()
-  const render = () => {
+  const render = () => session.render(() => {
     const heading = ` WEAPP / SNAKE   ${t(ctx, '得分', 'SCORE')} ${game.score}`
     if (size.small) {
-      session.render([heading, '', t(ctx, '窗口太小，游戏已暂停。放大窗口，或按 Q 返回。', 'Window too small. Enlarge it, or press Q to return.')])
-      return
+      return [heading, '', t(ctx, '窗口太小，游戏已暂停。放大窗口，或按 Q 返回。', 'Window too small. Enlarge it, or press Q to return.')]
     }
     const phase = game.phase === 'won'
       ? t(ctx, '你赢了！R 再玩一次', 'YOU WON! R to restart')
       : game.phase === 'over'
         ? t(ctx, '游戏结束 · R 再玩一次', 'GAME OVER · R to restart')
         : paused ? t(ctx, '已暂停 · 空格继续', 'PAUSED · Space resumes') : t(ctx, '方向键 / WASD 移动', 'Arrows / WASD move')
-    session.render([heading, ...snakeLines(game, ctx.color), phase, note, t(ctx, '空格 暂停 · R 重开 · Q 返回', 'Space pause · R restart · Q back')])
-  }
+    return [heading, ...snakeLines(game, ctx.color), phase, note, t(ctx, '空格 暂停 · R 重开 · Q 返回', 'Space pause · R restart · Q back')]
+  })
   return status(ctx, await session.run({
     render,
     tick() {
@@ -134,14 +134,16 @@ export async function runSnake(ctx: CliContext, args: string[] = ['snake'], opti
       const delta = Math.min(150, now - previous)
       previous = now
       if (paused || size.small || game.phase !== 'running') {
-        return
+        return false
       }
       accumulator += delta
       const interval = Math.max(90, 210 - game.score * 5)
       if (accumulator >= interval) {
         game = tickSnake(game)
         accumulator %= interval
+        return true
       }
+      return false
     },
     resize() {
       const nextSize = boardSize()

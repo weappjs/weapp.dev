@@ -123,7 +123,7 @@ try {
   const runner = join(bin, 'npm-fixture.cjs')
   await writeFile(runner, `const fs = require('node:fs'); const path = require('node:path');
 const args = process.argv.slice(2);
-fs.appendFileSync(process.env.WEAPP_SMOKE_CAPTURE, JSON.stringify({args, cwd:process.cwd()}) + '\\n');
+fs.appendFileSync(process.env.WEAPP_SMOKE_CAPTURE, JSON.stringify({args, cwd:process.cwd(), corepackNetwork:process.env.COREPACK_ENABLE_NETWORK, managePackageManagerVersions:process.env.npm_config_manage_package_manager_versions}) + '\\n');
 if (args[0] === 'view') process.stdout.write(JSON.stringify({version:'1.2.3',engines:{node:'>=18'}}));
 else if (args[0] === '--version') process.stdout.write('10.0.0\\n');
 else if (args[0] === 'exec') {
@@ -158,6 +158,67 @@ else if (args[0] === 'exec') {
   assert.equal(calls[0].cwd, await realpath(fixture))
   assert.equal(calls[1].cwd, await realpath(fixture), 'Windows .cmd and POSIX shebang preserve the Unicode/metacharacter working directory')
   assert.equal(parseProject(parseJson(run(['info', 'tw', '--json'], { cwd: fixture, env }))).slug, 'weapp-tailwindcss')
+
+  const dryTarget = join(fixture, 'offline-install-preview')
+  const capturedBeforePreview = await readFile(capture, 'utf8')
+  const preview = run(['create', 'weapp-vite', dryTarget, '--dry-run', '--install', '--package-manager', 'pnpm'], { cwd: fixture, env })
+  assert.match(preview, /create-weapp-vite@latest/)
+  assert.match(preview, /does not access the network/)
+  await assert.rejects(access(dryTarget), { code: 'ENOENT' }, 'Install preview must not create the target')
+  assert.equal(await readFile(capture, 'utf8'), capturedBeforePreview, 'Dry-run with installation must not invoke a package manager')
+
+  const packedProject = await realpath(join(fixture, 'packed-project'))
+  const sourceDirectory = join(packedProject, 'src', 'pages')
+  await mkdir(sourceDirectory, { recursive: true })
+  const nestedReport = parseJson(run(['doctor', sourceDirectory, '--json'], { cwd: fixture, env }))
+  assert.ok(isRecord(nestedReport) && isRecord(nestedReport.context) && Array.isArray(nestedReport.checks))
+  assert.equal(nestedReport.directory, sourceDirectory, 'Existing JSON directory field retains requested-directory semantics')
+  assert.equal(nestedReport.requestedDirectory, sourceDirectory)
+  assert.equal(nestedReport.projectRoot, packedProject)
+  assert.equal(nestedReport.context.kind, 'package')
+  assert.equal(nestedReport.context.projectRoot, packedProject)
+  assert.match(run(['doctor', sourceDirectory], { cwd: fixture, env }), /Detected project root:/)
+  const probeCalls: unknown[] = (await readFile(capture, 'utf8')).trim().split('\n').map(parseJson)
+  const probe = probeCalls.at(-1)
+  assert.ok(isRecord(probe))
+  assert.deepEqual(probe.args, ['--version'])
+  assert.equal(probe.cwd, packedProject, 'Doctor probes in the detected project context')
+  assert.equal(probe.corepackNetwork, '0', 'Doctor must not trigger Corepack downloads')
+  assert.equal(probe.managePackageManagerVersions, 'false', 'Doctor must not trigger pnpm manager downloads')
+
+  const nativeProject = join(fixture, 'native-project')
+  await mkdir(nativeProject)
+  await writeFile(join(nativeProject, 'app.json'), JSON.stringify({ pages: ['pages/index/index'] }))
+  const capturedBeforeNative = await readFile(capture, 'utf8')
+  const nativeReport = parseJson(run(['doctor', nativeProject, '--json'], { cwd: fixture, env }))
+  assert.ok(isRecord(nativeReport) && isRecord(nativeReport.context))
+  assert.equal(nativeReport.ok, true, 'Native projects do not require package.json')
+  assert.equal(nativeReport.context.kind, 'native')
+  assert.equal(await readFile(capture, 'utf8'), capturedBeforeNative, 'Native-only doctor does not probe a package manager')
+
+  await mkdir(join(packedProject, 'node_modules', 'weapp-vite'), { recursive: true })
+  await writeFile(join(packedProject, 'node_modules', 'weapp-vite', 'package.json'), JSON.stringify({ name: 'weapp-vite', version: '2.0.0' }))
+  const versionReport = parseJson(run(['doctor', packedProject, '--json'], { cwd: fixture, env }))
+  assert.ok(isRecord(versionReport) && Array.isArray(versionReport.checks))
+  const versionCheck = versionReport.checks.find(check => isRecord(check) && check.id === 'dependency-versions')
+  assert.ok(isRecord(versionCheck) && isRecord(versionCheck.suggestion))
+  assert.equal(versionCheck.severity, 'warning')
+  assert.deepEqual(versionCheck.suggestion, { cwd: packedProject, command: 'npm', args: ['install'] })
+
+  const workspace = join(fixture, 'workspace')
+  const member = join(workspace, 'packages', 'member')
+  await mkdir(member, { recursive: true })
+  await writeFile(join(workspace, 'package.json'), JSON.stringify({ packageManager: 'npm@10.0.0' }))
+  await writeFile(join(workspace, 'pnpm-workspace.yaml'), 'packages:\n  - "packages/*"\n  - "!packages/excluded"\n')
+  await writeFile(join(member, 'package.json'), JSON.stringify({ packageManager: 'npm@9.0.0' }))
+  const conflictResult = spawnSync(process.execPath, [cli, 'doctor', member, '--json'], { cwd: fixture, env, encoding: 'utf8', timeout: 15000 })
+  assert.equal(conflictResult.status, 1)
+  assert.equal(conflictResult.stderr, '')
+  const conflictReport = parseJson(conflictResult.stdout)
+  assert.ok(isRecord(conflictReport) && isRecord(conflictReport.context) && isRecord(conflictReport.context.workspace) && Array.isArray(conflictReport.checks))
+  assert.equal(conflictReport.context.workspace.root, await realpath(workspace))
+  assert.ok(conflictReport.checks.some(check => isRecord(check) && check.id === 'package-manager-workspace' && check.severity === 'error'), 'Packed YAML/glob support must preserve declaration conflicts')
+
   const empty = join(fixture, 'empty-path')
   await mkdir(empty)
   env[process.platform === 'win32' ? 'Path' : 'PATH'] = empty

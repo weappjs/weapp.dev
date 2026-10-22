@@ -26,7 +26,7 @@ beforeAll(async () => {
         }
         const result = await next(specifier, context);
         const filename = result.url.split('/').at(-1);
-        const feature = filename.match(/^(catalog|create|doctor|lab|palette|qr|terminal|session)(?:-[\\w-]+)?\\.js$/)?.[1];
+        const feature = filename.match(/^(catalog|create|doctor|lab|palette|qr|terminal|session|context|actions|process)(?:-[\\w-]+)?\\.js$/)?.[1];
         if (feature && !allowedFeatures.has(feature)) {
           throw new Error('Startup loaded an unrelated feature: ' + feature);
         }
@@ -83,7 +83,7 @@ function guarded(args: string[], { catalog = false, execution = false, hall = fa
       NO_COLOR: '1',
       WEAPP_TEST_ALLOW_CATALOG: catalog ? '1' : '0',
       WEAPP_TEST_ALLOW_VISUAL: hall ? '1' : '0',
-      WEAPP_TEST_ALLOWED_FEATURES: JSON.stringify(hall ? ['terminal', 'session', 'catalog'] : args.includes('--help') ? [] : [feature]),
+      WEAPP_TEST_ALLOWED_FEATURES: JSON.stringify(hall ? ['terminal', 'session', 'catalog', 'context'] : args.includes('--help') ? [] : feature === 'doctor' ? ['doctor', 'context', 'actions', 'process'] : feature === 'create' ? ['create', 'process'] : [feature]),
       WEAPP_TEST_DENIED_IMPORTS: JSON.stringify(['open', 'http', 'https', ...(hall ? [] : ['readline']), ...(execution ? [] : ['child_process'])]),
     },
   })

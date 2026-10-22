@@ -4,6 +4,8 @@ import type { Readable } from 'node:stream'
 import type { CreateOperations, CreateWizardSelection } from './commands/create.js'
 import type { CreateWizardHooks } from './commands/create/plan.js'
 import type { LabHandle } from './lab.js'
+import type { ProjectActionOptions } from './project/actions.js'
+import type { discoverProject, PackageManagerName } from './project/context.js'
 import type { Workbench } from './terminal/workbench.js'
 
 export type Language = 'zh-CN' | 'en'
@@ -56,6 +58,8 @@ export interface CliOptions {
   open?: boolean
   template?: string
   dryRun?: boolean
+  install?: boolean
+  packageManager?: PackageManagerName
   output?: string
   format?: string
   force?: boolean
@@ -79,6 +83,8 @@ export interface CliContext {
   cancelledCode?: number
   operationSignal?: AbortSignal
   createOperations?: CreateOperations
+  projectOperations?: ProjectActionOptions
+  discoverProject?: typeof discoverProject
   createWizard?: (route: string, options: CliOptions, hooks?: CreateWizardHooks) => Promise<CreateWizardSelection | null>
 }
 

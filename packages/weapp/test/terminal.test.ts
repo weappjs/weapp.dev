@@ -98,7 +98,19 @@ function terminal({ raw = false, paused = true, motion = true, width = 80, heigh
   output.columns = width
   output.rows = height
   const signals = new EventEmitter()
-  const ctx: CliContext = { lang: 'en', stdin: input, stdout: output, stderr: output, color: false, motion, interactive: true, catalog: catalog(), resources: {}, openUrl: async () => undefined }
+  const ctx: CliContext = {
+    lang: 'en',
+    stdin: input,
+    stdout: output,
+    stderr: output,
+    color: false,
+    motion,
+    interactive: true,
+    catalog: catalog(),
+    resources: {},
+    openUrl: async () => undefined,
+    discoverProject: async (directory = '/empty-project') => ({ requestedDirectory: directory, projectRoot: directory, kind: 'unknown', packageManager: { source: 'unresolved', conflicts: [] }, frameworks: [], configs: [], lockfiles: [], issues: [] }),
+  }
   const key = (name: string, value = '', extra: Key = {}) => input.emit('keypress', value, { name, ...extra })
   return { input, output, signals, ctx, key }
 }
@@ -227,7 +239,8 @@ describe('terminal ownership', () => {
     const io = terminal({ width: 12, height: 3 })
     const session = new TerminalSession(io.ctx, { signals: io.signals })
     let selection = 0
-    const render = (owner: TerminalSession) => owner.render([`绿色工具箱 / WEAPP ${selection}`])
+    const frame = vi.fn(() => [`绿色工具箱 / WEAPP ${selection}`])
+    const render = (owner: TerminalSession) => owner.render(frame)
     const result = session.run({ render, key: (_value, key, finish) => {
       if (key.name === 'escape') {
         finish(0)
@@ -244,10 +257,12 @@ describe('terminal ownership', () => {
       io.output.emit('resize')
     }
     expect(io.output.frames()).toHaveLength(1)
+    expect(frame).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(49)
     expect(io.output.frames()).toHaveLength(1)
     await vi.advanceTimersByTimeAsync(1)
     expect(io.output.frames()).toHaveLength(2)
+    expect(frame).toHaveBeenCalledTimes(2)
     expect(io.output.frame()).toContain('绿色工具箱 / WEAPP 50')
     io.key('escape')
     await result
@@ -291,6 +306,139 @@ describe('terminal ownership', () => {
     expect(io.output.listenerCount('drain')).toBe(0)
   })
 
+  it('keeps ticking under backpressure but evaluates only the latest frame at the current size', async () => {
+    fakeClock()
+    const io = terminal({ width: 12 })
+    const write = io.output.write.getMockImplementation()!
+    io.output.write.mockImplementation(value => write(value) && !value.includes('Tick 0'))
+    const session = new TerminalSession(io.ctx, { signals: io.signals })
+    let tick = 0
+    const frame = vi.fn(() => [`Tick ${tick} / latest terminal dimensions`])
+    const result = session.run({
+      render: owner => owner.render(frame),
+      tick: () => { tick++ },
+      key: (_value, _key, finish) => finish(0),
+    })
+    await vi.advanceTimersByTimeAsync(250)
+    expect(tick).toBe(5)
+    expect(frame).toHaveBeenCalledTimes(1)
+    io.output.columns = 80
+    io.output.emit('resize')
+    expect(frame).toHaveBeenCalledTimes(1)
+    expect(io.output.listenerCount('drain')).toBe(1)
+    io.output.emit('drain')
+    expect(frame).toHaveBeenCalledTimes(2)
+    expect(io.output.frame()).toBe('Tick 5 / latest terminal dimensions')
+    io.key('q')
+    await result
+  })
+
+  it('defers producers before opening and discards queued work on close', async () => {
+    fakeClock()
+    const io = terminal()
+    const session = new TerminalSession(io.ctx, { signals: io.signals })
+    const stale = vi.fn(() => ['Stale'])
+    const ready = vi.fn(() => ['Ready'])
+    const after = vi.fn(() => ['After close'])
+    session.render(stale)
+    expect(stale).not.toHaveBeenCalled()
+    const result = session.run({ render: owner => owner.render(ready), key: (_value, _key, finish) => finish(0) })
+    expect(ready).toHaveBeenCalledOnce()
+    expect(stale).not.toHaveBeenCalled()
+    session.render(after)
+    io.key('q')
+    await result
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(after).not.toHaveBeenCalled()
+    expect(session.pending).toBeNull()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('skips unchanged ticks without suppressing duration timeouts', async () => {
+    fakeClock()
+    const io = terminal()
+    const session = new TerminalSession(io.ctx, { signals: io.signals })
+    const frame = vi.fn(() => ['Paused'])
+    const tick = vi.fn(() => false)
+    const result = session.run({
+      start: (finish, owner) => { owner.timeout(() => finish(0), 250) },
+      render: owner => owner.render(frame),
+      tick,
+    })
+    await vi.advanceTimersByTimeAsync(250)
+    expect(await result).toBe(0)
+    expect(tick).toHaveBeenCalled()
+    expect(frame).toHaveBeenCalledOnce()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('handles external interrupts locally only while suspended', async () => {
+    const io = terminal()
+    const session = new TerminalSession(io.ctx, { signals: io.signals })
+    const handler = vi.fn(() => true)
+    const result = session.run({ render: owner => owner.render(['Ready']) })
+    session.externalInterrupt = handler
+    session.suspend()
+    io.signals.emit('SIGINT')
+    expect(handler).toHaveBeenCalledWith('SIGINT')
+    expect(session.closed).toBe(false)
+    expect(io.ctx.cancelled).toBeUndefined()
+    session.resume()
+    io.signals.emit('SIGINT')
+    expect(await result).toBe(130)
+    expect(handler).toHaveBeenCalledOnce()
+    expect(session.externalInterrupt).toBeUndefined()
+    expect(io.input.isRaw).toBe(false)
+    expect(io.signals.eventNames()).toEqual([])
+  })
+
+  it('preserves global termination when the external handler declines', async () => {
+    const io = terminal()
+    const session = new TerminalSession(io.ctx, { signals: io.signals })
+    const result = session.run({})
+    const handler = vi.fn(() => false)
+    session.externalInterrupt = handler
+    session.suspend()
+    io.signals.emit('SIGTERM')
+    expect(await result).toBe(143)
+    expect(handler).toHaveBeenCalledWith('SIGTERM')
+    expect(io.ctx.cancelledCode).toBe(143)
+    expect(io.input.isRaw).toBe(false)
+  })
+
+  it('restores the terminal when an external interrupt handler throws', async () => {
+    const io = terminal()
+    const session = new TerminalSession(io.ctx, { signals: io.signals })
+    const result = session.run({})
+    const assertion = expect(result).rejects.toThrow('External interrupt failed')
+    session.suspend()
+    session.externalInterrupt = () => {
+      throw new Error('External interrupt failed')
+    }
+    expect(() => io.signals.emit('SIGINT')).not.toThrow()
+    await assertion
+    expect(io.input.isRaw).toBe(false)
+    expect(io.input.listenerCount('keypress')).toBe(0)
+    expect(io.signals.eventNames()).toEqual([])
+  })
+
+  it('restores the terminal when a deferred frame producer throws', async () => {
+    fakeClock()
+    const io = terminal()
+    const session = new TerminalSession(io.ctx, { signals: io.signals })
+    const result = session.run({ render: owner => owner.render(['Initial']) })
+    const assertion = expect(result).rejects.toThrow('Deferred frame failed')
+    session.render(() => {
+      throw new Error('Deferred frame failed')
+    })
+    await nextFrame()
+    await assertion
+    expect(io.input.isRaw).toBe(false)
+    expect(io.input.listenerCount('keypress')).toBe(0)
+    expect(session.pending).toBeNull()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it('restores input when a delayed drain flush throws', async () => {
     fakeClock()
     const io = terminal()
@@ -326,7 +474,7 @@ describe('terminal ownership', () => {
 })
 
 describe('live workbench', () => {
-  it('shows actions in the first frame and sends the first Enter directly to creation', async () => {
+  it('shows actions in the first frame and sends C directly to creation during discovery', async () => {
     fakeClock()
     const io = terminal()
     const dispatch = vi.fn(async (argv: string[]) => {
@@ -340,7 +488,7 @@ describe('live workbench', () => {
     expect(io.output.frame()).toContain('Create with weapp-vite')
     expect(io.output.frame()).not.toContain('Press any key')
     expect(io.output.frame()).not.toMatch(/snake|game/i)
-    io.key('return')
+    io.key('c', 'c')
     await nextFrame()
     expect(dispatch).toHaveBeenCalledTimes(1)
     expect(alternateCount(io.output)).toBe(1)
@@ -354,6 +502,7 @@ describe('live workbench', () => {
     const io = terminal({ motion: false })
     const dispatch = vi.fn(async () => 0)
     const result = runHub(io.ctx, dispatch)
+    await nextFrame()
     io.key('c', 'c')
     await nextFrame()
     expect(dispatch).toHaveBeenCalledExactlyOnceWith(['create'])
@@ -372,6 +521,7 @@ describe('live workbench', () => {
     fakeClock()
     const io = terminal({ motion: false })
     const result = runHub(io.ctx, vi.fn())
+    await nextFrame()
     const workbench = io.ctx.resources.workbench!
     let rejectPreparation: (reason: Error) => void = () => {}
     const preparation = new Promise<never>((_resolve, reject) => {
@@ -403,6 +553,7 @@ describe('live workbench', () => {
     fakeClock()
     const io = terminal()
     const result = runHub(io.ctx, vi.fn())
+    await nextFrame()
     const workbench = io.ctx.resources.workbench!
     workbench.setCreateProgress({ phase: 'querying', packageName: 'create-weapp-vite', cwd: '/tmp' })
     await vi.advanceTimersByTimeAsync(350)
@@ -425,6 +576,7 @@ describe('live workbench', () => {
         release = resolve
       })
     })
+    await nextFrame()
     const workbench = io.ctx.resources.workbench!
     io.key('return')
     io.key('escape')
@@ -444,6 +596,7 @@ describe('live workbench', () => {
     fakeClock()
     const io = terminal()
     const result = runHub(io.ctx, vi.fn())
+    await nextFrame()
     io.key('x', 'x')
     await nextFrame()
     const initial = io.output.frame()
@@ -467,6 +620,7 @@ describe('live workbench', () => {
     fakeClock()
     const io = terminal()
     const result = runHub(io.ctx, vi.fn())
+    await nextFrame()
     io.key('x', 'x')
     io.key('down')
     io.key('return')
@@ -486,11 +640,67 @@ describe('live workbench', () => {
     await result
   })
 
+  it('does not compute paused frames and still reacts to selection and resize', async () => {
+    fakeClock()
+    const io = terminal({ width: 120, height: 30 })
+    const result = runHub(io.ctx, vi.fn())
+    await nextFrame()
+    const workbench = io.ctx.resources.workbench!
+    const frame = vi.spyOn(workbench, 'frame')
+    io.key('space', ' ')
+    await nextFrame()
+    frame.mockClear()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(frame).not.toHaveBeenCalled()
+    io.key('down')
+    await nextFrame()
+    expect(frame).toHaveBeenCalledTimes(1)
+    expect(io.output.frame()).toContain('› Explore the weapp ecosystem')
+    io.output.columns = 44
+    io.output.rows = 18
+    io.output.emit('resize')
+    await nextFrame()
+    expect(frame).toHaveBeenCalledTimes(2)
+    const frozenTime = workbench.time
+    io.key('space', ' ')
+    await nextFrame()
+    expect(workbench.time - frozenTime).toBeLessThanOrEqual(0.05)
+    expect(frame.mock.calls.length).toBeGreaterThan(2)
+    io.key('q', 'q')
+    await result
+  })
+
+  it('reuses the current static layout while animation continues', async () => {
+    fakeClock()
+    const io = terminal({ width: 120, height: 30 })
+    const result = runHub(io.ctx, vi.fn())
+    await nextFrame()
+    const workbench = io.ctx.resources.workbench!
+    const entries = vi.spyOn(workbench, 'entries')
+    const initial = io.output.frame()
+    await vi.advanceTimersByTimeAsync(300)
+    expect(io.output.frame()).not.toBe(initial)
+    expect(entries).not.toHaveBeenCalled()
+    io.key('down')
+    await nextFrame()
+    expect(io.output.frame()).toContain('› Explore the weapp ecosystem')
+    entries.mockClear()
+    await vi.advanceTimersByTimeAsync(300)
+    expect(entries).not.toHaveBeenCalled()
+    io.output.columns = 44
+    io.output.emit('resize')
+    await nextFrame()
+    expect(entries).toHaveBeenCalledOnce()
+    io.key('q', 'q')
+    await result
+  })
+
   it('shares one alternate screen across hall, project details, and a nested wizard', async () => {
     fakeClock()
     const io = terminal({ motion: false })
     const dispatch = vi.fn(() => runCreateWizard(io.ctx))
     const result = runHub(io.ctx, dispatch)
+    await nextFrame()
     io.key('down')
     io.key('return')
     io.key('return')
@@ -514,6 +724,7 @@ describe('live workbench', () => {
     fakeClock()
     const io = terminal({ motion: false, width: 44, height: 18 })
     const result = runHub(io.ctx, vi.fn())
+    await nextFrame()
     expect(vi.getTimerCount()).toBe(0)
     const stable = io.output.frame()
     await vi.advanceTimersByTimeAsync(1000)
@@ -541,6 +752,7 @@ describe('live workbench', () => {
       return 0
     })
     const result = runHub(io.ctx, dispatch)
+    await nextFrame()
     io.key('up')
     io.key('return')
     await nextFrame()
@@ -633,6 +845,7 @@ describe('live workbench', () => {
     const io = terminal({ motion: false })
     const workbench = new Workbench(io.ctx, vi.fn())
     const running = workbench.run()
+    await nextFrame()
     const original = workbench.screen
     let release: () => void = () => {}
     const callback = vi.fn(() => {
@@ -668,6 +881,7 @@ describe('live workbench', () => {
       })
     })
     const result = runHub(io.ctx, dispatch)
+    await nextFrame()
     const workbench = io.ctx.resources.workbench!
     io.key('return')
     expect(signal!.aborted).toBe(false)
@@ -688,6 +902,7 @@ describe('live workbench', () => {
     const io = terminal({ motion: false })
     const dispatch = vi.fn(() => runFx({ ...io.ctx }, ['orbit']))
     const result = runHub(io.ctx, dispatch)
+    await nextFrame()
     io.key('up')
     io.key('return')
     await nextFrame()
@@ -792,6 +1007,7 @@ describe('interactive creation wizard', () => {
     const target = await directory()
     const onCancel = vi.fn()
     const hub = runHub(io.ctx, vi.fn())
+    await nextFrame()
     const workbench = io.ctx.resources.workbench!
     const wizard = runCreateWizard(io.ctx, 'weapp-vite', {}, { onCancel })
     io.key('text', target)
@@ -815,6 +1031,7 @@ describe('interactive creation wizard', () => {
     const onPlan = vi.fn()
     const onCancel = vi.fn()
     const hub = runHub(io.ctx, vi.fn())
+    await nextFrame()
     const workbench = io.ctx.resources.workbench!
     const wizard = runCreateWizard(io.ctx, 'weapp-vite', {}, { onPlan, onCancel })
     io.key('text', target)
@@ -840,6 +1057,7 @@ describe('interactive creation wizard', () => {
     const target = await directory()
     const onCancel = vi.fn()
     const hub = runHub(io.ctx, vi.fn())
+    await nextFrame()
     const workbench = io.ctx.resources.workbench!
     const wizard = runCreateWizard(io.ctx, 'weapp-vite', {}, { onCancel })
     io.key('text', target)
@@ -887,12 +1105,13 @@ describe('interactive creation wizard', () => {
     const target = await directory()
     const plan = await scaffoldPlan('weapp-vite', target, { template: 'react' })
     const result = runHub(io.ctx, vi.fn())
+    await nextFrame()
     const workbench = io.ctx.resources.workbench!
     workbench.showCreateSuccess(plan, { phase: 'complete', packageName: plan.package, cwd: plan.cwd, queryElapsedMs: 112, executionElapsedMs: 2345, validationElapsedMs: 18 })
     expect(workbench.screen.type).toBe('result')
     await nextFrame()
     expect(io.output.frame()).toContain('[ PROJECT CREATED ]')
-    expect(io.output.frame()).toContain('npm install')
+    expect(io.output.frame()).toContain('I install · S scripts · D doctor')
     expect(io.output.frame()).toContain('react · Your project constellation')
     expect(io.output.frame()).toContain('Version query: 112ms')
     expect(io.output.frame()).toContain('Official scaffold: 2.3s')
@@ -905,17 +1124,18 @@ describe('interactive creation wizard', () => {
     await result
   })
 
-  it('keeps success commands and return input available during the short star expansion', async () => {
+  it('keeps success actions and return input available during the short star expansion', async () => {
     fakeClock()
     const io = terminal({ width: 120, height: 30 })
     const target = await directory()
     const plan = await scaffoldPlan('weapp-vite', target)
     const hub = runHub(io.ctx, vi.fn())
+    await nextFrame()
     const workbench = io.ctx.resources.workbench!
     workbench.showCreateSuccess(plan)
     const beginning = workbench.frame().join('\n')
     expect(beginning).toContain('[ PROJECT CREATED ]')
-    expect(beginning).toContain('npm install')
+    expect(beginning).toContain('I install · S scripts · D doctor')
     await vi.advanceTimersByTimeAsync(350)
     expect(workbench.frame().join('\n')).not.toBe(beginning)
     io.key('return')
@@ -924,7 +1144,7 @@ describe('interactive creation wizard', () => {
     await hub
   })
 
-  it.each([[120, 30], [80, 24], [44, 18]])('preserves long result paths and commands through scrolling at %i × %i', async (width, height) => {
+  it.each([[120, 30], [80, 24], [44, 18]])('preserves long result paths and action guidance through scrolling at %i × %i', async (width, height) => {
     fakeClock()
     const io = terminal({ motion: false, width, height })
     io.ctx.color = true
@@ -932,6 +1152,7 @@ describe('interactive creation wizard', () => {
     const plan = await scaffoldPlan('weapp-vite', target, { template: 'react' })
     plan.directory = `/中文👩🏽‍💻/${'long-parent/'.repeat(18)}demo parent/my-app`
     const hub = runHub(io.ctx, vi.fn())
+    await nextFrame()
     const workbench = io.ctx.resources.workbench!
     workbench.showCreateSuccess(plan)
     if (workbench.screen.type !== 'result') {
@@ -959,14 +1180,16 @@ describe('interactive creation wizard', () => {
     }
     const text = collected.join('').replaceAll(/\s/g, '')
     expect(text).toContain(`Projectcreated:${plan.directory}`.replaceAll(/\s/g, ''))
-    expect(text).toContain(`cd'${plan.directory}'npminstall`.replaceAll(/\s/g, ''))
-    expect(text).toContain('Next:installdependenciesandfollowtheofficialguide.')
+    expect(text).toContain('Inspectthegeneratedconfigurationwithdoctor.')
+    expect(text).toContain('Iinstall·Sscripts·Ddoctor;reviewtheconfirmationbeforeexecution.')
     expect(text).not.toContain('\\u001b')
     const bottom = screen.scroll
     io.key('down')
+    await nextFrame()
     expect(screen.scroll).toBe(bottom)
     io.output.rows = 40
     io.output.emit('resize')
+    await nextFrame()
     expect(screen.scroll).toBeLessThanOrEqual(bottom!)
     io.key('return')
     io.key('q', 'q')

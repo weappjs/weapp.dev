@@ -97,6 +97,9 @@ function isTemplate(template: string): template is Template {
   return templates.includes(template)
 }
 export function validateSelection(route: string, options: CliOptions): { route: CreateRoute, template: Template } {
+  if (options.packageManager !== undefined && !['npm', 'pnpm', 'yarn', 'bun'].includes(options.packageManager)) {
+    throw new CreateError('--package-manager 必须为 npm、pnpm、yarn 或 bun。', '--package-manager must be npm, pnpm, yarn, or bun.')
+  }
   if (!isCreateRoute(route)) {
     throw new CreateError(`未知创建路线：${route}。可选：${Object.keys(CREATE_ADAPTERS).join(', ')}`, `Unknown creation route: ${route}. Choose ${Object.keys(CREATE_ADAPTERS).join(', ')}`)
   }

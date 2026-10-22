@@ -378,6 +378,9 @@ importers:
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
+      '@types/picomatch':
+        specifier: 4.0.3
+        version: 4.0.3
       '@types/qrcode':
         specifier: 1.5.6
         version: 1.5.6
@@ -396,6 +399,9 @@ importers:
       jsqr:
         specifier: 1.4.0
         version: 1.4.0
+      picomatch:
+        specifier: 4.0.7
+        version: 4.0.7
       qrcode:
         specifier: 1.5.4
         version: 1.5.4
@@ -417,6 +423,9 @@ importers:
       vitest:
         specifier: 5.0.5
         version: 5.0.5(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
 
 packages:
 
@@ -2795,6 +2804,9 @@ packages:
 
   '@types/parse-path@7.0.3':
     resolution: {integrity: sha512-LriObC2+KYZD3FzCrgWGv/qufdUy4eXrxcLgQMfYXgPbLIecKIsVBaQgUPmxSSLcjmYbDTQbMgr6qr6l/eb7Bg==}
+
+  '@types/picomatch@4.0.3':
+    resolution: {integrity: sha512-iG0T6+nYJ9FAPmx9SsUlnwcq1ZVRuCXcVEvWnntoPlrOpwtSTKNDC9uVAxTsC3PUvJ+99n4RpAcNgBbHX3JSnQ==}
 
   '@types/qrcode@1.5.6':
     resolution: {integrity: sha512-te7NQcV2BOvdj2b1hCAHzAoMNuj65kNBMz0KBaxM6c3VGBOhU0dURQKOtH8CFNI/dsKkwlv32p26qYQTWoB5bw==}
@@ -9145,6 +9157,8 @@ snapshots:
       undici-types: 7.24.6
 
   '@types/parse-path@7.0.3': {}
+
+  '@types/picomatch@4.0.3': {}
 
   '@types/qrcode@1.5.6':
     dependencies:

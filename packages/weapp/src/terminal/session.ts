@@ -42,12 +42,13 @@ export function padLine(value: string, columns: number): string {
 }
 
 export type TerminalFinish<T = number> = (value?: T | number) => void
+export type TerminalFrame = readonly string[] | (() => readonly string[])
 export interface TerminalController<T = number> {
   start?: (finish: TerminalFinish<T>, session: TerminalSession) => void
   key?: (value: string, key: Key, finish: TerminalFinish<T>, session: TerminalSession) => void | Promise<unknown>
   resize?: (finish: TerminalFinish<T>, session: TerminalSession) => void
   render?: (session: TerminalSession) => void
-  tick?: (finish: TerminalFinish<T>, session: TerminalSession) => void
+  tick?: (finish: TerminalFinish<T>, session: TerminalSession) => void | boolean
   cancel?: (reason: unknown) => void
   interval?: number
 }
@@ -70,10 +71,11 @@ export class TerminalSession {
   started: boolean
   suspended: boolean
   lines: string[]
-  pending: string[] | null
+  pending: TerminalFrame | null
   lastFlush: number
   blocked: boolean
   reset: boolean
+  externalInterrupt?: (signal: 'SIGINT' | 'SIGTERM') => boolean
   private flushTimer: ReturnType<typeof setTimeout> | null = null
   private drainListener: (() => void) | null = null
   private interruptListener?: () => void
@@ -108,12 +110,13 @@ export class TerminalSession {
     }
   }
 
-  render(lines: string[]) {
+  render(frame: TerminalFrame) {
     if (this.closed) {
       return
     }
-    const { width, height } = this.dimensions()
-    this.pending = lines.slice(0, height).map(line => clipLine(line, width))
+    // Keep only the latest request. Its layout is evaluated after pacing and
+    // backpressure gates, using the dimensions at the time it is displayed.
+    this.pending = frame
     this.schedule()
   }
 
@@ -150,8 +153,10 @@ export class TerminalSession {
     if (this.closed || this.suspended || this.blocked || !this.pending) {
       return
     }
-    const next = this.pending
+    const frame = this.pending
     this.pending = null
+    const { width, height } = this.dimensions()
+    const next = (typeof frame === 'function' ? frame() : frame).slice(0, height).map(line => clipLine(line, width))
     let output = this.reset ? '\u001B[H\u001B[2J' : ''
     for (let row = 0; row < Math.max(this.lines.length, next.length); row++) {
       if (this.reset || this.lines[row] !== next[row]) {
@@ -160,10 +165,10 @@ export class TerminalSession {
     }
     this.reset = false
     this.lines = next
+    this.lastFlush = performance.now()
     if (!output) {
       return
     }
-    this.lastFlush = performance.now()
     if (this.output.write(output) === false) {
       this.blocked = true
       this.drainListener = () => {
@@ -260,6 +265,9 @@ export class TerminalSession {
       clearTimeout(timer)
     }
     this.timers.clear()
+    this.pending = null
+    this.flushTimer = null
+    this.externalInterrupt = undefined
     if (this.drainListener) {
       this.output.removeListener?.('drain', this.drainListener)
     }
@@ -341,8 +349,18 @@ export class TerminalSession {
         controller.resize?.(finish, this)
         controller.render?.(this)
       })
-      this.interruptListener = () => cancel(130)
-      this.terminateListener = () => cancel(143)
+      const signal = (name: 'SIGINT' | 'SIGTERM', code: number) => {
+        try {
+          if (!this.suspended || !this.externalInterrupt?.(name)) {
+            cancel(code)
+          }
+        }
+        catch (error) {
+          fail(error)
+        }
+      }
+      this.interruptListener = () => signal('SIGINT', 130)
+      this.terminateListener = () => signal('SIGTERM', 143)
       this.signals.on('SIGINT', this.interruptListener)
       this.signals.on('SIGTERM', this.terminateListener)
       try {
@@ -354,8 +372,9 @@ export class TerminalSession {
         controller.render?.(this)
         if (controller.tick) {
           this.interval(guarded(() => {
-            controller.tick?.(finish, this)
-            controller.render?.(this)
+            if (controller.tick?.(finish, this) !== false && !this.closed) {
+              controller.render?.(this)
+            }
           }), controller.interval)
         }
       }
