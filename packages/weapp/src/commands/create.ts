@@ -3,6 +3,7 @@ import type { CliContext, CliOptions } from '../types.js'
 import type { CreateOperations, CreateProgress, CreateResult, CreateWizardHooks, ExecutionOptions, QueryOptions, ScaffolderExecution, ScaffolderMetadata, ScaffoldPlan } from './create/plan.js'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+import process from 'node:process'
 // eslint-disable-next-line e18e/ban-dependencies -- Preserve Windows-safe npm spawning on the Node 18 baseline.
 import spawn from 'cross-spawn'
 import { issueLines, projectLines } from '../project/presentation.js'
@@ -183,6 +184,7 @@ export async function runCreate(ctx: CliContext, args: string[], options: CliOpt
   }
   let preparation: CreatePreparation | undefined
   let detachSignal: (() => void) | undefined
+  let detachProcessSignals: (() => void) | undefined
   let unsubscribeProgress: (() => void) | undefined
   let interruptedCode: (() => number | undefined) | undefined
   let locallyCancelled = false
@@ -199,6 +201,28 @@ export async function runCreate(ctx: CliContext, args: string[], options: CliOpt
     detachSignal = () => sourceSignal?.removeEventListener('abort', abort)
     if (sourceSignal?.aborted) {
       abort()
+    }
+    const terminalSession = ctx.resources?.workbench?.session
+    if (!ctx.hub && !(terminalSession?.started && !terminalSession.closed)) {
+      // Standalone commands own signal forwarding while their detached children run.
+      // An active wizard owns terminal signals until it returns to this command.
+      const interrupt = (code: number) => {
+        const session = ctx.resources?.workbench?.session
+        if (session?.started && !session.closed) {
+          return
+        }
+        ctx.cancelled = true
+        ctx.cancelledCode = code
+        abort()
+      }
+      const onInterrupt = () => interrupt(130)
+      const onTerminate = () => interrupt(143)
+      process.on('SIGINT', onInterrupt)
+      process.on('SIGTERM', onTerminate)
+      detachProcessSignals = () => {
+        process.removeListener('SIGINT', onInterrupt)
+        process.removeListener('SIGTERM', onTerminate)
+      }
     }
     const operations: CreateOperations = {
       ...ctx.createOperations,
@@ -348,5 +372,6 @@ export async function runCreate(ctx: CliContext, args: string[], options: CliOpt
     unsubscribeProgress?.()
     preparation?.dispose()
     detachSignal?.()
+    detachProcessSignals?.()
   }
 }

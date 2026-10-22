@@ -43,14 +43,14 @@ Doctor 始终只读。它报告输入目录和识别根，检查实际 Node／�
 
 创建结果使用实际 manifest，列出包管理器、脚本和 doctor。安装失败独立于创建成功报告，文件保留，可再次选择操作。工作台安装／脚本共享执行器：确认页显示 cwd、argv 对应命令和脚本内容；安装在已验证 workspace 根，脚本在当前包。确认后先检查版本约束，再重读项目；声明、依赖或脚本变化会要求重新确认。
 
-进程通过参数数组启动。外部任务独占输入，结束后恢复页面与焦点；Ctrl+C 取消本次安装／脚本，Unix 清理专用进程组，Windows 使用定向 `taskkill /T /F`，等待 close 和清理结束后恢复。SIGTERM 保留全局退出约定。不会自动运行长期开发服务。
+进程通过参数数组启动。外部任务独占输入，结束后恢复页面与焦点；Ctrl+C 取消本次安装／脚本，Unix 清理专用进程组，Windows 使用定向 `taskkill /T /F`，等待 close 和清理结束后恢复。独立创建命令同样接管 SIGINT／SIGTERM，等待脚手架或安装任务的子孙进程清理后分别以 130／143 退出；信号监听器在结束时移除。SIGTERM 保留全局退出约定。不会自动运行长期开发服务。
 
 ## 验证与交付
 
-- CLI：17 个测试文件、334 项测试全部通过；包含发现中 Enter／焦点、离开页面后的晚到结果、workspace 与原生项目边界、损坏 manifest、已安装版本、安装／脚本确认及进程清理回归。
+- CLI：17 个测试文件、338 项测试全部通过；包含发现中 Enter／焦点、离开页面后的晚到结果、workspace 与原生项目边界、损坏 manifest、已安装版本、安装／脚本确认及进程清理回归。新增 4 项真实 CLI 信号回归，覆盖脚手架／安装两阶段的 SIGINT／SIGTERM，即使子孙进程忽略 SIGTERM，也必须在 CLI 退出前完成清理并保留已创建文件。
 - 类型检查、构建、ESLint、Stylelint 通过；ESLint 保留未改动实验室文件中的 4 条已有 no-use-before-define warning，没有错误。
 - 最终构建真实 PTY：28 个场景通过。输入先等待可见就绪标记；覆盖三种尺寸、暂停／resize／搜索、实际子进程继承输入、脚本运行、OS SIGINT 取消、PID 消失、恢复焦点，以及 raw mode／cursor／alternate screen 清理。证据为 `packages/weapp/.cache/qa/terminal-*.txt` 与 `terminal-metrics.json`。
-- 独立 tarball：在 workspace 外安装同一发布包，Node 18.20.8／22.23.4／24.22.1 的 artifact smoke 全部通过，包含新 doctor 上下文、协议／版本、workspace、原生项目及 `--dry-run --install`。压缩体积 311,233 bytes，解包 1,113,061 bytes，10 个外部运行时包名／版本；bundled 许可与图完整匹配。
+- 独立 tarball：在 workspace 外安装同一发布包，Node 18.20.8／22.23.4／24.22.1 的 artifact smoke 全部通过，包含新 doctor 上下文、协议／版本、workspace、原生项目及 `--dry-run --install`。压缩体积 311,419 bytes，解包 1,113,920 bytes，10 个外部运行时包名／版本；bundled 许可与图完整匹配。
 - frozen install：pnpm 12.14.0 通过，锁文件及 24 小时冷却策略保留。
 - 边界及原生发布流程：10 项测试通过。
 - 后台浏览器实验室：1440／390／320px、双语、6／11 项生态、官方资源与动作、动画暂停、重播、PNG、减少动态效果和 Canvas 降级通过；临时浏览器、context 和 loopback 服务由 finally 关闭。
