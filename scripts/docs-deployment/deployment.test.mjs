@@ -140,20 +140,72 @@ describe('Cloudflare provider', () => {
       ? { deployments: [{ created_on: '2026-10-23', versions: [{ version_id: version, percentage: 100 }] }] }
       : { id: version, annotations: { 'workers/message': deploymentMessage(context.identity) } })
     const execute = vi.fn()
-    expect(await deployCloudflare(context, { client, run: execute })).toEqual({ versionId: version, url: 'https://weapp.dev' })
+    const sleep = vi.fn()
+    expect(await deployCloudflare(context, { client, run: execute, sleep })).toEqual({ versionId: version, url: 'https://weapp.dev' })
     expect(execute).not.toHaveBeenCalled()
+    expect(sleep).not.toHaveBeenCalled()
     expect(JSON.parse(await readFile(context.env.REPO_DOCS_RESULT_FILE, 'utf8')).versionId).toBe(version)
   }))
 
   it('does not record an uploaded version until the API confirms it active', async () => fixture('web', async (context) => {
-    const client = async endpoint => endpoint.endsWith('/deployments')
+    const client = vi.fn(async endpoint => endpoint.endsWith('/deployments')
       ? { deployments: [{ created_on: '2026-10-23', versions: [{ version_id: oldVersion, percentage: 100 }] }] }
-      : { id: oldVersion, annotations: { 'workers/message': 'old' } }
+      : { id: oldVersion, annotations: { 'workers/message': 'old' } })
     const execute = vi.fn(async (_command, args, options) => {
       expect(args).toContain('deploy')
       await writeFile(options.env.WRANGLER_OUTPUT_FILE_PATH, JSON.stringify({ type: 'deploy', worker_name: context.worker, version_id: version }))
     })
-    await expect(deployCloudflare(context, { client, run: execute })).rejects.toThrow(/exact version/)
+    const sleep = vi.fn()
+    await expect(deployCloudflare(context, { client, run: execute, pollLimit: 3, sleep })).rejects.toThrow(/exact version/)
+    expect(execute).toHaveBeenCalledOnce()
+    expect(client.mock.calls.filter(([endpoint]) => endpoint.endsWith('/deployments'))).toHaveLength(4)
+    expect(sleep.mock.calls).toEqual([[2000], [2000]])
+    await expect(readFile(context.env.REPO_DOCS_RESULT_FILE)).rejects.toMatchObject({ code: 'ENOENT' })
+  }))
+
+  it('waits for the uploaded version to become active without deploying twice', async () => fixture('web', async (context) => {
+    let reads = 0
+    const client = vi.fn(async (endpoint) => {
+      if (endpoint.endsWith('/deployments')) {
+        const id = reads++ < 2 ? oldVersion : version
+        return { deployments: [{ created_on: '2026-10-23', versions: [{ version_id: id, percentage: 100 }] }] }
+      }
+      const id = endpoint.split('/').at(-1)
+      return { id, annotations: { 'workers/message': id === version ? deploymentMessage(context.identity) : 'old' } }
+    })
+    const execute = vi.fn(async (_command, _args, options) => {
+      await writeFile(options.env.WRANGLER_OUTPUT_FILE_PATH, JSON.stringify({ type: 'deploy', worker_name: context.worker, version_id: version }))
+    })
+    const sleep = vi.fn()
+    expect(await deployCloudflare(context, { client, run: execute, pollLimit: 3, sleep })).toEqual({ versionId: version, url: 'https://weapp.dev' })
+    expect(execute).toHaveBeenCalledOnce()
+    expect(reads).toBe(3)
+    expect(sleep).toHaveBeenCalledExactlyOnceWith(2000)
+    expect(JSON.parse(await readFile(context.env.REPO_DOCS_RESULT_FILE, 'utf8')).versionId).toBe(version)
+  }))
+
+  it.each(['split traffic', 'invalid response', 'wrong identity'])('stops confirmation immediately on %s', async failure => fixture('web', async (context) => {
+    let uploaded = false
+    const client = vi.fn(async (endpoint) => {
+      if (endpoint.endsWith('/deployments')) {
+        if (uploaded && failure === 'invalid response') {
+          return { deployments: null }
+        }
+        const id = uploaded ? version : oldVersion
+        return { deployments: [{ created_on: '2026-10-23', versions: [{ version_id: id, percentage: uploaded && failure === 'split traffic' ? 50 : 100 }] }] }
+      }
+      const id = endpoint.split('/').at(-1)
+      return { id, annotations: { 'workers/message': 'unexpected identity' } }
+    })
+    const execute = vi.fn(async (_command, _args, options) => {
+      uploaded = true
+      await writeFile(options.env.WRANGLER_OUTPUT_FILE_PATH, JSON.stringify({ type: 'deploy', worker_name: context.worker, version_id: version }))
+    })
+    const sleep = vi.fn()
+    const message = { 'split traffic': /100%/, 'invalid response': /Invalid Cloudflare/, 'wrong identity': /unexpected deployment identity/ }[failure]
+    await expect(deployCloudflare(context, { client, run: execute, pollLimit: 3, sleep })).rejects.toThrow(message)
+    expect(execute).toHaveBeenCalledOnce()
+    expect(sleep).not.toHaveBeenCalled()
     await expect(readFile(context.env.REPO_DOCS_RESULT_FILE)).rejects.toMatchObject({ code: 'ENOENT' })
   }))
 
