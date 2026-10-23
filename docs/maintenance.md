@@ -54,7 +54,7 @@ pnpm metrics:sync
 
 ## CI 与发布
 
-[2026-10-23 repoctl 6.0.1 迁移与上线记录](repoctl-migration-2026-10-23.md) 记录历史 0.3.0 补发、隔离 nightly 制品验证、部署环境配置以及仍待完成的真实上线验收。
+[2026-10-23 repoctl 6.0.1 迁移与上线记录](repoctl-migration-2026-10-23.md) 记录历史 0.3.0 补发、nightly 首次真实发布、新发布身份验证、双站 main/PR 预览及线上验收，以及仍待完成的首次受管稳定部署。
 
 版本与发布由 repoctl 6.0.1 统一管理，底层继续使用 pnpm 12 原生 versioning。开发分支用 `pnpm change weapp --bump minor --summary "变更说明"` 记录功能（修复用 `patch`）；`.changeset/*.md` 是 pnpm change intent，不使用 Changesets CLI/action。`pnpm release:plan --json` 只读预览，`pnpm change check` 检查 intent。`pnpm-workspace.yaml` 的 `versioning.ignore` 精确排除 root 与四个私有 workspace，新增私有包时同步名单。
 
@@ -74,17 +74,17 @@ CLI 命令与数据按需加载；QR core/SVG、semver、string-width、cross-sp
 
 本地 `pnpm --filter weapp preflight` 只验证包身份、Node 18、public access、资源清单、bundle policy 和构建版本；`--artifact <tarball>` 还会安装并 smoke 测试指定 tarball、确认验证前后 SHA256 不变。这些检查不请求发布凭据。npm registry 状态、认证、上传、确认与恢复由 repoctl 管理，不保留另一套手写 OIDC 或 tag 发布实现。
 
-npm trusted publisher 必须配置 owner `weappjs`、repository `weapp.dev`、workflow filename `release.yml`、空 environment；release/nightly/audit 都通过同一文件和 GitHub 托管 runner 使用 OIDC。迁移前用旧发布身份补齐已有 0.3.0 的 npm、canonical tag 和 GitHub Release，再切换 publisher 身份和合并迁移。新身份可用 `gh workflow run release.yml --ref main -f mode=oidc-audit` 审计；`npm publish --dry-run` 不证明 OIDC 可用。异常恢复使用受管 `reconcile` 或 `publish-unpublished` 模式并明确 package/version/source-sha，不另行手工上传。
+npm trusted publisher 必须配置 owner `weappjs`、repository `weapp.dev`、workflow filename `release.yml`、空 environment；release/nightly/audit 都通过同一文件和 GitHub 托管 runner 使用 OIDC。历史 0.3.0 已用旧发布身份补齐 npm、canonical tag 和 GitHub Release；迁移及新 publisher 配置已完成。新身份已完成 OIDC audit 和首次 nightly 真实发布，npm 连接状态为 Valid；旧 `publish-weapp.yml` trusted publisher 连接已删除，仅保留 `release.yml`。后续更换发布身份时，也须等待新身份真实发布成功后再删除旧连接，不能只依赖 OIDC audit。新身份可用 `gh workflow run release.yml --ref main -f mode=oidc-audit` 审计；`npm publish --dry-run` 不证明 OIDC 可用。异常恢复使用受管 `reconcile` 或 `publish-unpublished` 模式并明确 package/version/source-sha，不另行手工上传。
 
 网站也由 repoctl 管理。`repoctl-docs.yml` 的 main push 为 `web` 和 `open-source` 分别部署固定 preview；正式网站由成功 release record 触发，或明确选择已完成的 release ID 重试。正式站不会因普通 main push 更新。`repoctl-docs-deploy.yml` 保持 `docs-<site>-<channel>` 环境与同名、不可取消的并发组；Cloudflare 与 Pages 分开授予权限。每个站在隔离源码中通过边界、lint、类型、单测、构建验证和桌面/移动 E2E 后，部署同一产物并核对部署身份。
 
-商业正式站保留 Worker `weapp-dev`、`weapp.dev` 和 `www.weapp.dev` 以及现有 www Redirect Rule；固定预览使用独立 Worker `weapp-dev-preview`。开源正式站继续使用 GitHub Pages 和 `weapp.js.org`，固定预览使用 `weapp-open-source-preview`。预览产物包含 noindex、禁用生产统计、保留生产 canonical；Pages 正式产物继续包含 CNAME、兼容 `/weapp.dev/` 路径、不生成 `.nojekyll`。两个 preview Worker 先完成 main 预览部署，后续 PR 才能上传 Worker Version。
+商业正式站保留 Worker `weapp-dev`、`weapp.dev` 和 `www.weapp.dev` 以及现有 www Redirect Rule；固定预览使用独立 Worker `weapp-dev-preview`。开源正式站继续使用 GitHub Pages 和 `weapp.js.org`，固定预览使用 `weapp-open-source-preview`。预览产物包含 noindex、禁用生产统计、保留生产 canonical；Pages 正式产物继续包含 CNAME、兼容 `/weapp.dev/` 路径、不生成 `.nojekyll`。两个 preview Worker 先完成 main 预览部署，后续 PR 才能上传 Worker Version。当前固定预览入口为 [weapp.dev 预览](https://weapp-dev-preview.sonofmagic.workers.dev) 和 [开源站预览](https://weapp-open-source-preview.sonofmagic.workers.dev)；PR 返回绑定该次源码 SHA 的固定版本 URL，具体回执见迁移记录。
 
-Commercial CI 和 Open source CI 保留独立验证以及同仓 PR 的临时 Worker Version 预览。PR 构建完成后记录 site、PR head SHA、deployment ID，再执行 E2E；部署任务只下载并验证该产物，不重新构建。fork PR 只运行验证，不注入 Cloudflare 凭据。PR 关闭不会改变固定预览或正式流量。Cloudflare 凭据在对应 docs 环境中配置；PR 任务使用 repo-level 凭据。GitHub Pages 的 `pages: write`、`id-token: write` 只授予开源正式部署 job；其 JavaScript action 将 artifact 服务环境传给 repoctl，避免独立 shell 丢失上传上下文。
+Commercial CI 和 Open source CI 保留独立验证以及同仓 PR 的临时 Worker Version 预览。PR 构建完成后记录 site、PR head SHA、deployment ID，再执行 E2E；部署任务只下载并验证该产物，不重新构建。fork PR 只运行验证，不注入 Cloudflare 凭据。PR 关闭不会改变固定预览或正式流量。Cloudflare 凭据由 GitHub Actions 的 secret 上下文提供；当前仓库继承组织级 `CLOUDFLARE_ACCOUNT_ID` 和 `CLOUDFLARE_API_TOKEN`，main 与同仓 PR 均复用已有授权。核对凭据时同时检查组织、仓库和环境级设置，仓库级 secret 列表为空不代表没有继承凭据。GitHub Pages 的 `pages: write`、`id-token: write` 只授予开源正式部署 job；其 JavaScript action 将 artifact 服务环境传给 repoctl，避免独立 shell 丢失上传上下文。
 
 站点配置的 `releaseInputs` 除 `weapp` 本身外，也包含 CLI 打包所需的中立 catalog、Logo 与共享 UI 输入，以及根 `package.json`、锁文件、workspace 配置和 dependency patches。`patchPaths` 为空，尚不允许绕过正式发布追加文档修补提交。普通站点内容更新可先在 main preview 验收，正式上线绑定下一条已完成 release record。首条受管正式部署必须来自包含本次迁移配置、构建脚本和 adapter 的新版本 release record；补齐历史 0.3.0 发布只完成 npm 基线，不会把新部署代码加入历史源码。不要以旧 0.3.0 记录启动新网站部署，也不要修改旧 tag。双站互不导入，开源产物继续扫描商业文案、联系方式与私有资源。
 
-上线前建立 `docs-web-preview`、`docs-web-stable`、`docs-open-source-preview`、`docs-open-source-stable` 四个 GitHub environment。正式环境继承原 production/github-pages 的审批与分支限制，保留或收紧已有规则；当前原 github-pages 仅允许 main。Cloudflare secrets 只配置到对应部署环境及同仓 PR 所需的仓库级入口，不向 fork PR 开放。环境缺失时不要依赖 workflow 自动创建无保护环境。
+上线前建立 `docs-web-preview`、`docs-web-stable`、`docs-open-source-preview`、`docs-open-source-stable` 四个 GitHub environment。正式环境继承原 production/github-pages 的审批与分支限制，保留或收紧已有规则；当前原 github-pages 仅允许 main。Cloudflare secrets 可复用已限定到本仓库的组织级授权，或配置到对应部署环境和同仓 PR 所需的仓库级入口，不向 fork PR 开放。环境缺失时不要依赖 workflow 自动创建无保护环境。
 
 受管文件通过 `repo upgrade --dry-run` 检查三方合并，确认后 `repo upgrade --apply` 更新；保留 `.repoctl/baselines/root`，不将应用 CI 的本地定制覆盖成上游源码仓库工作流。受管目标仅包含 release 与两条 repoctl docs workflow。路径过滤的应用 CI 不应设为所有 PR 无条件必需的检查。
 
