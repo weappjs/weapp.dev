@@ -5,14 +5,14 @@
   "private": true,
   "packageManager": "pnpm@12.14.0",
   "engines": {
-    "node": "^22.22.1 || >=24.11.0"
+    "node": "^22.23.4 || ^24.22.1 || >=26.12.1"
   },
   "scripts": {
-    "build": "turbo run build",
+    "build": "turbo run build && pnpm --filter weapp preflight",
     "build:cloudflare": "pnpm --filter @weapp-io/web build",
     "check": "pnpm check:boundaries && turbo run lint lint:styles check test",
     "dev": "turbo run dev --filter=@weapp-io/web",
-    "lint": "turbo run lint lint:styles",
+    "lint": "pnpm lint:tooling && turbo run lint lint:styles",
     "metrics": "pnpm --filter @weapp-io/project-catalog metrics",
     "metrics:sync": "pnpm --filter @weapp-io/project-catalog metrics:sync",
     "preview": "pnpm --filter @weapp-io/web preview",
@@ -23,25 +23,35 @@
     "release:plan": "repo release plan",
     "release:prepare": "repo release ci --mode prepare",
     "release:verify": "pnpm check:boundaries && pnpm --filter weapp check && pnpm --filter weapp lint && pnpm --filter weapp lint:styles && pnpm --filter weapp test && pnpm --filter weapp test:pack",
-    "release:build": "pnpm --filter weapp build",
+    "release:build": "pnpm --filter weapp build && pnpm --filter weapp preflight",
     "test": "turbo run test",
-    "prepare": "husky",
+    "prepare": "node scripts/install-hooks.mjs",
     "typecheck": "turbo run check",
     "build:pages": "pnpm --filter @weapp-io/open-source build",
     "dev:pages": "pnpm --filter @weapp-io/open-source dev",
     "preview:pages": "pnpm --filter @weapp-io/open-source preview",
-    "check:boundaries": "node scripts/check-boundaries.mjs && vitest run --config scripts/vitest.config.ts"
+    "check:boundaries": "pnpm lint:tooling && node scripts/check-boundaries.mjs && vitest run --config scripts/vitest.config.ts",
+    "release:audit": "repo release ci --mode oidc-audit",
+    "docs:web:build": "node scripts/docs-build.mjs web",
+    "docs:open-source:build": "node scripts/docs-build.mjs open-source",
+    "docs:deploy": "node scripts/docs-deployment/cli.mjs managed",
+    "docs:preview:pr:web": "node scripts/docs-deployment/cli.mjs pr web",
+    "docs:preview:pr:open-source": "node scripts/docs-deployment/cli.mjs pr open-source",
+    "docs:test": "vitest run --config scripts/vitest.config.ts scripts/docs-deployment scripts/docs-build.test.mjs",
+    "lint:tooling": "eslint scripts repoctl.config.ts .github/workflows"
   },
   "devDependencies": {
+    "@actions/artifact": "6.3.1",
+    "@actions/core": "3.0.1",
     "@commitlint/cli": "21.2.4",
     "@vitest/coverage-v8": "5.0.5",
     "eslint": "10.13.0",
-    "husky": "9.1.7",
-    "lint-staged": "17.6.0",
-    "repoctl": "5.10.3",
+    "lefthook": "2.2.2",
+    "repoctl": "6.0.1",
     "stylelint": "17.16.0",
     "turbo": "2.11.10",
     "typescript": "6.0.3",
-    "vitest": "5.0.5"
+    "vitest": "5.0.5",
+    "yaml": "2.9.1"
   }
 }

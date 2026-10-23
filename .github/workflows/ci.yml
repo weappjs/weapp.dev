@@ -16,6 +16,8 @@ on:
       - tsconfig.json
       - .node-version
       - .github/workflows/ci.yml
+      - .github/workflows/repoctl-docs.yml
+      - .github/workflows/repoctl-docs-deploy.yml
   push:
     branches: [main]
     paths:
@@ -31,11 +33,16 @@ on:
       - tsconfig.json
       - .node-version
       - .github/workflows/ci.yml
+      - .github/workflows/repoctl-docs.yml
+      - .github/workflows/repoctl-docs-deploy.yml
   workflow_dispatch:
 
 concurrency:
   group: web-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  LEFTHOOK: '0'
 
 permissions:
   contents: read
@@ -45,8 +52,12 @@ jobs:
     name: Verify commercial application
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    env:
+      REPO_DOCS_CHANNEL: ${{ github.event_name == 'pull_request' && 'preview' || 'stable' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -63,6 +74,12 @@ jobs:
         run: pnpm --filter @weapp-io/web lint && pnpm --filter @weapp-io/web lint:styles && pnpm --filter @weapp-io/web check && pnpm --filter @weapp-io/web test
       - name: Build and validate
         run: pnpm --filter @weapp-io/web build
+      - name: Bind the preview artifact to this pull request
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/docs-build.mjs web --identity-only
       - name: Install browser
         run: pnpm --filter @weapp-io/web exec playwright install --with-deps chromium
       - name: Test deployment artifact
@@ -83,114 +100,62 @@ jobs:
           path: apps/web/test-results
           retention-days: 7
 
-  deploy-production:
-    needs: verify
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    environment: production
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
-    permissions:
-      contents: read
-      deployments: write
-    env:
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Download the static site
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: web-dist
-          path: apps/web/dist
-
-      - name: Deploy to Cloudflare Workers
-        working-directory: apps/web
-        run: |
-          set -o pipefail
-          pnpm exec wrangler deploy --message "${GITHUB_SHA}" 2>&1 | tee "$GITHUB_STEP_SUMMARY"
-
   deploy-preview:
     needs: verify
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     concurrency:
-      group: deploy-preview-${{ github.event.number }}
+      group: pr-preview-web-${{ github.event.number }}
       cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write
     env:
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-
+      PR_NUMBER: ${{ github.event.number }}
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version-file: .node-version
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
           cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Download the static site
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: web-dist
           path: apps/web/dist
-
-      - name: Upload a Worker version preview
+      - name: Deploy the tested PR artifact
         id: preview
-        working-directory: apps/web
-        run: |
-          set -o pipefail
-          pnpm exec wrangler versions upload \
-            --preview-alias "pr-${{ github.event.number }}" \
-            --message "${GITHUB_SHA}" \
-            2>&1 | tee "$GITHUB_STEP_SUMMARY" wrangler-preview.log
-          url="$(grep -Eo 'https://[a-zA-Z0-9._/-]+\.workers\.dev' wrangler-preview.log | head -n 1 || true)"
-          echo "url=${url}" >> "$GITHUB_OUTPUT"
-
-      - name: Comment the preview URL
+        run: node scripts/docs-deployment/cli.mjs pr web
+      - name: Update the preview comment
         if: steps.preview.outputs.url != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
-          GH_TOKEN: ${{ github.token }}
           PREVIEW_URL: ${{ steps.preview.outputs.url }}
-          PR_NUMBER: ${{ github.event.number }}
-        run: |
-          marker='<!-- weapp-dev-preview -->'
-          # Keep Markdown backticks literal in the preview comment.
-          # shellcheck disable=SC2016
-          body="$(printf '%s\n\nPreview for this pull request: %s\n\nThis Worker Version is not production traffic. `weapp.dev` stays on the current production deployment.\n' "${marker}" "${PREVIEW_URL}")"
-          existing="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
-            --jq ".[] | select(.body | contains(\"${marker}\")) | .id" | head -n 1)"
-          if [ -n "${existing}" ]; then
-            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${existing}" -f body="${body}"
-          else
-            gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" -f body="${body}"
-          fi
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const marker = '<!-- weapp-web-preview -->'
+            const body = `${marker}\n\nweb preview: ${process.env.PREVIEW_URL}\n\nCommit: ${process.env.PR_HEAD_SHA}`
+            const issue_number = Number(process.env.PR_NUMBER)
+            const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number })
+            const existing = comments.find(comment => comment.user?.type === 'Bot' && comment.body?.includes(marker))
+            if (existing) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body })
+            } else {
+              await github.rest.issues.createComment({ ...context.repo, issue_number, body })
+            }
+      - name: Retain preview deployment evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pr-web-deployment-${{ github.event.number }}
+          path: .cache/docs-deployment
+          if-no-files-found: ignore
+          retention-days: 7

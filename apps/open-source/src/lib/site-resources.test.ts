@@ -13,6 +13,18 @@ const projects = [
 ]
 
 describe('site resources', () => {
+  it('keeps stable pages indexable and preview resources out of search indexes', () => {
+    const site = getSiteProfile()
+    const stable = createSiteResources(site, projects, 'stable')
+    const preview = createSiteResources(site, projects, 'preview')
+    expect(stable['robots.txt']).toBe(`User-agent: *\nAllow: /\n\nSitemap: ${site.origin}/sitemap-index.xml\n`)
+    expect(stable).not.toHaveProperty('_headers')
+    expect(preview['robots.txt']).toBe('User-agent: *\nDisallow: /\n')
+    expect(preview._headers).toBe('/*\n  X-Robots-Tag: noindex, nofollow\n')
+    expect(preview['llms.txt']).toBe(stable['llms.txt'])
+    expect(preview['llms-full.txt']).toBe(stable['llms-full.txt'])
+  })
+
   it('uses its own origin while preserving official project sources', () => {
     const site = getSiteProfile()
     const resources = createSiteResources(site, projects)

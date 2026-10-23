@@ -1,0 +1,331 @@
+# repoctl-managed: release/v2
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Release operation
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - prepare
+          - publish
+          - publish-unpublished
+          - reconcile
+          - oidc-audit
+          - nightly
+      package:
+        description: Package used for unpublished-version recovery
+        required: false
+        type: string
+      version:
+        description: Version used for unpublished-version recovery
+        required: false
+        type: string
+      dry-run:
+        description: Preview reconciliation or nightly publication without changes
+        required: false
+        default: false
+        type: boolean
+      source-sha:
+        description: Original commit on the selected release line (publish modes only)
+        required: false
+        type: string
+  schedule:
+    # 02:00 Asia/Shanghai every day; an already-published source is skipped.
+    - cron: '0 18 * * *'
+
+env:
+  LEFTHOOK: '0'
+  NPM_CONFIG_PROVENANCE: true
+  npm_config_registry: https://registry.npmjs.org
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: ${{ github.repository == 'weappjs/weapp.dev' && github.event_name != 'schedule' && inputs.mode != 'nightly' && inputs.mode != 'oidc-audit' }}
+    name: Release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+      id-token: write
+    outputs:
+      release-record: ${{ steps.release-finalize.outputs.release-record }}
+      docs-sites: ${{ steps.release-finalize.outputs.docs-sites }}
+    steps:
+      - name: Validate GitHub App configuration
+        env:
+          APP_CLIENT_ID: ${{ vars.REPOCTL_APP_CLIENT_ID }}
+          APP_PRIVATE_KEY_CONFIGURED: ${{ secrets.REPOCTL_APP_PRIVATE_KEY != '' }}
+        run: |
+          if { [ -n "$APP_CLIENT_ID" ] && [ "$APP_PRIVATE_KEY_CONFIGURED" != 'true' ]; } ||
+             { [ -z "$APP_CLIENT_ID" ] && [ "$APP_PRIVATE_KEY_CONFIGURED" = 'true' ]; }; then
+            echo 'Configure both REPOCTL_APP_CLIENT_ID and REPOCTL_APP_PRIVATE_KEY.' >&2
+            exit 1
+          fi
+
+      - name: Create GitHub App token
+        if: ${{ vars.REPOCTL_APP_CLIENT_ID != '' }}
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.REPOCTL_APP_CLIENT_ID }}
+          private-key: ${{ secrets.REPOCTL_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-actions: write
+
+      - name: Checkout Repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token || secrets.REPOCTL_RELEASE_TOKEN || secrets.CHANGESETS_RELEASE_TOKEN || github.token }}
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+          cache: pnpm
+
+      - name: Install npm with trusted publishing support
+        run: npm install --global npm@11.16.0 --registry=https://registry.npmjs.org
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Release plan
+        id: release-plan
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || secrets.REPOCTL_RELEASE_TOKEN || secrets.CHANGESETS_RELEASE_TOKEN || github.token }}
+          REPO_RELEASE_MODE: ${{ inputs.mode || 'auto' }}
+          REPO_RELEASE_PACKAGE: ${{ inputs.package }}
+          REPO_RELEASE_VERSION: ${{ inputs.version }}
+          REPO_RELEASE_DRY_RUN: ${{ inputs.dry-run }}
+          REPO_RELEASE_RECOVERY_SOURCE_SHA: ${{ inputs.source-sha }}
+        run: pnpm exec repo release ci --stage plan
+
+      - name: Release verify
+        id: release-verify
+        if: ${{ steps.release-plan.outputs.run == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || secrets.REPOCTL_RELEASE_TOKEN || secrets.CHANGESETS_RELEASE_TOKEN || github.token }}
+          REPO_RELEASE_MODE: ${{ inputs.mode || 'auto' }}
+          REPO_RELEASE_PACKAGE: ${{ inputs.package }}
+          REPO_RELEASE_VERSION: ${{ inputs.version }}
+          REPO_RELEASE_DRY_RUN: ${{ inputs.dry-run }}
+          REPO_RELEASE_RECOVERY_SOURCE_SHA: ${{ inputs.source-sha }}
+        run: pnpm exec repo release ci --stage verify
+
+      - name: Release prepare
+        id: release-prepare
+        if: ${{ steps.release-plan.outputs.run == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || secrets.REPOCTL_RELEASE_TOKEN || secrets.CHANGESETS_RELEASE_TOKEN || github.token }}
+          REPO_RELEASE_MODE: ${{ inputs.mode || 'auto' }}
+          REPO_RELEASE_PACKAGE: ${{ inputs.package }}
+          REPO_RELEASE_VERSION: ${{ inputs.version }}
+          REPO_RELEASE_DRY_RUN: ${{ inputs.dry-run }}
+          REPO_RELEASE_RECOVERY_SOURCE_SHA: ${{ inputs.source-sha }}
+        run: pnpm exec repo release ci --stage prepare
+
+      - name: Validate the version pull request
+        if: ${{ steps.release-plan.outputs.run == 'true' && steps.release-prepare.outputs.publish != 'true' }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.REPOCTL_RELEASE_TOKEN || secrets.CHANGESETS_RELEASE_TOKEN || github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # Workflow-token PRs do not emit another workflow-triggering event.
+          pr_url=$(gh pr list --head release/pnpm-version --base main --state open --json url --jq '.[0].url // empty')
+          if [ -n "$pr_url" ]; then
+            printf 'Version PR: %s\n' "$pr_url" >> "$GITHUB_STEP_SUMMARY"
+            gh workflow run weapp-cli.yml --ref release/pnpm-version
+          fi
+
+      - name: Release upload
+        id: release-upload
+        if: ${{ steps.release-prepare.outputs.publish == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || secrets.REPOCTL_RELEASE_TOKEN || secrets.CHANGESETS_RELEASE_TOKEN || github.token }}
+          REPO_RELEASE_MODE: ${{ inputs.mode || 'auto' }}
+          REPO_RELEASE_PACKAGE: ${{ inputs.package }}
+          REPO_RELEASE_VERSION: ${{ inputs.version }}
+          REPO_RELEASE_DRY_RUN: ${{ inputs.dry-run }}
+          REPO_RELEASE_RECOVERY_SOURCE_SHA: ${{ inputs.source-sha }}
+        run: pnpm exec repo release ci --stage upload
+
+      - name: Release confirm
+        id: release-confirm
+        if: ${{ steps.release-prepare.outputs.publish == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || secrets.REPOCTL_RELEASE_TOKEN || secrets.CHANGESETS_RELEASE_TOKEN || github.token }}
+          REPO_RELEASE_MODE: ${{ inputs.mode || 'auto' }}
+          REPO_RELEASE_PACKAGE: ${{ inputs.package }}
+          REPO_RELEASE_VERSION: ${{ inputs.version }}
+          REPO_RELEASE_DRY_RUN: ${{ inputs.dry-run }}
+          REPO_RELEASE_RECOVERY_SOURCE_SHA: ${{ inputs.source-sha }}
+        run: pnpm exec repo release ci --stage confirm
+
+      - name: Release finalize
+        id: release-finalize
+        if: ${{ steps.release-prepare.outputs.publish == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || secrets.REPOCTL_RELEASE_TOKEN || secrets.CHANGESETS_RELEASE_TOKEN || github.token }}
+          REPO_RELEASE_MODE: ${{ inputs.mode || 'auto' }}
+          REPO_RELEASE_PACKAGE: ${{ inputs.package }}
+          REPO_RELEASE_VERSION: ${{ inputs.version }}
+          REPO_RELEASE_DRY_RUN: ${{ inputs.dry-run }}
+          REPO_RELEASE_RECOVERY_SOURCE_SHA: ${{ inputs.source-sha }}
+        run: pnpm exec repo release ci --stage finalize
+
+      - name: Preserve npm publish progress
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: npm-publish-progress-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            pnpm-publish-summary.json
+            repoctl-publish-progress.json
+            repoctl-release-progress.json
+            repoctl-ci-progress.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  docs:
+    needs: release
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && needs.release.outputs.release-record != '' && needs.release.outputs.docs-sites != '' && needs.release.outputs.docs-sites != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        site: ${{ fromJSON(needs.release.outputs.docs-sites) }}
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/repoctl-docs-deploy.yml
+    with:
+      site: ${{ matrix.site }}
+      channel: stable
+      release: ${{ needs.release.outputs.release-record }}
+    secrets: inherit
+
+  nightly:
+    name: Publish nightly
+    if: ${{ github.repository == 'weappjs/weapp.dev' && ((github.event_name == 'schedule' && github.event.schedule == '0 18 * * *') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      REPOCTL_NIGHTLY_PROVIDER: npm
+      REPOCTL_NIGHTLY_SCHEDULE: '0 18 * * *'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Validate nightly source
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -z "$DEFAULT_BRANCH" ] || [ "$GITHUB_REF" != "refs/heads/$DEFAULT_BRANCH" ]; then
+            echo '::error::Nightly publication requires the repository default branch.'
+            exit 1
+          fi
+
+      - name: Checkout nightly source
+        id: nightly-checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+          cache: pnpm
+
+      - name: Install npm with trusted publishing support
+        id: nightly-npm
+        run: npm install --global npm@11.16.0 --registry=https://registry.npmjs.org
+
+      - name: Install Dependencies without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Publish nightly packages
+        id: nightly-publish
+        env:
+          REPOCTL_SNAPSHOT_PUBLISH: '1'
+          REPO_RELEASE_PACKAGE: ${{ inputs.package }}
+          REPO_RELEASE_VERSION: ${{ inputs.version }}
+          REPO_RELEASE_DRY_RUN: ${{ inputs.dry-run }}
+          REPO_RELEASE_RECOVERY_SOURCE_SHA: ${{ inputs.source-sha }}
+        run: |
+          args=(--publish --output "$RUNNER_TEMP/repoctl-nightly" --json)
+          if [ "$REPO_RELEASE_DRY_RUN" = 'true' ]; then
+            args+=(--dry-run)
+          fi
+          pnpm exec repo release nightly "${args[@]}"
+
+      - name: Preserve nightly diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nightly-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/repoctl-nightly/*.json
+            ${{ runner.temp }}/repoctl-nightly/**/nightly-report.json
+            ${{ runner.temp }}/repoctl-nightly/**/consumer-report.json
+            ${{ runner.temp }}/repoctl-nightly/**/snapshot-report.json
+            ${{ runner.temp }}/repoctl-nightly/**/tarballs/**/*.tgz
+          if-no-files-found: ignore
+          retention-days: 14
+
+  oidc-audit:
+    name: Audit npm OIDC
+    if: ${{ github.repository == 'weappjs/weapp.dev' && github.event_name == 'workflow_dispatch' && inputs.mode == 'oidc-audit' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+          cache: pnpm
+
+      - name: Install Dependencies without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Audit every publishable package
+        env:
+          REPO_RELEASE_PACKAGE: ${{ inputs.package }}
+          REPO_RELEASE_VERSION: ${{ inputs.version }}
+          REPO_RELEASE_DRY_RUN: ${{ inputs.dry-run }}
+          REPO_RELEASE_RECOVERY_SOURCE_SHA: ${{ inputs.source-sha }}
+        run: pnpm exec repo release ci --mode oidc-audit

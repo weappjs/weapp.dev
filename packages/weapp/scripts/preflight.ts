@@ -13,35 +13,15 @@ import { bundleReportPath, noticesPath, validatePublishedBundle } from './bundle
 
 const registry = 'https://registry.npmjs.org'
 const repository = 'weappjs/weapp.dev'
-const workflow = '.github/workflows/publish-weapp.yml'
 const packageRoot = fileURLToPath(new URL('../', import.meta.url))
 export interface PackageIdentity {
   name: 'weapp'
   version: string
 }
-export interface PreflightResponse {
-  ok: boolean
-  status: number
-  json: () => Promise<unknown>
-}
-export interface PreflightRequest {
-  method?: string
-  headers?: Record<string, string>
-  signal?: AbortSignal
-}
-export type PreflightFetcher = (url: string, init: PreflightRequest) => Promise<PreflightResponse>
-export interface OidcOptions {
-  env: NodeJS.ProcessEnv
-  name?: string
-  fetcher?: PreflightFetcher
-  mask?: (value: string) => unknown
-}
 export interface PreflightOptions {
   argv?: string[]
   env?: NodeJS.ProcessEnv
-  fetcher?: PreflightFetcher
   log?: (message: string) => unknown
-  mask?: (value: string) => unknown
 }
 export const requiredPaths = Object.freeze([
   'package.json',
@@ -121,8 +101,9 @@ export function validateManifest(manifest: unknown): PackageIdentity {
     'publication access must be public',
   )
   requireCheck(
-    !manifest.publishConfig.registry
-    || manifest.publishConfig.registry === registry,
+    manifest.publishConfig.registry === undefined
+    || manifest.publishConfig.registry === registry
+    || manifest.publishConfig.registry === `${registry}/`,
     stage,
     'publication registry must be npmjs.org',
   )
@@ -204,143 +185,13 @@ export function validatePaths(paths: unknown): void {
   )
 }
 
-export function validateRegistryMetadata(metadata: unknown, manifest: PackageIdentity): void {
+/** The CLI version must be rebuilt after repoctl selects a stable or nightly version. */
+export function validateBuiltVersion(metadata: unknown, manifest: PackageIdentity): void {
   requireCheck(
-    isRecord(metadata)
-    && metadata.name === manifest.name
-    && isRecord(metadata.versions),
-    'metadata',
-    'registry package identity or versions are invalid',
+    isRecord(metadata) && metadata.version === manifest.version,
+    'artifact',
+    'built CLI version must match the package manifest; rebuild after versioning',
   )
-  requireCheck(
-    !Object.hasOwn(metadata.versions, manifest.version),
-    'metadata',
-    'this version is already published',
-  )
-}
-
-export function validateCiIdentity(env: NodeJS.ProcessEnv): void {
-  requireCheck(
-    env.GITHUB_ACTIONS === 'true',
-    'ci',
-    'OIDC verification requires GitHub Actions',
-  )
-  requireCheck(
-    env.RUNNER_ENVIRONMENT === 'github-hosted',
-    'ci',
-    'OIDC verification requires a GitHub-hosted runner',
-  )
-  requireCheck(
-    env.GITHUB_REPOSITORY === repository,
-    'ci',
-    'repository must be weappjs/weapp.dev',
-  )
-  requireCheck(
-    typeof env.GITHUB_WORKFLOW_REF === 'string'
-    && env.GITHUB_WORKFLOW_REF.startsWith(`${repository}/${workflow}@`),
-    'ci',
-    'workflow identity must be publish-weapp.yml',
-  )
-}
-
-async function requestJson(fetcher: PreflightFetcher, url: string, init: PreflightRequest, stage: string): Promise<unknown> {
-  let response: PreflightResponse
-  try {
-    response = await fetcher(url, {
-      ...init,
-      signal: AbortSignal.timeout(20_000),
-    })
-  }
-  catch {
-    throw new PreflightError(stage, 'request failed')
-  }
-  if (!response.ok) {
-    throw new PreflightError(stage, 'request rejected', response.status)
-  }
-  try {
-    return await response.json()
-  }
-  catch {
-    throw new PreflightError(stage, 'invalid JSON response', response.status)
-  }
-}
-
-export async function verifyUnpublished(manifest: PackageIdentity, fetcher: PreflightFetcher = fetch): Promise<void> {
-  const metadata = await requestJson(
-    fetcher,
-    `${registry}/${encodeURIComponent(manifest.name)}`,
-    { headers: { Accept: 'application/json' } },
-    'metadata',
-  )
-  validateRegistryMetadata(metadata, manifest)
-}
-
-/** Explicitly prove the npm trusted-publisher exchange. Never persist or reuse its token. */
-export async function verifyOidc({
-  env,
-  name = 'weapp',
-  fetcher = fetch,
-  mask = () => {},
-}: OidcOptions): Promise<{ verified: true }> {
-  validateCiIdentity(env)
-  requireCheck(name === 'weapp', 'oidc', 'package identity must be weapp')
-  requireCheck(
-    typeof env.ACTIONS_ID_TOKEN_REQUEST_TOKEN === 'string'
-    && env.ACTIONS_ID_TOKEN_REQUEST_TOKEN.trim(),
-    'oidc-request',
-    'GitHub request token is unavailable',
-  )
-  let tokenUrl: URL
-  try {
-    tokenUrl = new URL(env.ACTIONS_ID_TOKEN_REQUEST_URL || '')
-  }
-  catch {
-    throw new PreflightError(
-      'oidc-request',
-      'GitHub token endpoint is unavailable',
-    )
-  }
-  requireCheck(
-    tokenUrl.protocol === 'https:' && !tokenUrl.username && !tokenUrl.password,
-    'oidc-request',
-    'GitHub token endpoint must use HTTPS',
-  )
-  tokenUrl.searchParams.set('audience', 'npm:registry.npmjs.org')
-  mask(env.ACTIONS_ID_TOKEN_REQUEST_TOKEN)
-  const result = await requestJson(
-    fetcher,
-    tokenUrl.toString(),
-    {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}`,
-      },
-    },
-    'oidc-request',
-  )
-  requireCheck(
-    isRecord(result) && typeof result.value === 'string'
-    && /^[\w-]+\.[\w-]+\.[\w-]+$/.test(result.value),
-    'oidc-request',
-    'GitHub did not return a JWT',
-  )
-  mask(result.value)
-  const exchange = await requestJson(
-    fetcher,
-    `${registry}/-/npm/v1/oidc/token/exchange/package/${encodeURIComponent(name)}`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${result.value}` },
-    },
-    'oidc-exchange',
-  )
-  requireCheck(
-    isRecord(exchange) && typeof exchange.token === 'string' && exchange.token.trim(),
-    'oidc-exchange',
-    'npm did not return an exchange token',
-  )
-  mask(exchange.token)
-  return { verified: true }
 }
 
 function execute(command: string, args: string[], cwd: string, stage: string): string {
@@ -351,40 +202,6 @@ function execute(command: string, args: string[], cwd: string, stage: string): s
   })
   requireCheck(result.status === 0, stage, 'validation command failed')
   return result.stdout
-}
-
-export function validateReleaseTag(manifest: PackageIdentity, env: NodeJS.ProcessEnv, executeGit: (args: string[]) => string): string {
-  const accepted = [`weapp@${manifest.version}`, `weapp-v${manifest.version}`]
-  const expected = env.WEAPP_RELEASE_TAG
-  requireCheck(
-    typeof expected === 'string' && accepted.includes(expected),
-    'release',
-    'release tag must match the package version',
-  )
-  const tag = executeGit([
-    'show-ref',
-    '--verify',
-    '--hash',
-    `refs/tags/${expected}`,
-  ]).trim()
-  requireCheck(
-    /^[a-f0-9]{40,64}$/.test(tag),
-    'release',
-    'release ref must be an existing Git tag',
-  )
-  const commit = executeGit([
-    'rev-parse',
-    `refs/tags/${expected}^{commit}`,
-  ]).trim()
-  const head = executeGit(['rev-parse', 'HEAD']).trim()
-  requireCheck(
-    commit === head && /^[a-f0-9]{40,64}$/.test(head),
-    'release',
-    'checked-out commit must match the release tag',
-  )
-  requireCheck(env.GITHUB_REF === `refs/tags/${expected}`, 'release', 'workflow must run from the actual release tag')
-  requireCheck(env.GITHUB_SHA === head, 'release', 'workflow provenance commit must match the checked-out tag commit')
-  return expected
 }
 
 async function verifyArtifact(artifact: string, manifest: PackageIdentity): Promise<{ filename: string, hash: string }> {
@@ -411,6 +228,12 @@ async function verifyArtifact(artifact: string, manifest: PackageIdentity): Prom
     ),
   )
   const identity = validateManifest(packed)
+  validateBuiltVersion(JSON.parse(execute(
+    'tar',
+    ['-xOzf', artifact, 'package/dist/data/meta.json'],
+    packageRoot,
+    'artifact',
+  )) as unknown, manifest)
   requireCheck(
     identity.name === manifest.name && identity.version === manifest.version,
     'artifact',
@@ -455,21 +278,11 @@ async function verifyArtifact(artifact: string, manifest: PackageIdentity): Prom
   return { filename: basename(artifact), hash }
 }
 
-function githubMask(value: string): void {
-  const escaped = value
-    .replaceAll('%', '%25')
-    .replaceAll('\r', '%0D')
-    .replaceAll('\n', '%0A')
-  process.stdout.write(`::add-mask::${escaped}\n`)
-}
-
 export async function preflight({
   argv = [],
   env = process.env,
-  fetcher = fetch,
   log = message => process.stdout.write(`${message}\n`),
-  mask = githubMask,
-}: PreflightOptions = {}): Promise<PackageIdentity & { oidc: boolean }> {
+}: PreflightOptions = {}): Promise<PackageIdentity> {
   requireCheck(
     argv.length <= 2
     && (argv.length === 0
@@ -481,28 +294,6 @@ export async function preflight({
     await readFile(join(packageRoot, 'package.json'), 'utf8'),
   ) as unknown)
   const ci = env.GITHUB_ACTIONS === 'true'
-  if (ci) {
-    validateCiIdentity(env)
-  }
-  const mode = env.WEAPP_PREFLIGHT_MODE || 'preflight'
-  requireCheck(
-    ['preflight', 'publish'].includes(mode),
-    'mode',
-    'expected preflight or publish',
-  )
-  if (mode === 'publish') {
-    requireCheck(
-      ci,
-      'release',
-      'publication validation requires GitHub Actions',
-    )
-    validateReleaseTag(manifest, env, args =>
-      execute('git', args, packageRoot, 'release'))
-  }
-  await verifyUnpublished(manifest, fetcher)
-  log(
-    `Registry verified: ${manifest.name}@${manifest.version} is unpublished.`,
-  )
   let artifact: string
   if (argv[0] === '--artifact') {
     if (argv[1]) {
@@ -538,11 +329,6 @@ export async function preflight({
     }
   }
   else {
-    requireCheck(
-      !ci,
-      'artifact',
-      'CI must validate the exact publication tarball with --artifact',
-    )
     const packed: unknown = JSON.parse(
       execute(
         'npm',
@@ -564,19 +350,12 @@ export async function preflight({
       return file.path
     })
     validatePaths(paths)
+    validateBuiltVersion(JSON.parse(await readFile(join(packageRoot, 'dist/data/meta.json'), 'utf8')) as unknown, manifest)
     await validatePublishedBundle(join(packageRoot, 'dist'))
     log('Local pack dry-run verified.')
   }
-  if (ci) {
-    await verifyOidc({ env, name: manifest.name, fetcher, mask })
-    log(
-      'CI npm OIDC exchange verified. The exchange token was discarded; no package was published.',
-    )
-  }
-  else {
-    log('CI OIDC exchange was not checked; this does not prove publication authorization.')
-  }
-  return { name: manifest.name, version: manifest.version, oidc: ci }
+  log('Package validation completed without publishing or requesting credentials.')
+  return manifest
 }
 
 async function main() {
@@ -584,7 +363,7 @@ async function main() {
     await preflight({ argv: process.argv.slice(2) })
   }
   catch (error) {
-    // Response bodies, fetch errors, process output, JWTs, and credentials are never logged.
+    // Keep command output and environment details out of validation errors.
     process.stderr.write(
       `${error instanceof PreflightError ? error.message : 'preflight: unexpected validation failure'}\n`,
     )

@@ -13,6 +13,7 @@ versioning:
     storage: repository
 allowBuilds:
   esbuild: true
+  lefthook: true
   msgpackr-extract: true
   workerd: true
 overrides:
@@ -21,3 +22,12 @@ overrides:
 patchedDependencies:
   # Remove after upstream includes Astro templates in source scanning and HMR.
   '@weapp-tailwindcss/source-scan@0.1.2': patches/@weapp-tailwindcss__source-scan@0.1.2.patch
+minimumReleaseAgeExclude:
+  - '@icebreakers/commitlint-config@4.1.4'
+  - '@icebreakers/eslint-config@8.0.11'
+  - '@icebreakers/monorepo-templates@3.0.1'
+  - '@icebreakers/monorepo@6.0.1'
+  - '@icebreakers/stylelint-config@5.1.5'
+  - postcss-tailwindcss@3.1.5
+  - repoctl@6.0.1
+  - stylelint-plugin-tailwindcss@3.1.5

@@ -247,6 +247,9 @@ test('does not initialize a detached component after a delayed import', async ({
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
   expect(await component!.evaluate(element => element.querySelectorAll('canvas').length)).toBe(0)
   await component!.evaluate(element => document.querySelector('main')!.append(element))
+  // Reconnection still honors lazy visibility, even when the preview notice
+  // pushes the appended component beyond the observer's preload margin.
+  await page.locator('[data-sponsor-graphs]').scrollIntoViewIfNeeded()
   await expect(page.locator('[data-sponsor-graphs]')).toHaveAttribute('data-ready', 'true')
   await expect(page.locator('[data-sponsor-graphs] canvas')).toHaveCount(2)
   await expect(page.locator('[data-graph-loading]')).toBeHidden()

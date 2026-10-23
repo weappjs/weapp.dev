@@ -3,10 +3,13 @@ import { join, relative, resolve } from 'node:path'
 import process from 'node:process'
 import { projectsDirectory } from '@weapp-io/project-catalog/paths'
 import { parse } from 'node-html-parser'
+import { getBuildChannel } from '../src/lib/build-channel'
 import { getSiteProfile, isRetiredOpenSourcePath } from '../src/lib/deployment'
 
 const root = resolve(import.meta.dirname, '..')
 const site = getSiteProfile()
+const channel = getBuildChannel()
+const preview = channel === 'preview'
 const dist = resolve(root, site.outputDir)
 const projectIds = (await readdir(projectsDirectory)).filter(file => file.endsWith('.json')).map(file => file.slice(0, -5))
 const expectedFiles = [
@@ -24,7 +27,9 @@ const expectedFiles = [
   'og.png',
   'og.svg',
   'bimi/logo.svg',
-  ...(['CNAME', '404/index.html']),
+  ...(preview ? ['_headers'] : []),
+  '404/index.html',
+  ...(preview ? [] : ['CNAME']),
 ]
 const retiredDocsHosts = ['tw.icebreaker.top', 'vite.icebreaker.top']
 const errors: string[] = []
@@ -79,7 +84,7 @@ for (const file of expectedFiles) {
   }
 }
 
-for (const name of ['.nojekyll', '.well-known/bimi']) {
+for (const name of ['.nojekyll', '.well-known/bimi', ...(preview ? ['CNAME'] : ['_headers'])]) {
   try {
     await access(resolve(dist, name))
     errors.push(`Forbidden build output: ${name}`)
@@ -89,14 +94,23 @@ for (const name of ['.nojekyll', '.well-known/bimi']) {
   }
 }
 
-try {
-  const cname = (await readFile(resolve(dist, 'CNAME'), 'utf8')).trim()
-  if (cname !== new URL(site.origin).hostname) {
-    errors.push(`CNAME: expected ${new URL(site.origin).hostname}, received ${cname || '(empty)'}`)
+if (!preview) {
+  try {
+    const cname = (await readFile(resolve(dist, 'CNAME'), 'utf8')).trim()
+    if (cname !== new URL(site.origin).hostname) {
+      errors.push(`CNAME: expected ${new URL(site.origin).hostname}, received ${cname || '(empty)'}`)
+    }
+  }
+  catch {
+    errors.push('CNAME: unable to read Pages hostname')
   }
 }
-catch {
-  errors.push('CNAME: unable to read Pages hostname')
+
+if (preview) {
+  const headers = await readFile(resolve(dist, '_headers'), 'utf8').catch(() => '')
+  if (!/^\/\*\n\s+X-Robots-Tag: noindex, nofollow\n$/i.test(headers)) {
+    errors.push('_headers: preview responses must disallow indexing for every path')
+  }
 }
 
 const cssFiles = (await readdir(dist, { recursive: true })).filter(file => file.endsWith('.css'))
@@ -131,6 +145,21 @@ for (const file of htmlFiles) {
   const robots = document.querySelector('meta[name="robots"]')?.getAttribute('content')
   const schemas = document.querySelectorAll('script[type="application/ld+json"]')
 
+  if (document.querySelector('html')?.getAttribute('data-site-channel') !== channel) {
+    errors.push(`${label}: build channel must be ${channel}`)
+  }
+  const notice = document.querySelector('[data-preview-notice]')
+  const expectsNotice = preview && !retiredRedirect
+  if (expectsNotice) {
+    const message = pagePath.startsWith('/en/') ? 'Preview version. Content may change.' : '预览版本，内容可能更新。'
+    if (!notice?.text.includes(message) || notice.querySelector('a')?.getAttribute('href') !== expectedCanonical) {
+      errors.push(`${label}: missing localized preview notice and production link`)
+    }
+  }
+  else if (notice) {
+    errors.push(`${label}: unexpected preview notice`)
+  }
+
   if (canonical !== expectedCanonical) {
     errors.push(`${label}: expected canonical ${expectedCanonical}, received ${canonical ?? '(missing)'}`)
   }
@@ -145,8 +174,11 @@ for (const file of htmlFiles) {
   if (descriptions.length !== 1 || !descriptions[0].getAttribute('content')?.trim()) {
     errors.push(`${label}: missing unique description`)
   }
-  if (!robots) {
-    errors.push(`${label}: missing robots directive`)
+  if (preview && robots !== 'noindex, follow') {
+    errors.push(`${label}: preview pages must be noindex`)
+  }
+  else if (!preview && !retiredRedirect && !['404.html', '404/index.html', 'en/404/index.html'].includes(label) && robots !== 'index, follow') {
+    errors.push(`${label}: stable content pages must remain indexable`)
   }
   if ((retiredRedirect || label === '404.html' || label === '404/index.html' || label === 'en/404/index.html') && !robots?.includes('noindex')) {
     errors.push(`${label}: compatibility redirects and 404 pages must be noindex`)
@@ -260,8 +292,13 @@ for (const file of [...sitemapFiles, 'robots.txt', 'llms.txt', 'llms-full.txt', 
         }
       }
     }
-    if (file === 'robots.txt' && !contents.includes(`Sitemap: ${site.origin}/sitemap-index.xml`)) {
-      errors.push(`${file}: sitemap must use this site's origin`)
+    if (file === 'robots.txt') {
+      const expectedRobots = preview
+        ? 'User-agent: *\nDisallow: /\n'
+        : `User-agent: *\nAllow: /\n\nSitemap: ${site.origin}/sitemap-index.xml\n`
+      if (contents !== expectedRobots) {
+        errors.push(`${file}: incorrect crawler policy for ${channel}`)
+      }
     }
     if (file === 'releases.xml' && !contents.includes(`<link>${site.origin}/</link>`)) {
       errors.push(`${file}: release channel must use this site's origin`)

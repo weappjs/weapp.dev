@@ -1,4 +1,5 @@
 import type { ProjectDefinition } from '../types/project'
+import type { BuildChannel } from './build-channel'
 import type { SiteProfile } from './deployment'
 import { donationCopy } from '../i18n/donation'
 import { projectService } from './services'
@@ -8,7 +9,7 @@ export interface ResourceProject {
   data: ProjectDefinition
 }
 
-export function createSiteResources(site: SiteProfile, projects: ResourceProject[]) {
+export function createSiteResources(site: SiteProfile, projects: ResourceProject[], channel: BuildChannel = 'stable'): Record<string, string> {
   const url = (path: string) => new URL(path, site.origin).href
   const introduction = 'Mini-app tools, project references, and scoped migration, training, and template customization for real repositories.'
   const pages = [
@@ -58,9 +59,15 @@ export function createSiteResources(site: SiteProfile, projects: ResourceProject
     ].join('\n')
   }).join('\n\n')
 
-  return {
-    'robots.txt': `User-agent: *\nAllow: /\n\nSitemap: ${url('/sitemap-index.xml')}\n`,
+  const resources: Record<string, string> = {
+    'robots.txt': channel === 'preview'
+      ? 'User-agent: *\nDisallow: /\n'
+      : `User-agent: *\nAllow: /\n\nSitemap: ${url('/sitemap-index.xml')}\n`,
     'llms.txt': summary,
     'llms-full.txt': `# ${site.name} reference\n\n${introduction}\n\n${sources}\n${projectReferences}\n\n${canonicalPages}${serviceNotes}${sponsorshipNotes}`,
   }
+  if (channel === 'preview') {
+    resources._headers = '/*\n  X-Robots-Tag: noindex, nofollow\n'
+  }
+  return resources
 }

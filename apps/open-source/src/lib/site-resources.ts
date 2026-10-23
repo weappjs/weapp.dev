@@ -1,4 +1,5 @@
 import type { ProjectDefinition } from '../types/project'
+import type { BuildChannel } from './build-channel'
 import type { SiteProfile } from './deployment'
 
 export interface ResourceProject {
@@ -6,7 +7,7 @@ export interface ResourceProject {
   data: ProjectDefinition
 }
 
-export function createSiteResources(site: SiteProfile, projects: ResourceProject[]) {
+export function createSiteResources(site: SiteProfile, projects: ResourceProject[], channel: BuildChannel = 'stable'): Record<string, string> {
   const url = (path: string) => new URL(path, site.origin).href
   const introduction = 'An open-source project showcase for the JavaScript mini-app ecosystem. Discover related tools, their source repositories, documentation, and ways to contribute.'
   const pages = [
@@ -53,9 +54,15 @@ export function createSiteResources(site: SiteProfile, projects: ResourceProject
     ].join('\n')
   }).join('\n\n')
 
-  return {
-    'robots.txt': `User-agent: *\nAllow: /\n\nSitemap: ${url('/sitemap-index.xml')}\n`,
+  const resources: Record<string, string> = {
+    'robots.txt': channel === 'preview'
+      ? 'User-agent: *\nDisallow: /\n'
+      : `User-agent: *\nAllow: /\n\nSitemap: ${url('/sitemap-index.xml')}\n`,
     'llms.txt': summary,
     'llms-full.txt': `# ${site.name} reference\n\n${introduction}\n\n${sources}\n${projectReferences}\n\n${canonicalPages}`,
   }
+  if (channel === 'preview') {
+    resources._headers = '/*\n  X-Robots-Tag: noindex, nofollow\n'
+  }
+  return resources
 }

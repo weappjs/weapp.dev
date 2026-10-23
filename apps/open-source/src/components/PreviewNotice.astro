@@ -1,0 +1,71 @@
+---
+import type { Locale } from '../types/project'
+
+interface Props {
+  locale: Locale
+  productionUrl: string
+}
+
+const { locale, productionUrl } = Astro.props
+const label = locale === 'zh-CN' ? '预览版本，内容可能更新。' : 'Preview version. Content may change.'
+const linkLabel = locale === 'zh-CN' ? '访问正式网站' : 'Visit the live website'
+---
+
+<aside data-preview-notice aria-label={locale === 'zh-CN' ? '网站预览提示' : 'Website preview notice'} class="preview-notice">
+  <div>
+    <p>{label}</p>
+    <a href={productionUrl}>{linkLabel}</a>
+  </div>
+</aside>
+
+<script is:inline>
+  (() => {
+    const notice = document.currentScript?.previousElementSibling
+    if (!(notice instanceof HTMLElement)) return
+    const updateHeight = () => {
+      document.documentElement.style.setProperty('--site-notice-height', `${notice.getBoundingClientRect().height}px`)
+    }
+    // Run before the hero is parsed; track wrapping, font and viewport changes.
+    updateHeight()
+    new ResizeObserver(updateHeight).observe(notice, { box: 'border-box' })
+  })()
+</script>
+
+<style>
+  .preview-notice {
+    color: var(--text);
+    background: var(--surface-soft);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  .preview-notice > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1rem;
+    align-items: center;
+    justify-content: center;
+    width: min(1240px, calc(100% - 2rem));
+    margin-inline: auto;
+    padding-block: 0.25rem;
+  }
+  .preview-notice p {
+    margin: 0;
+  }
+  .preview-notice a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    color: var(--text);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  .preview-notice a:hover {
+    color: var(--accent);
+  }
+  .preview-notice a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+</style>
