@@ -5,6 +5,9 @@ on:
     - cron: '0 1 * * 1' # Monday 09:00 Asia/Shanghai (UTC+8)
   workflow_dispatch:
 
+env:
+  LEFTHOOK: '0'
+
 concurrency:
   group: sync-project-metrics
   cancel-in-progress: false

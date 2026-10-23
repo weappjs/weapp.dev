@@ -2,12 +2,13 @@ import { strict as assert } from 'node:assert'
 import { spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
 import { existsSync } from 'node:fs'
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createReleasePullRequest, resolveCommandConfig } from 'repoctl'
+import { createReleasePullRequest, createSnapshotPlan, resolveCommandConfig } from 'repoctl'
 import { it } from 'vitest'
+import { parse } from 'yaml'
 
 const repository = fileURLToPath(new URL('..', import.meta.url))
 const intentName = 'weapp-cli-toolbox'
@@ -54,7 +55,7 @@ async function json(directory, filename) {
 }
 
 async function withFixture(intent, run) {
-  const directory = await mkdtemp(path.join(tmpdir(), 'weapp-release-'))
+  const directory = await realpath(await mkdtemp(path.join(tmpdir(), 'weapp-release-')))
   const cwd = path.join(directory, 'workspace')
   const remote = path.join(directory, 'origin.git')
   const registryLog = path.join(directory, 'registry.jsonl')
@@ -249,3 +250,82 @@ it('rejects a release intent targeting an ignored private package before pushing
     await assert.rejects(readFile(path.join(cwd, '.changeset/ledger.yaml')), { code: 'ENOENT' })
   })
 }, 60000)
+
+it('plans nightly versions without consuming stable intents or changing the source repository', async () => {
+  await withFixture(`---\n"weapp": minor\n---\n\n${summary}\n`, async ({ cwd, source, options, git }) => {
+    const before = await readFile(path.join(cwd, `.changeset/${intentName}.md`), 'utf8')
+    const report = await createSnapshotPlan({
+      ...options,
+      identity: { kind: 'nightly', commit: source, buildId: 'migration-fixture' },
+      dryRun: true,
+    })
+    assert.equal(report.status, 'planned')
+    assert.equal(report.tag, 'snapshot-nightly')
+    assert.deepEqual(report.packages.map(pkg => pkg.name), ['weapp'])
+    assert.match(report.packages[0].version, /-snapshot\.nightly\./)
+    assert.equal((await json(cwd, 'packages/weapp/package.json')).version, '0.0.1')
+    assert.equal(await readFile(path.join(cwd, `.changeset/${intentName}.md`), 'utf8'), before)
+    assert.equal(git('rev-parse', 'HEAD'), source)
+    assert.equal(git('status', '--porcelain'), '')
+    assert.equal(git('for-each-ref', '--format=%(refname)', 'refs/tags'), '')
+  })
+}, 60000)
+
+it('keeps package publication and stable websites behind the managed release stages', async () => {
+  const workflow = parse(await readFile(path.join(repository, '.github/workflows/release.yml'), 'utf8'))
+  const steps = workflow.jobs.release.steps
+  const stages = steps.filter(step => step.run?.startsWith('pnpm exec repo release ci --stage')).map(step => step.run.split(' ').at(-1))
+  assert.deepEqual(stages, ['plan', 'verify', 'prepare', 'upload', 'confirm', 'finalize'])
+  for (const id of ['release-upload', 'release-confirm', 'release-finalize']) {
+    assert.match(steps.find(step => step.id === id).if, /release-prepare.outputs.publish == 'true'/)
+  }
+  assert.match(workflow.jobs.docs.if, /needs.release.outputs.release-record != ''/)
+  assert.equal(workflow.jobs.docs.with.channel, 'stable')
+  assert.match(workflow.jobs.docs.with.release, /^\$\{\{ needs\.release\.outputs\.release-record \}\}$/)
+  assert.deepEqual(workflow.on.schedule, [{ cron: '0 18 * * *' }])
+  assert.match(workflow.jobs.nightly.if, /github.event_name == 'schedule'/)
+  assert.equal(workflow.jobs.nightly.permissions.contents, 'read')
+  assert.equal(workflow.jobs.nightly.permissions['id-token'], 'write')
+  assert.equal(workflow.jobs.nightly.env.REPOCTL_NIGHTLY_PROVIDER, 'npm')
+  assert.equal(workflow.concurrency['cancel-in-progress'], false)
+  assert.equal(steps.some(step => step.run?.includes('gh workflow run weapp-cli.yml --ref release/pnpm-version')), true)
+  for (const legacy of ['publish-weapp.yml', 'version-packages.yml']) {
+    assert.equal(existsSync(path.join(repository, '.github/workflows', legacy)), false)
+  }
+})
+
+it('separates Pages credentials from Cloudflare and keeps PR deploys on validated artifacts', async () => {
+  const deploy = parse(await readFile(path.join(repository, '.github/workflows/repoctl-docs-deploy.yml'), 'utf8'))
+  assert.match(deploy.concurrency.group, /^docs-\$\{\{ inputs\.site \}\}-\$\{\{ inputs\.channel \}\}$/)
+  assert.equal(deploy.concurrency['cancel-in-progress'], false)
+  assert.deepEqual(deploy.jobs.cloudflare.permissions, { contents: 'write' })
+  assert.deepEqual(deploy.jobs.pages.permissions, { 'contents': 'write', 'pages': 'write', 'id-token': 'write' })
+  assert.match(deploy.jobs.pages.if, /inputs.site == 'open-source' && inputs.channel == 'stable'/)
+  const pages = deploy.jobs.pages.steps.find(step => step.uses?.startsWith('actions/github-script@'))
+  assert.match(pages.with.script, /env: process.env/)
+  assert.match(pages.with.script, /\['plan', 'deploy'\]/)
+  assert.equal(pages.env.CLOUDFLARE_API_TOKEN, undefined)
+  for (const filename of ['ci.yml', 'open-source.yml']) {
+    const workflow = parse(await readFile(path.join(repository, '.github/workflows', filename), 'utf8'))
+    assert.deepEqual(Object.keys(workflow.jobs).sort(), ['deploy-preview', 'verify'])
+    const verify = workflow.jobs.verify
+    assert.match(verify.env.REPO_DOCS_CHANNEL, /github.event_name == 'pull_request' && 'preview' \|\| 'stable'/)
+    for (const job of [verify, workflow.jobs['deploy-preview']]) {
+      const checkout = job.steps.find(step => step.uses?.startsWith('actions/checkout@'))
+      assert.match(checkout.with.ref, /github.event.pull_request.head.sha \|\| github.sha/)
+    }
+    const identity = verify.steps.findIndex(step => step.run?.includes('--identity-only'))
+    const e2e = verify.steps.findIndex(step => step.run?.endsWith('exec playwright test'))
+    const artifact = verify.steps.findIndex(step => step.uses?.startsWith('actions/upload-artifact@'))
+    assert.ok(identity >= 0 && identity < e2e && e2e < artifact)
+    const preview = workflow.jobs['deploy-preview']
+    assert.equal(preview.needs, 'verify')
+    assert.match(preview.if, /github.event.pull_request.head.repo.full_name == github.repository/)
+    const download = preview.steps.findIndex(step => step.uses?.startsWith('actions/download-artifact@'))
+    const upload = preview.steps.findIndex(step => step.run?.startsWith('node scripts/docs-deployment/cli.mjs pr '))
+    assert.ok(download >= 0 && download < upload)
+    assert.equal(preview.steps.some(step => /pnpm .*build/.test(step.run ?? '')), false)
+    assert.equal(preview.permissions['id-token'], undefined)
+    assert.equal(preview.permissions.pages, undefined)
+  }
+})

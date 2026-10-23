@@ -2,6 +2,7 @@
 import type { Locale } from '../types/project'
 import { localizePath } from '../i18n/ui'
 import { getSiteProfile } from '../lib/deployment'
+import { getBuildChannel } from '../lib/build-channel'
 import { relativeSiteUrl } from '../lib/github-pages-paths'
 
 interface Props { locale: Locale }
@@ -12,7 +13,7 @@ const relativeDestination = relativeSiteUrl(Astro.url.pathname.replace(/^\/+|\/+
 const title = locale === 'zh-CN' ? '浏览开源项目' : 'Explore open-source projects'
 ---
 <!doctype html>
-<html lang={locale === 'zh-CN' ? 'zh-CN' : 'en-US'}>
+<html lang={locale === 'zh-CN' ? 'zh-CN' : 'en-US'} data-site-channel={getBuildChannel()}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />

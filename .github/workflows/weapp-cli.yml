@@ -17,8 +17,7 @@ on:
       - pnpm-workspace.yaml
       - eslint.config.js
       - .github/workflows/weapp-cli.yml
-      - .github/workflows/publish-weapp.yml
-      - .github/workflows/version-packages.yml
+      - .github/workflows/release.yml
   push:
     branches: [main]
     paths:
@@ -35,9 +34,11 @@ on:
       - pnpm-workspace.yaml
       - eslint.config.js
       - .github/workflows/weapp-cli.yml
-      - .github/workflows/publish-weapp.yml
-      - .github/workflows/version-packages.yml
+      - .github/workflows/release.yml
   workflow_dispatch:
+
+env:
+  LEFTHOOK: '0'
 
 permissions:
   contents: read

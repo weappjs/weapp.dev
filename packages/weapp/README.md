@@ -116,23 +116,25 @@ node packages/weapp/dist/cli.js
 
 The CLI, lab, tests, and validation scripts are written in strict TypeScript. `tsdown` bundles the Node CLI for Node 18 and the browser lab separately; the artifact smoke script is also compiled so it can run directly on Node 18. `check` validates the Node/tooling and browser types. Static catalog snapshots, logos, fonts, and licenses are copied alongside the bundles.
 
-The published tarball contains runtime JavaScript, an embedded catalog and Logo point cloud, the lab's licensed assets, and `dist/THIRD_PARTY_NOTICES.txt` for bundled libraries. Commands and their data load on demand. Pure JavaScript tools are bundled; `open@10` remains an installed dependency to preserve its platform resources. The package does not depend on the monorepo, Astro, or either website. `test:pack` installs the actual tarball in a temporary directory and runs artifact smoke checks. Release tags use `weapp@<version>`; legacy `weapp-v<version>` tags remain accepted.
+The published tarball contains runtime JavaScript, an embedded catalog and Logo point cloud, the lab's licensed assets, and `dist/THIRD_PARTY_NOTICES.txt` for bundled libraries. Commands and their data load on demand. Pure JavaScript tools are bundled; `open@10` remains an installed dependency to preserve its platform resources. The package does not depend on the monorepo, Astro, or either website. `test:pack` installs the actual tarball in a temporary directory and runs artifact smoke checks. Canonical release tags use `weapp@<version>`.
 
-Versions and changelogs are prepared by repoctl using pnpm's native change intents. Record `pnpm change weapp --bump patch --summary "Describe the fix"` on your development branch, commit the intent, and merge it into `main`. Use `minor` for new features and `pnpm release:plan --json` for a read-only preview. The Version Packages workflow creates or updates `release/pnpm-version`, then runs CLI CI and OIDC preflight on that PR. Private workspaces are excluded explicitly. The release plan determines the next version from the current baseline and pending intents; version PRs are reviewed and merged separately from publication.
+Versions, changelogs, npm publication, and GitHub Releases are managed by repoctl 6.0.1 using pnpm's native change intents. Record `pnpm change weapp --bump patch --summary "Describe the fix"` on your development branch, commit the intent, and merge it into `main`. Use `minor` for new features and `pnpm release:plan --json` for a read-only preview. The managed `release.yml` creates or updates `release/pnpm-version` and explicitly runs CLI CI on the version PR. Review and merge that PR; the next release workflow publishes the stable package, confirms it in npm, and finalizes the canonical tag, GitHub Release, and release record. Private workspaces remain excluded.
 
-## Release preflight
+## Package validation and nightly releases
 
-After building, `pnpm --filter weapp preflight` checks package identity, Node 18 support, public access, the unpublished npm version, and the pack dry-run's resources. This local check does **not** check CI OIDC or prove permission to publish.
+After building, `pnpm --filter weapp preflight` checks package identity, Node 18 support, public access, resources, bundled dependencies, and the built CLI version. `preflight --artifact <tarball>` additionally installs and smoke-tests that exact tarball and verifies that its SHA256 stays unchanged. These package checks do not request publishing credentials; repoctl owns registry checks and publication.
 
-The `publish-weapp.yml` manual workflow defaults to `mode=preflight`, `tag=main`. On a GitHub-hosted runner it tests and installs one exact tarball, validates its manifest and resources, and explicitly requests a GitHub JWT for `npm:registry.npmjs.org` before exchanging it with npm. Missing credentials or a failed exchange stop the run. The JWT and exchange token are masked, never saved or passed to `npm publish`, and the run uploads the validated artifact without publishing. A successful exchange verifies that exchange only; it does not independently prove publishing permission.
+Nightly runs every day at 02:00 Asia/Shanghai and skips an already-published source commit and nightly build identity. It publishes an isolated main snapshot under the `snapshot-nightly` npm tag without consuming stable change intents, changing `latest`, or creating stable GitHub Releases. Try it with `npx weapp@snapshot-nightly`. Building after version selection keeps the manifest and CLI version consistent.
 
-After merging the version PR, publish a GitHub Release named `weapp@<version>` with its tag pointing to the merge commit. This triggers the existing publishing workflow. An explicit `mode=publish` dispatch from that tag remains available; repoctl requires the canonical tag and GitHub Release as well as the npm version before preparing the next release. The workflow's GitHub ref, provenance commit, checked-out commit, and resolved tag commit must agree, and the version must still be unpublished. Publication uses the validated tarball with lifecycle scripts disabled and npm's own trusted-publishing authentication. The npm trusted publisher must match `weappjs/weapp.dev`, workflow filename `publish-weapp.yml`, and the workflow's environment (currently empty). `npm publish --dry-run` is not an OIDC authentication check.
+The npm trusted publisher must match `weappjs/weapp.dev`, workflow filename `release.yml`, and an empty environment. Stable, nightly, and OIDC audit use that workflow on GitHub-hosted runners. `npm publish --dry-run` is not an OIDC authentication check. The two websites deploy fixed previews from main and production from a completed stable release record.
 
 ```bash
-# Validate the prepared version PR without publishing:
-gh workflow run publish-weapp.yml --ref release/pnpm-version -f mode=preflight -f tag=release/pnpm-version
-# Only after authorizing publication and creating the matching release tag:
-gh workflow run publish-weapp.yml --ref weapp@0.1.0 -f mode=publish -f tag=weapp@0.1.0
+# Inspect the planned release without publishing:
+pnpm release:plan --json
+# Audit the configured npm trusted publisher without publishing:
+gh workflow run release.yml --ref main -f mode=oidc-audit
+# Inspect nightly source selection without uploading packages:
+gh workflow run release.yml --ref main -f mode=nightly -f dry-run=true
 ```
 
 [Website](https://weapp.js.org/) · [Projects](https://weapp.js.org/en/projects/) · [GitHub](https://github.com/weappjs) · [Issues](https://github.com/weappjs/weapp.dev/issues)
@@ -183,11 +185,13 @@ npx weapp palette '#07c160' --output colors.css --format css
 
 开发代码、实验室、测试和验收脚本统一使用严格 TypeScript，`pnpm --filter weapp check` 检查 Node／工具脚本和浏览器类型。`tsdown` 分别打包 Node 18 CLI、浏览器实验室及可直接在 Node 18 执行的 artifact smoke。运行 `pnpm --filter weapp build` 后可执行 `node packages/weapp/dist/cli.js`；npm 包只交付 JavaScript bundles 与目录、Logo、字体和许可证等静态资源。
 
-构建后执行 `pnpm --filter weapp preflight` 可本地检查包身份、Node 18、公开访问、版本未发布和打包资源；它不会检查 CI OIDC，也不证明发布权限。`publish-weapp.yml` 手动运行默认 `mode=preflight`、`tag=main`：在 GitHub 托管 runner 上安装并测试同一 tarball，显式请求 GitHub JWT 并调用 npm OIDC exchange。凭据缺失或 exchange 失败即终止；JWT 与 token 仅掩码后丢弃，不落盘、不交给发布命令。交换成功只证明该交换完成，预检上传验证后的 tarball，整个模式不会发布 npm 包。
+构建后执行 `pnpm --filter weapp preflight` 检查包身份、Node 18、公开访问、资源清单、依赖边界和 CLI 构建版本；加 `--artifact <tarball>` 会安装并 smoke 测试指定 tarball，确认 SHA256 未变。该检查不请求发布凭据，registry 状态与实际发布统一交给 repoctl。
 
-版本与 changelog 由 repoctl 和 pnpm 原生 change intents 管理。在开发分支运行 `pnpm change weapp --bump patch --summary "修复说明"`，提交 intent 并合入 main；新功能使用 `minor`，`pnpm release:plan --json` 可只读预览。Version Packages 工作流维护 `release/pnpm-version` → main 的版本 PR，主动运行该分支的 CLI CI 和 OIDC 预检，明确排除私有 workspace。下一版本以当前基线与待处理 intent 的 release plan 为准；main 仍为已发布基线时，应预检版本分支。版本 PR 需要单独审查、合并，不会自动发布。
+版本与 changelog 由 repoctl 6.0.1 和 pnpm 原生 change intents 管理。开发分支运行 `pnpm change weapp --bump patch --summary "修复说明"`，新功能使用 `minor`；`pnpm release:plan --json` 可只读预览。受管 `release.yml` 维护 `release/pnpm-version` → main 的版本 PR，并显式运行该分支 CLI CI。版本 PR 经审查、合并后，后续 main workflow 发布 npm、确认 registry 状态，再完成 canonical tag、GitHub Release 和 release record；私有 workspace 不参与发布。
 
-合并版本 PR 后，发布 `weapp@<version>` 的 GitHub Release，标签指向合并提交，再由既有工作流发布 npm。旧 `weapp-v<version>` 标签保持兼容；新的自动版本流程使用 canonical 名称，因为 repoctl 消费下一批 intent 前要求上一版本的 npm、canonical tag 和 GitHub Release 完整。手动发布仍须明确 `mode=publish`，使用 `--ref weapp@0.1.0 -f mode=publish -f tag=weapp@0.1.0`；仅手动发布 npm 时还须补齐 canonical Release。GitHub ref、provenance SHA、检出的 HEAD 与 tag 对应提交必须一致。npm trusted publisher 应匹配 `weappjs/weapp.dev`、`publish-weapp.yml` 及当前空 environment。`npm publish --dry-run` 不能作为 OIDC 认证证明。
+Nightly 每日北京时间 02:00 检查 main，相同来源提交与构建身份已经发布时跳过，发布使用 `snapshot-nightly` dist-tag。使用 `npx weapp@snapshot-nightly` 试用。快照在隔离目录中改版本、重建与验证，不消费正式 intent、不修改 `latest`、不创建正式 Release；`dist/data/meta.json` 必须与 manifest 版本一致。手动预检用 `gh workflow run release.yml --ref main -f mode=nightly -f dry-run=true`。
+
+npm trusted publisher 应匹配 `weappjs/weapp.dev`、`release.yml` 与空 environment。正式发布、nightly、`mode=oidc-audit` 共用该工作流身份和 GitHub 托管 runner。双站 main 更新固定预览，正式网站绑定完成的 stable release record。`npm publish --dry-run` 不能作为 OIDC 认证证明。
 
 <!-- catalog:zh-CN:start -->
 

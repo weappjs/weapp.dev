@@ -3,10 +3,13 @@ import { join, relative, resolve } from 'node:path'
 import process from 'node:process'
 import { projectsDirectory } from '@weapp-io/project-catalog/paths'
 import { parse } from 'node-html-parser'
+import { getBuildChannel } from '../src/lib/build-channel'
 import { getSiteProfile } from '../src/lib/deployment'
 
 const root = resolve(import.meta.dirname, '..')
 const site = getSiteProfile()
+const channel = getBuildChannel()
+const preview = channel === 'preview'
 const dist = resolve(root, site.outputDir)
 const projectIds = (await readdir(projectsDirectory)).filter(file => file.endsWith('.json')).map(file => file.slice(0, -5))
 const expectedFiles = [
@@ -24,6 +27,7 @@ const expectedFiles = [
   'og.png',
   'og.svg',
   'bimi/logo.svg',
+  ...(preview ? ['_headers'] : []),
 ]
 const retiredDocsHosts = ['tw.icebreaker.top', 'vite.icebreaker.top']
 const errors: string[] = []
@@ -65,13 +69,20 @@ for (const file of expectedFiles) {
   }
 }
 
-for (const name of ['CNAME', '.nojekyll', '.well-known/bimi']) {
+for (const name of ['CNAME', '.nojekyll', '.well-known/bimi', ...(preview ? [] : ['_headers'])]) {
   try {
     await access(resolve(dist, name))
     errors.push(`Forbidden build output: ${name}`)
   }
   catch {
     // The complete site does not publish legacy BIMI paths or Pages control files.
+  }
+}
+
+if (preview) {
+  const headers = await readFile(resolve(dist, '_headers'), 'utf8').catch(() => '')
+  if (!/^\/\*\n\s+X-Robots-Tag: noindex, nofollow\n$/i.test(headers)) {
+    errors.push('_headers: preview responses must disallow indexing for every path')
   }
 }
 
@@ -105,6 +116,21 @@ for (const file of htmlFiles) {
   const robots = document.querySelector('meta[name="robots"]')?.getAttribute('content')
   const schemas = document.querySelectorAll('script[type="application/ld+json"]')
 
+  if (document.querySelector('html')?.getAttribute('data-site-channel') !== channel) {
+    errors.push(`${label}: build channel must be ${channel}`)
+  }
+  const notice = document.querySelector('[data-preview-notice]')
+  const expectsNotice = preview
+  if (expectsNotice) {
+    const message = pagePath.startsWith('/en/') ? 'Preview version. Content may change.' : '预览版本，内容可能更新。'
+    if (!notice?.text.includes(message) || notice.querySelector('a')?.getAttribute('href') !== expectedCanonical) {
+      errors.push(`${label}: missing localized preview notice and production link`)
+    }
+  }
+  else if (notice) {
+    errors.push(`${label}: unexpected preview notice`)
+  }
+
   if (canonical !== expectedCanonical) {
     errors.push(`${label}: expected canonical ${expectedCanonical}, received ${canonical ?? '(missing)'}`)
   }
@@ -119,8 +145,11 @@ for (const file of htmlFiles) {
   if (descriptions.length !== 1 || !descriptions[0].getAttribute('content')?.trim()) {
     errors.push(`${label}: missing unique description`)
   }
-  if (!robots) {
-    errors.push(`${label}: missing robots directive`)
+  if (preview && robots !== 'noindex, follow') {
+    errors.push(`${label}: preview pages must be noindex`)
+  }
+  else if (!preview && !['404.html', '404/index.html', 'en/404/index.html'].includes(label) && robots !== 'index, follow') {
+    errors.push(`${label}: stable content pages must remain indexable`)
   }
   if ((label === '404.html' || label === '404/index.html' || label === 'en/404/index.html') && !robots?.includes('noindex')) {
     errors.push(`${label}: 404 pages must be noindex`)
@@ -214,8 +243,13 @@ for (const file of [...sitemapFiles, 'robots.txt', 'llms.txt', 'llms-full.txt', 
         }
       }
     }
-    if (file === 'robots.txt' && !contents.includes(`Sitemap: ${site.origin}/sitemap-index.xml`)) {
-      errors.push(`${file}: sitemap must use this site's origin`)
+    if (file === 'robots.txt') {
+      const expectedRobots = preview
+        ? 'User-agent: *\nDisallow: /\n'
+        : `User-agent: *\nAllow: /\n\nSitemap: ${site.origin}/sitemap-index.xml\n`
+      if (contents !== expectedRobots) {
+        errors.push(`${file}: incorrect crawler policy for ${channel}`)
+      }
     }
     if (file === 'releases.xml' && !contents.includes(`<link>${site.origin}/</link>`)) {
       errors.push(`${file}: release channel must use this site's origin`)

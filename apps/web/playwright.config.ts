@@ -6,6 +6,8 @@ const browserChannel = process.env.PLAYWRIGHT_CHANNEL
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
+  // Particle and canvas assertions need a bounded rendering workload on CI.
+  workers: 2,
   webServer: {
     // Serve the exact deployment artifact, including the Pages relative paths.
     command: 'node scripts/serve-test-site.mjs',
@@ -13,6 +15,7 @@ export default defineConfig({
     reuseExistingServer: false,
   },
   use: {
+    headless: true,
     baseURL: 'http://127.0.0.1:4321',
     locale: 'zh-CN',
     ...(browserChannel ? { channel: browserChannel } : {}),

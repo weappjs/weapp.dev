@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { siteCopy } from '../../src/i18n/ui'
+import { getBuildChannel } from '../../src/lib/build-channel'
 import { expectStaticStarfield } from './hero-fallback'
 import { heroWordmark, isOpenSourceSite, siteOrigin } from './site-target'
 import { expect, test } from './test'
@@ -75,7 +76,7 @@ test('renders the bilingual ecosystem home with valid metadata', async ({ page }
   await expect(page.locator('#projects').getByRole('heading', { name: 'Varo' })).toBeVisible()
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `${siteOrigin}/`)
   await expect(page.locator('link[hreflang="en-US"]')).toHaveAttribute('href', `${siteOrigin}/en/`)
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow')
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', getBuildChannel() === 'preview' ? 'noindex, follow' : 'index, follow')
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', `${siteOrigin}/og.png`)
   await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(4)
   await expect(page.locator('#about')).toContainText(isOpenSourceSite ? 'JavaScript 与 TypeScript 项目' : 'weapp-tailwindcss')

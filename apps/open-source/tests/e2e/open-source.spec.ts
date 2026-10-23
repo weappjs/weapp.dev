@@ -1,4 +1,5 @@
 import { parse } from 'node-html-parser'
+import { getBuildChannel } from '../../src/lib/build-channel'
 import { expectSiteLink, isOpenSourceSite } from './site-target'
 import { expect, test } from './test'
 
@@ -93,7 +94,12 @@ test('all indexed HTML and discovery resources keep the open-source boundary', a
     const response = await request.get(path)
     expect(response.ok(), path).toBe(true)
     const content = await response.text()
-    expect(content, path).toContain('https://weapp.js.org')
+    if (path === '/robots.txt' && getBuildChannel() === 'preview') {
+      expect(content).toBe('User-agent: *\nDisallow: /\n')
+    }
+    else {
+      expect(content, path).toContain('https://weapp.js.org')
+    }
     expect(content, path).not.toMatch(/https:\/\/(?:www\.)?weapp\.dev(?:\/|$)/)
     expect(content, path).not.toMatch(fundingCopy)
     expect(content, path).not.toMatch(/\/(?:pricing|sponsors|contributors)\//)
