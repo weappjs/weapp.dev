@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { activeVersion, cloudflareClient, deployCloudflare, deploymentMessage, readWranglerOutput, uploadPrPreview, verifyWorkerTarget } from './cloudflare.mjs'
 import { assertIdentity, managedContext, prContext, writeBuildIdentity } from './context.mjs'
 import { sanitizeMessage, writeDiagnostic } from './diagnostics.mjs'
-import { pagesReceiptStore } from './github.mjs'
+import { githubClient, pagesReceiptStore } from './github.mjs'
 import { deployPages, waitForPages } from './pages.mjs'
 
 const sha = 'a'.repeat(40)
@@ -277,7 +277,7 @@ describe('Pages provider', () => {
     const client = vi.fn(async (endpoint, options) => {
       if (options?.method === 'POST') {
         expect(store.current().phase).toBe('submitting')
-        expect(options.body).toEqual({ artifact_id: 42, environment: 'docs-open-source-stable', pages_build_version: identity, oidc_token: 'secret-token' })
+        expect(options.body).toEqual({ artifact_id: 42, environment: 'docs-open-source-stable', pages_build_version: context.identity.sourceSha, oidc_token: 'secret-token' })
         return { id: 'pages-123', page_url: 'https://weapp.js.org/' }
       }
       expect(endpoint).toBe('pages/deployments/pages-123')
@@ -423,6 +423,23 @@ describe('Pages provider', () => {
 })
 
 describe('deployment diagnostics', () => {
+  it('reports a safe provider explanation and request ID without leaking credentials', async () => {
+    const client = githubClient({ GITHUB_REPOSITORY: 'weappjs/weapp.dev', GITHUB_TOKEN: 'private-token' }, async () => Response.json({
+      message: 'Missing build private-token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature',
+      debug: 'must-not-be-logged',
+    }, { status: 404, headers: { 'x-github-request-id': 'AB12:CD34' } }))
+    await expect(client('pages/deployments', { method: 'POST', body: { oidc_token: 'secret' } })).rejects.toMatchObject({
+      status: 404,
+      method: 'POST',
+      message: 'GitHub POST pages/deployments failed (HTTP 404). Request ID: AB12:CD34. Missing build [REDACTED] [REDACTED JWT]',
+    })
+  })
+
+  it('preserves the provider status when its error body is not JSON', async () => {
+    const client = githubClient({ GITHUB_REPOSITORY: 'weappjs/weapp.dev', GITHUB_TOKEN: 'private-token' }, async () => new Response('<html>gateway</html>', { status: 502 }))
+    await expect(client('pages/deployments')).rejects.toMatchObject({ status: 502, method: 'GET', message: 'GitHub GET pages/deployments failed (HTTP 502).' })
+  })
+
   it('redacts environment credentials, bearer tokens and runtime JWTs', () => {
     expect(sanitizeMessage('error cf-secret ghp_abc123 Bearer unknown eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature', { CLOUDFLARE_API_TOKEN: 'cf-secret' }))
       .toBe('error [REDACTED] [REDACTED TOKEN] Bearer [REDACTED] [REDACTED JWT]')
