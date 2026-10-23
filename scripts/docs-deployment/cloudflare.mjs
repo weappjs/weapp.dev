@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { run, verifyArtifact, writeResult } from './context.mjs'
+import { pause, run, verifyArtifact, writeResult } from './context.mjs'
 
 export const deploymentMessage = identity => `repoctl-docs:${identity.deploymentId}`
 
@@ -99,6 +99,25 @@ async function workerUrl(context, client) {
   return `https://${context.worker}.${result.subdomain}.workers.dev`
 }
 
+async function confirmActiveVersion(client, worker, versionId, expected, options) {
+  const limit = options.pollLimit ?? 30
+  for (let attempt = 0; attempt < limit; attempt++) {
+    const active = await activeVersion(client, worker)
+    if (active?.id === versionId) {
+      if (active.message !== expected) {
+        throw new Error('The uploaded Cloudflare version has an unexpected deployment identity.')
+      }
+      return active
+    }
+    // The deploy command can finish before the read API reflects activation.
+    // Only observe the known upload; a delayed read must never trigger a write.
+    if (attempt + 1 < limit) {
+      await (options.sleep ?? pause)(2000)
+    }
+  }
+  throw new Error('Cloudflare did not confirm this exact version at 100% traffic; retry the same deployment.')
+}
+
 export async function deployCloudflare(context, options = {}) {
   if (!context.worker) {
     throw new Error('This site channel does not use Cloudflare.')
@@ -111,10 +130,7 @@ export async function deployCloudflare(context, options = {}) {
   if (active?.message !== expected) {
     const output = await invokeWrangler(context, ['deploy'], options.run ?? run)
     const uploaded = readWranglerOutput(output, context.worker, 'deploy')
-    active = await activeVersion(client, context.worker)
-    if (active?.id !== uploaded.version_id || active.message !== expected) {
-      throw new Error('Cloudflare did not confirm this exact version at 100% traffic; retry the same deployment.')
-    }
+    active = await confirmActiveVersion(client, context.worker, uploaded.version_id, expected, options)
   }
   return writeResult(context, { versionId: active.id, url: await workerUrl(context, client) })
 }

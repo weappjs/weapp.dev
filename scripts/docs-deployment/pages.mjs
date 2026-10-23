@@ -143,7 +143,10 @@ export async function deployPages(context, options = {}) {
       body: {
         artifact_id: artifactId,
         environment: 'docs-open-source-stable',
-        pages_build_version: context.identity.deploymentId,
+        // Match actions/deploy-pages: Pages resolves this value as a repository
+        // commit despite the REST schema describing it as a unique string.
+        // The full deployment identity remains in the receipt and site artifact.
+        pages_build_version: context.identity.sourceSha,
         oidc_token: idToken,
       },
     })

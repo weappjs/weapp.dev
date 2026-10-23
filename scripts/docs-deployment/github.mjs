@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer'
+import { sanitizeMessage } from './diagnostics.mjs'
 
 const stateBranch = 'repoctl-release-state'
 
@@ -23,7 +24,12 @@ export function githubClient(env, request = fetch) {
       return undefined
     }
     if (!response.ok) {
-      const error = new Error(`GitHub ${options.method || 'GET'} ${endpoint.split('?')[0]} failed (HTTP ${response.status}).`)
+      // Keep the provider's selected explanation without persisting request
+      // payloads, authorization headers, OIDC tokens or arbitrary response data.
+      const details = await response.json().catch(() => undefined)
+      const message = typeof details?.message === 'string' ? sanitizeMessage(details.message, env).slice(0, 1000) : ''
+      const requestId = (response.headers.get('x-github-request-id') || '').replace(/[^a-z\d:-]/gi, '').slice(0, 100)
+      const error = new Error(`GitHub ${options.method || 'GET'} ${endpoint.split('?')[0]} failed (HTTP ${response.status}).${requestId ? ` Request ID: ${requestId}.` : ''}${message ? ` ${message}` : ''}`)
       error.status = response.status
       error.method = options.method || 'GET'
       throw error
