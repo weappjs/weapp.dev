@@ -12,3 +12,7 @@ weapp@0.3.0:
   intents:
     - tidy-boats-give
     - weak-turtles-nail
+weapp@0.4.0:
+  dir: packages/weapp
+  intents:
+    - thin-tables-boil

@@ -1,5 +1,11 @@
 # weapp
 
+## 0.4.0
+
+### Minor Changes
+
+- Add project-aware diagnostics and confirmed install/script workflows; reduce idle and backpressured terminal rendering.
+
 ## 0.3.0
 
 ### Minor Changes
