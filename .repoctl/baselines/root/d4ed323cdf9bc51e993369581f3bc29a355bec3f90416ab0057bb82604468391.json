@@ -3,7 +3,7 @@
   "path": ".github/workflows/repoctl-docs-deploy.yml",
   "source": {
     "package": "@icebreakers/monorepo-templates",
-    "version": "3.0.1",
+    "version": "3.1.2",
     "assetPath": ".github/workflows/repoctl-docs-deploy.yml",
     "hash": "4c108756f1af591febb679f9de070b81273a80a89751821cc853e33c7f62fafe"
   },

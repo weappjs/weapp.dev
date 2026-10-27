@@ -33,10 +33,10 @@
     "@lucide/astro": "1.61.0",
     "@weapp-io/project-catalog": "workspace:*",
     "@weapp-io/site-ui": "workspace:*",
-    "astro": "7.4.1"
+    "astro": "7.4.2"
   },
   "devDependencies": {
-    "@astrojs/check": "0.9.11",
+    "@astrojs/check": "0.9.12",
     "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.64.1",
     "node-html-parser": "9.0.5",

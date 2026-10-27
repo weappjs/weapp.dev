@@ -56,7 +56,7 @@ pnpm metrics:sync
 
 [2026-10-23 repoctl 6.0.1 迁移与上线记录](repoctl-migration-2026-10-23.md) 记录历史 0.3.0 补发、nightly 首次真实发布、新发布身份验证、双站 main/PR 预览及线上验收、0.4.0 完整稳定包发布，以及 0.4.0 两站首次受管正式部署、线上验收、截图核对和无重复提交的恢复审计。
 
-版本与发布由 repoctl 6.0.1 统一管理，底层继续使用 pnpm 12 原生 versioning。开发分支用 `pnpm change weapp --bump minor --summary "变更说明"` 记录功能（修复用 `patch`）；`.changeset/*.md` 是 pnpm change intent，不使用 Changesets CLI/action。`pnpm release:plan --json` 只读预览，`pnpm change check` 检查 intent。`pnpm-workspace.yaml` 的 `versioning.ignore` 精确排除 root 与四个私有 workspace，新增私有包时同步名单。
+版本与发布由 repoctl 6.2.1 统一管理，底层继续使用 pnpm 12 原生 versioning。开发分支用 `pnpm change weapp --bump minor --summary "变更说明"` 记录功能（修复用 `patch`）；`.changeset/*.md` 是 pnpm change intent，不使用 Changesets CLI/action。`pnpm release:plan --json` 只读预览，`pnpm change check` 检查 intent。`pnpm-workspace.yaml` 的 `versioning.ignore` 精确排除 root 与四个私有 workspace，新增私有包时同步名单。
 
 受管 `.github/workflows/release.yml` 在 main push 时执行 repoctl 的 plan、verify、prepare、upload、confirm、finalize 阶段。有待处理 intent 时维护 `release/pnpm-version` → main 的版本 PR；审查并合并版本 PR 后，由下一次 main 运行完成 npm 正式发布、canonical tag、GitHub Release 和 release record。版本 PR 不自动合并，prepare 不发布包。`release:verify` 保留边界、类型、lint、单测和独立 tarball 检查；`afterVersion` 构建并检查新的 CLI 版本，避免 nightly 或正式版本号与 `dist/data/meta.json` 不一致。
 
@@ -86,7 +86,9 @@ Commercial CI 和 Open source CI 保留独立验证以及同仓 PR 的临时 Wor
 
 上线前建立 `docs-web-preview`、`docs-web-stable`、`docs-open-source-preview`、`docs-open-source-stable` 四个 GitHub environment。正式环境继承原 production/github-pages 的审批与分支限制，保留或收紧已有规则；当前原 github-pages 仅允许 main。Cloudflare secrets 可复用已限定到本仓库的组织级授权，或配置到对应部署环境和同仓 PR 所需的仓库级入口，不向 fork PR 开放。环境缺失时不要依赖 workflow 自动创建无保护环境。
 
-受管文件通过 `repo upgrade --dry-run` 检查三方合并，确认后 `repo upgrade --apply` 更新；保留 `.repoctl/baselines/root`，不将应用 CI 的本地定制覆盖成上游源码仓库工作流。受管目标仅包含 release 与两条 repoctl docs workflow。路径过滤的应用 CI 不应设为所有 PR 无条件必需的检查。
+受管文件通过 `repo upgrade --dry-run --json` 检查三方合并，将完整 JSON 保存为计划文件，确认后用 `repo upgrade --apply <plan.json>` 更新；保留 `.repoctl/baselines/root`，不将应用 CI 的本地定制覆盖成上游源码仓库工作流。受管目标仅包含 release 与两条 repoctl docs workflow。路径过滤的应用 CI 不应设为所有 PR 无条件必需的检查。
+
+依赖升级使用精确版本和已提交的 pnpm 锁文件。当前发布冷却为 0 小时，由 `pnpm-workspace.yaml` 的 `minimumReleaseAge: 0` 明确声明，不维护逐包冷却豁免；升级仍需通过补丁、peer、构建和实际产物验收。最新记录见[2026-10-27 依赖升级](dependency-upgrade-2026-10-27.md)。
 
 ## 发布与回滚验收
 

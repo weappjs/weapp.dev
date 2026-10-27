@@ -27,7 +27,7 @@ async function fixture(run) {
     assert.equal(path.resolve(options.cwd ?? cwd), cwd, 'Nightly inspection must stay in its source fixture')
     if (command === 'pnpm') {
       const output = new Map([
-        ['--version', '12.14.0'],
+        ['--version', '12.15.0'],
         ['version --help', '--dry-run --json'],
         ['version -r --dry-run --json --no-git-checks', '[]'],
       ]).get(args.filter(arg => !arg.startsWith('--config.')).join(' '))
@@ -45,7 +45,7 @@ async function fixture(run) {
   try {
     await mkdir(path.join(cwd, 'packages/weapp'), { recursive: true })
     await mkdir(path.join(cwd, 'packages/helper'), { recursive: true })
-    await writeFile(path.join(cwd, 'package.json'), JSON.stringify({ name: 'nightly-fixture', private: true, packageManager: 'pnpm@12.14.0' }))
+    await writeFile(path.join(cwd, 'package.json'), JSON.stringify({ name: 'nightly-fixture', private: true, packageManager: 'pnpm@12.15.0' }))
     await writeFile(path.join(cwd, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
     await writeFile(path.join(cwd, 'packages/weapp/package.json'), JSON.stringify({ name: 'weapp', version: '0.3.0' }))
     await writeFile(path.join(cwd, 'packages/helper/package.json'), JSON.stringify({ name: 'weapp-nightly-helper', version: '0.1.0' }))

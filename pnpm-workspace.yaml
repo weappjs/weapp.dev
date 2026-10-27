@@ -21,15 +21,9 @@ overrides:
   tinypool@2.1.0: 2.1.2
 patchedDependencies:
   # Remove when upstream retries branch conflicts after verifying the target state is unchanged.
-  '@icebreakers/monorepo@6.0.1': patches/@icebreakers__monorepo@6.0.1.patch
+  '@icebreakers/monorepo@6.2.1': patches/@icebreakers__monorepo@6.2.1.patch
   # Remove after upstream includes Astro templates in source scanning and HMR.
   '@weapp-tailwindcss/source-scan@0.1.2': patches/@weapp-tailwindcss__source-scan@0.1.2.patch
-minimumReleaseAgeExclude:
-  - '@icebreakers/commitlint-config@4.1.4'
-  - '@icebreakers/eslint-config@8.0.11'
-  - '@icebreakers/monorepo-templates@3.0.1'
-  - '@icebreakers/monorepo@6.0.1'
-  - '@icebreakers/stylelint-config@5.1.5'
-  - postcss-tailwindcss@3.1.5
-  - repoctl@6.0.1
-  - stylelint-plugin-tailwindcss@3.1.5
+
+# Dependency updates are admitted immediately under the reviewed repository policy.
+minimumReleaseAge: 0

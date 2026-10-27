@@ -118,7 +118,7 @@ The CLI, lab, tests, and validation scripts are written in strict TypeScript. `t
 
 The published tarball contains runtime JavaScript, an embedded catalog and Logo point cloud, the lab's licensed assets, and `dist/THIRD_PARTY_NOTICES.txt` for bundled libraries. Commands and their data load on demand. Pure JavaScript tools are bundled; `open@10` remains an installed dependency to preserve its platform resources. The package does not depend on the monorepo, Astro, or either website. `test:pack` installs the actual tarball in a temporary directory and runs artifact smoke checks. Canonical release tags use `weapp@<version>`.
 
-Versions, changelogs, npm publication, and GitHub Releases are managed by repoctl 6.0.1 using pnpm's native change intents. Record `pnpm change weapp --bump patch --summary "Describe the fix"` on your development branch, commit the intent, and merge it into `main`. Use `minor` for new features and `pnpm release:plan --json` for a read-only preview. The managed `release.yml` creates or updates `release/pnpm-version` and explicitly runs CLI CI on the version PR. Review and merge that PR; the next release workflow publishes the stable package, confirms it in npm, and finalizes the canonical tag, GitHub Release, and release record. Private workspaces remain excluded.
+Versions, changelogs, npm publication, and GitHub Releases are managed by repoctl 6.2.1 using pnpm's native change intents. Record `pnpm change weapp --bump patch --summary "Describe the fix"` on your development branch, commit the intent, and merge it into `main`. Use `minor` for new features and `pnpm release:plan --json` for a read-only preview. The managed `release.yml` creates or updates `release/pnpm-version` and explicitly runs CLI CI on the version PR. Review and merge that PR; the next release workflow publishes the stable package, confirms it in npm, and finalizes the canonical tag, GitHub Release, and release record. Private workspaces remain excluded.
 
 ## Package validation and nightly releases
 
@@ -187,7 +187,7 @@ npx weapp palette '#07c160' --output colors.css --format css
 
 构建后执行 `pnpm --filter weapp preflight` 检查包身份、Node 18、公开访问、资源清单、依赖边界和 CLI 构建版本；加 `--artifact <tarball>` 会安装并 smoke 测试指定 tarball，确认 SHA256 未变。该检查不请求发布凭据，registry 状态与实际发布统一交给 repoctl。
 
-版本与 changelog 由 repoctl 6.0.1 和 pnpm 原生 change intents 管理。开发分支运行 `pnpm change weapp --bump patch --summary "修复说明"`，新功能使用 `minor`；`pnpm release:plan --json` 可只读预览。受管 `release.yml` 维护 `release/pnpm-version` → main 的版本 PR，并显式运行该分支 CLI CI。版本 PR 经审查、合并后，后续 main workflow 发布 npm、确认 registry 状态，再完成 canonical tag、GitHub Release 和 release record；私有 workspace 不参与发布。
+版本与 changelog 由 repoctl 6.2.1 和 pnpm 原生 change intents 管理。开发分支运行 `pnpm change weapp --bump patch --summary "修复说明"`，新功能使用 `minor`；`pnpm release:plan --json` 可只读预览。受管 `release.yml` 维护 `release/pnpm-version` → main 的版本 PR，并显式运行该分支 CLI CI。版本 PR 经审查、合并后，后续 main workflow 发布 npm、确认 registry 状态，再完成 canonical tag、GitHub Release 和 release record；私有 workspace 不参与发布。
 
 Nightly 每日北京时间 02:00 检查 main，相同来源提交与构建身份已经发布时跳过，发布使用 `snapshot-nightly` dist-tag。使用 `npx weapp@snapshot-nightly` 试用。快照在隔离目录中改版本、重建与验证，不消费正式 intent、不修改 `latest`、不创建正式 Release；`dist/data/meta.json` 必须与 manifest 版本一致。手动预检用 `gh workflow run release.yml --ref main -f mode=nightly -f dry-run=true`。
 

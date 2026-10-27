@@ -1,8 +1,7 @@
-diff --git a/dist/commands-D1KtdxnV.mjs b/dist/commands-D1KtdxnV.mjs
-index 79b651dba83031ed6f414bbc9d7afe77d49ab0a1..236e2472bfe1fe1f229904c889ee3942e5c49390 100644
---- a/dist/commands-D1KtdxnV.mjs
-+++ b/dist/commands-D1KtdxnV.mjs
-@@ -5599,7 +5599,9 @@ function readAutomationState(request, key) {
+diff --git a/dist/commands-CWJn-_PI.mjs b/dist/commands-CWJn-_PI.mjs
+--- a/dist/commands-CWJn-_PI.mjs
++++ b/dist/commands-CWJn-_PI.mjs
+@@ -6744,7 +6744,9 @@
  }
  function transient(error) {
  	if (!error || typeof error !== "object" || !("status" in error) || typeof error.status !== "number") return false;

@@ -27,11 +27,11 @@
     "@lucide/astro": "1.61.0",
     "@weapp-io/project-catalog": "workspace:*",
     "@weapp-io/site-ui": "workspace:*",
-    "astro": "7.4.1",
+    "astro": "7.4.2",
     "echarts": "6.1.0"
   },
   "devDependencies": {
-    "@astrojs/check": "0.9.11",
+    "@astrojs/check": "0.9.12",
     "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.64.1",
     "node-html-parser": "9.0.5",
@@ -41,6 +41,6 @@
     "typescript": "6.0.3",
     "vitest": "5.0.5",
     "weapp-tailwindcss": "5.6.3",
-    "wrangler": "4.151.3"
+    "wrangler": "4.153.0"
   }
 }
