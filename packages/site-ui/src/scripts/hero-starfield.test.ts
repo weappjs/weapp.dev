@@ -50,8 +50,9 @@ describe('quiet background star motion', () => {
       expect(heroStarMotion(index, false)).toEqual(desktop)
       expect(desktop.phase).toBeGreaterThanOrEqual(0)
       expect(desktop.phase).toBeLessThan(1)
-      expect(desktop.driftPeriod).toBeGreaterThanOrEqual(45)
-      expect(desktop.driftPeriod).toBeLessThan(75)
+      const depth = desktop.layer === 'far' ? 2 : 1
+      expect(desktop.driftPeriod).toBeGreaterThanOrEqual(45 * depth)
+      expect(desktop.driftPeriod).toBeLessThan(75 * depth)
       expect(desktop.twinklePeriod).toBeGreaterThanOrEqual(6)
       expect(desktop.twinklePeriod).toBeLessThan(12)
       expect(desktop.amplitude).toBeGreaterThanOrEqual(6)
@@ -59,11 +60,26 @@ describe('quiet background star motion', () => {
       expect(mobile.amplitude).toBeGreaterThanOrEqual(2)
       expect(mobile.amplitude).toBeLessThan(6)
       expect(mobile.phase).toBe(desktop.phase)
+      expect(mobile.layer).toBe(desktop.layer)
       expect(mobile.driftPeriod).toBe(desktop.driftPeriod)
       expect(mobile.twinklePeriod).toBe(desktop.twinklePeriod)
       phases.add(desktop.phase)
     }
     expect(phases.size).toBe(400)
+  })
+
+  it('splits the existing population into both depth layers without changing its mobile prefix', () => {
+    const desktop = Array.from({ length: 400 }, (_, index) => heroStarMotion(index, false))
+    const mobile = Array.from({ length: 160 }, (_, index) => heroStarMotion(index, true))
+    for (const count of [160, 400]) {
+      const layers = desktop.slice(0, count)
+      const far = layers.filter(motion => motion.layer === 'far')
+      expect(far.length).toBeGreaterThan(count * 0.35)
+      expect(far.length).toBeLessThan(count * 0.65)
+      expect(far.every(motion => motion.driftPeriod >= 90 && motion.driftPeriod < 150)).toBe(true)
+      expect(layers.filter(motion => motion.layer === 'near').every(motion => motion.driftPeriod >= 45 && motion.driftPeriod < 75)).toBe(true)
+    }
+    expect(mobile.map(motion => [motion.layer, motion.phase, motion.driftPeriod])).toEqual(desktop.slice(0, 160).map(motion => [motion.layer, motion.phase, motion.driftPeriod]))
   })
 
   it('drifts and twinkles while staying inside each axis and brightness budget', () => {

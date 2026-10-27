@@ -23,6 +23,16 @@ export function subscribeHeroPhase(scope: HTMLElement, listener: (phase: HeroPha
   return () => scope.removeEventListener(CHANGE_EVENT, notify)
 }
 
+/** Overlapping layers finish within the existing 320ms active-time window. */
+export function heroRevealState(reveal: number): { orbit: number, planets: number, labels: number } {
+  const time = (Number.isFinite(reveal) ? Math.min(1, Math.max(0, reveal)) : 0) * 320
+  return {
+    orbit: Math.min(1, time / 180),
+    planets: Math.min(1, Math.max(0, (time - 60) / 200)),
+    labels: Math.min(1, Math.max(0, (time - 160) / 160)),
+  }
+}
+
 /** The same active clock advances assembly and the subsequent planet reveal. */
 export function heroEntranceState(elapsed: number): {
   progress: number

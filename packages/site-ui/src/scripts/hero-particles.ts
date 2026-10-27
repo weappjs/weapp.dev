@@ -1,11 +1,14 @@
+import type { HeroBackgroundSnapshot } from './hero-background-motion'
 import type { HeroLogoPoint } from './hero-logo'
+import type { HeroFrameSnapshot } from './hero-particle-motion'
+import { createHeroBackgroundMotion } from './hero-background-motion'
 import { createHeroLogo, HERO_LOGO_PALETTE } from './hero-logo'
 import { readHeroReplayVersion, subscribeHeroMotionPaused, subscribeHeroReplay } from './hero-motion'
 import { createHeroOrbitHalo } from './hero-orbit-halo'
 import { loadWordmarkFont } from './hero-particle-font'
-import { createActiveClock, glyphSafeRadii, particleFrameInterval, smoothValue } from './hero-particle-motion'
-import { heroEntranceState, setHeroPhase } from './hero-phase'
-import { createHeroStarfield, heroStarMotion } from './hero-starfield'
+import { createHeroFrameClock, glyphSafeRadii, particleFrameInterval, smoothValue } from './hero-particle-motion'
+import { heroEntranceState, heroRevealState, setHeroPhase } from './hero-phase'
+import { HERO_STARFIELD_VERTEX_MOTION, writeHeroStarfieldAttributes } from './hero-starfield-renderer'
 import { ellipseWordmarkWidth, fitGlyphLayout, measureGlyphLayout } from './hero-wordmark-layout'
 
 export interface GlyphPoint {
@@ -47,6 +50,7 @@ in float a_orbit;
 in float a_twinkle;
 in float a_radius;
 in float a_flow;
+in float a_parallax;
 in vec4 a_sourceStyle;
 uniform vec2 u_resolution;
 uniform float u_time;
@@ -55,6 +59,7 @@ uniform vec2 u_pointer;
 uniform float u_pointerStrength;
 uniform float u_pointerRadius;
 uniform float u_flowAmplitude;
+uniform vec2 u_backgroundPointer;
 uniform vec3 u_trails[4];
 out float v_brightness;
 out float v_accent;
@@ -105,11 +110,7 @@ void main() {
   offset *= min(1.0, a_radius / max(0.001, offsetLength));
   // Logo points remain anchored during the hold. Background motion has its
   // own slow wave, evaluated from the same active clock without a time reset.
-  float fieldPhase = a_seed * 6.2831853;
-  vec2 drift = vec2(
-    sin(u_time * 6.2831853 / max(1.0, a_depth) + fieldPhase) - sin(fieldPhase),
-    cos(u_time * 6.2831853 / max(1.0, a_depth * 1.13) + fieldPhase * 1.7) - cos(fieldPhase * 1.7)
-  ) * a_orbit * 0.5;
+  ${HERO_STARFIELD_VERTEX_MOTION}
   vec2 glyphWander = wander * idle * smoothstep(0.0, 0.35, u_progress);
   vec2 glyphOffset = mix(glyphWander, offset * e, smoothstep(0.55, 1.0, u_progress));
   pos += mix(drift, glyphOffset, glyph);
@@ -533,13 +534,18 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string) {
   return shader
 }
 
-interface Engine {
-  stop: () => number
-  replay: () => void
-  readonly hasDrawn: boolean
+interface EngineSnapshot extends HeroFrameSnapshot {
+  hasDrawn: boolean
+  background: HeroBackgroundSnapshot
 }
 
-function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTMLElement, wordmark: string, elapsed = 0, previouslyDrawn = false): Engine | null {
+interface Engine {
+  stop: () => EngineSnapshot
+  replay: () => void
+}
+
+function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTMLElement, wordmark: string, snapshot?: EngineSnapshot): Engine | null {
+  const elapsed = snapshot?.elapsed ?? 0
   const gl = canvas.getContext('webgl2', {
     alpha: true,
     antialias: false,
@@ -605,6 +611,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     twinkle: gl.getAttribLocation(program, 'a_twinkle'),
     radius: gl.getAttribLocation(program, 'a_radius'),
     flow: gl.getAttribLocation(program, 'a_flow'),
+    parallax: gl.getAttribLocation(program, 'a_parallax'),
     sourceStyle: gl.getAttribLocation(program, 'a_sourceStyle'),
     resolution: gl.getUniformLocation(program, 'u_resolution'),
     time: gl.getUniformLocation(program, 'u_time'),
@@ -613,6 +620,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     pointerStrength: gl.getUniformLocation(program, 'u_pointerStrength'),
     pointerRadius: gl.getUniformLocation(program, 'u_pointerRadius'),
     flowAmplitude: gl.getUniformLocation(program, 'u_flowAmplitude'),
+    backgroundPointer: gl.getUniformLocation(program, 'u_backgroundPointer'),
     trails: gl.getUniformLocation(program, 'u_trails[0]'),
   }
 
@@ -630,6 +638,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     twinkle: gl.createBuffer(),
     radius: gl.createBuffer(),
     flow: gl.createBuffer(),
+    parallax: gl.createBuffer(),
     sourceStyle: gl.createBuffer(),
   }
 
@@ -639,7 +648,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   let haloNeedsRebuild = true
   let haloGeometry = { centerX: 0, centerY: 0, radiusX: 0, radiusY: 0, viewportWidth: 0 }
   let entranceSettled = heroEntranceState(elapsed).settled
-  const clock = createActiveClock(elapsed)
+  const clock = createHeroFrameClock(snapshot)
   clock.setRunning(false, performance.now())
   let raf = 0
   let idleTimer = 0
@@ -649,19 +658,21 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   let stopped = false
   let contextLost = false
   let needsStaticDraw = true
-  let hasValidFrame = previouslyDrawn
+  let hasValidFrame = snapshot?.hasDrawn ?? false
   let playing = false
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+  const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)')
   let reduced = reducedMotion.matches
   let desktop = screen.clientWidth >= 1024
   let dpr = 1
   let lastDraw = -Infinity
-  let lastInput = elapsed
+  let lastInput = snapshot?.presentedElapsed ?? elapsed
   let glyphBounds = { left: 0, top: 0, right: 0, bottom: 0 }
   let layoutKey = ''
   const pointer = { x: -9999, y: -9999, targetX: -9999, targetY: -9999, strength: 0, targetStrength: 0 }
   const trails: Array<{ x: number, y: number, born: number }> = []
   const trailData = new Float32Array(12)
+  const background = createHeroBackgroundMotion(snapshot?.background)
   const dprCap = 1.75
 
   const bindFloat = (buffer: WebGLBuffer | null, location: number, data: Float32Array, size: number) => {
@@ -681,6 +692,9 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const cssHeight = Math.max(1, screen.clientHeight)
     dpr = Math.min(dprCap, window.devicePixelRatio || 1)
     desktop = cssWidth >= 1024
+    if (!desktop || !finePointer.matches) {
+      background.reset()
+    }
     const titleStyle = getComputedStyle(title)
     const canvasBox = canvas.getBoundingClientRect()
     const anchor = screen.querySelector<HTMLElement>('.home-hero-brand-anchor')
@@ -773,6 +787,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const twinkle = new Float32Array(total)
     const radius = new Float32Array(total)
     const flow = new Float32Array(total)
+    const parallax = new Float32Array(total)
     const sourceStyle = new Float32Array(total * 4)
     paired.forEach((pair, index) => {
       const source = sourceStyles.get(pair.from)!
@@ -797,30 +812,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       radius[index] = Math.min(8 * dpr, safeRadius.get(pair.to) ?? 0)
       flow[index] = index % 3 === 0 ? 1 : 0
     })
-    const field = createHeroStarfield(fieldBudget)
-    for (let index = 0; index < fieldBudget; index += 1) {
-      const i = paired.length + index
-      const star = field[index]!
-      const x = star.x * canvas.width
-      const y = star.y * canvas.height
-      start[i * 2] = x
-      start[i * 2 + 1] = y
-      target[i * 2] = x
-      target[i * 2 + 1] = y
-      delay[i] = -1
-      kind[i] = 0
-      size[i] = star.size * dpr
-      brightness[i] = star.brightness
-      accent[i] = 0
-      const motion = heroStarMotion(index, !desktop)
-      // Keep the entire drift within the stage even for stars near its edge.
-      const edgeDistance = Math.min(star.x * cssWidth, (1 - star.x) * cssWidth, star.y * cssHeight, (1 - star.y) * cssHeight)
-      depth[i] = motion.driftPeriod
-      seed[i] = motion.phase
-      orbit[i] = Math.min(motion.amplitude, Math.max(0, edgeDistance - 3.5)) * dpr
-      twinkle[i] = motion.twinklePeriod
-      flow[i] = index % 9 === 0 && star.brightness > 0.3 ? 1 : 0
-    }
+    writeHeroStarfieldAttributes({ start, target, delay, kind, size, brightness, depth, seed, orbit, twinkle, flow, parallax }, paired.length, fieldBudget, cssWidth, cssHeight, dpr, desktop)
     count = total
     bindFloat(buffers.start, loc.start, start, 2)
     bindFloat(buffers.target, loc.target, target, 2)
@@ -835,6 +827,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     bindFloat(buffers.twinkle, loc.twinkle, twinkle, 1)
     bindFloat(buffers.radius, loc.radius, radius, 1)
     bindFloat(buffers.flow, loc.flow, flow, 1)
+    bindFloat(buffers.parallax, loc.parallax, parallax, 1)
     bindFloat(buffers.sourceStyle, loc.sourceStyle, sourceStyle, 4)
     // Validate the existing renderer's resize upload before optional resources
     // check their own GL errors. The opening still uses its first-frame gate.
@@ -865,7 +858,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   }
 
   const canPlay = () => !stopped && !contextLost && visible && !pageHidden && !paused && !reduced
-  const interacting = () => desktop && (pointer.targetStrength > 0 || pointer.strength > 0 || trails.length > 0)
+  const interacting = () => desktop && (pointer.targetStrength > 0 || pointer.strength > 0 || trails.length > 0 || background.moving)
   const cancelScheduled = () => {
     cancelAnimationFrame(raf)
     window.clearTimeout(idleTimer)
@@ -879,6 +872,11 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     endPointer()
     pointer.strength = 0
     trails.length = 0
+    background.reset()
+  }
+  const releasePointer = () => {
+    endPointer()
+    background.release()
   }
   let syncPlayback: () => void
 
@@ -895,7 +893,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     }
   }
   const drawHalo = (activeElapsed: number, reveal: number) => {
-    if (halo && !halo.draw(canvas.width, canvas.height, activeElapsed / 1000, reveal)) {
+    if (halo && !halo.draw(canvas.width, canvas.height, activeElapsed / 1000, heroRevealState(reveal).orbit)) {
       halo.dispose()
       halo = null
     }
@@ -906,6 +904,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     const progress = entrance.progress
     const delta = Math.max(0, activeElapsed - lastInput)
     lastInput = activeElapsed
+    const backgroundPointer = background.advance(delta)
     pointer.x = smoothValue(pointer.x, pointer.targetX, delta, 85)
     pointer.y = smoothValue(pointer.y, pointer.targetY, delta, 85)
     pointer.strength = smoothValue(pointer.strength, pointer.targetStrength, delta, 200)
@@ -941,6 +940,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     gl.uniform1f(loc.pointerStrength, pointer.strength)
     gl.uniform1f(loc.pointerRadius, 120 * dpr)
     gl.uniform1f(loc.flowAmplitude, (desktop ? 4 : 1) * dpr)
+    gl.uniform2f(loc.backgroundPointer, backgroundPointer.x * dpr, backgroundPointer.y * dpr)
     gl.uniform3fv(loc.trails, trailData)
     gl.drawArrays(gl.POINTS, 0, count)
     // A failed first frame must never replace the static particle Logo and starfield.
@@ -965,6 +965,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     mainFrameValidated = true
     needsStaticDraw = false
     hasValidFrame = true
+    clock.present(activeElapsed)
     entranceSettled = entrance.settled
     screen.toggleAttribute('data-particles-ready', entrance.phase === 'ready')
     screen.style.setProperty('--hero-planet-reveal', String(entrance.reveal))
@@ -1009,13 +1010,13 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     screen.toggleAttribute('data-particles-paused', !running)
     let redrawn = false
     if (needsStaticDraw && !stopped && !contextLost && !reduced && visible && !pageHidden && (!paused || hasValidFrame)) {
-      draw(clock.current())
+      draw(clock.staticFrame(paused))
       lastDraw = performance.now()
       redrawn = true
     }
     if (!running) {
       cancelScheduled()
-      endPointer()
+      releasePointer()
     }
     else {
       if (resumed && !redrawn) {
@@ -1035,18 +1036,29 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     schedule(tick)
   }
   const onPointer = (event: PointerEvent) => {
-    if (!desktop || event.pointerType === 'touch' || !canPlay()) {
+    if (!desktop || !canPlay()) {
+      return
+    }
+    if (event.pointerType === 'touch') {
+      background.reset()
+      wake()
       return
     }
     const target = event.target
     if (target instanceof Element && target.closest('a, button')) {
-      endPointer()
+      releasePointer()
       wake()
       return
     }
     const box = canvas.getBoundingClientRect()
     const x = event.clientX - box.left
     const y = event.clientY - box.top
+    if (finePointer.matches && event.pointerType === 'mouse') {
+      background.setPointer(x, y, box.width, box.height)
+    }
+    else {
+      background.release()
+    }
     if (x < glyphBounds.left - 24 || x > glyphBounds.right + 24
       || y < glyphBounds.top - 24 || y > glyphBounds.bottom + 24) {
       endPointer()
@@ -1072,7 +1084,11 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     wake()
   }
   const onPointerLeave = () => {
-    endPointer()
+    releasePointer()
+    wake()
+  }
+  const onFinePointer = () => {
+    background.reset()
     wake()
   }
   const onVisibility = () => {
@@ -1105,7 +1121,6 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     if (stopped || contextLost) {
       return
     }
-    clearPointer()
     const previousLayout = layoutKey
     if (!rebuild()) {
       contextLost = true
@@ -1119,11 +1134,12 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
     if (layoutKey === previousLayout) {
       return
     }
+    clearPointer()
     needsStaticDraw = true
     delete screen.dataset.particlesActive
     if (!reduced && visible && !pageHidden && (!paused || hasValidFrame)) {
       // Resizing a paused hero is the one permitted static redraw.
-      draw(clock.current())
+      draw(clock.staticFrame(paused))
       lastDraw = performance.now()
     }
     else {
@@ -1142,6 +1158,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   screen.addEventListener('pointerleave', onPointerLeave)
   document.addEventListener('visibilitychange', onVisibility)
   reducedMotion.addEventListener('change', onReducedMotion)
+  finePointer.addEventListener('change', onFinePointer)
   canvas.addEventListener('webglcontextlost', onContextLost)
   const unsubscribePause = subscribeHeroMotionPaused(screen, (value) => {
     paused = value
@@ -1151,9 +1168,6 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
   intersection.observe(screen)
 
   return {
-    get hasDrawn() {
-      return hasValidFrame
-    },
     replay() {
       if (stopped) {
         return
@@ -1184,6 +1198,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       screen.removeEventListener('pointerleave', onPointerLeave)
       document.removeEventListener('visibilitychange', onVisibility)
       reducedMotion.removeEventListener('change', onReducedMotion)
+      finePointer.removeEventListener('change', onFinePointer)
       canvas.removeEventListener('webglcontextlost', onContextLost)
       delete screen.dataset.particlesReady
       delete screen.dataset.particlesActive
@@ -1196,7 +1211,7 @@ function createEngine(canvas: HTMLCanvasElement, screen: HTMLElement, title: HTM
       gl.clear(gl.COLOR_BUFFER_BIT)
       releaseGL()
       // Keep the canvas context reusable after the custom element reconnects.
-      return clock.current()
+      return { ...clock.snapshot(), hasDrawn: hasValidFrame, background: background.snapshot() }
     },
   }
 }
@@ -1223,8 +1238,7 @@ export function defineHeroParticles() {
   }
   class HeroParticles extends HTMLElement {
     #stop: (() => void) | undefined
-    #elapsed = 0
-    #hasDrawn = false
+    #snapshot: EngineSnapshot | undefined
     #generation = 0
     #replayVersion = 0
     connectedCallback() {
@@ -1241,8 +1255,7 @@ export function defineHeroParticles() {
       const replayVersion = readHeroReplayVersion(screen)
       if (this.#replayVersion !== replayVersion) {
         this.#replayVersion = replayVersion
-        this.#elapsed = 0
-        this.#hasDrawn = false
+        this.#snapshot = undefined
       }
       setHeroPhase(screen, 'logo')
       delete screen.dataset.particlesReady
@@ -1280,7 +1293,7 @@ export function defineHeroParticles() {
             return
           }
         }
-        engine = createEngine(canvas, screen, title, wordmark, this.#elapsed, this.#hasDrawn)
+        engine = createEngine(canvas, screen, title, wordmark, this.#snapshot)
         if (!engine) {
           fontFailed = true
           delete screen.dataset.particlesActive
@@ -1297,8 +1310,7 @@ export function defineHeroParticles() {
           return
         }
         this.#replayVersion = version
-        this.#elapsed = 0
-        this.#hasDrawn = false
+        this.#snapshot = undefined
         engine?.replay()
       })
       reducedMotion.addEventListener('change', onReducedMotion)
@@ -1307,8 +1319,7 @@ export function defineHeroParticles() {
         unsubscribeReplay()
         reducedMotion.removeEventListener('change', onReducedMotion)
         if (engine) {
-          this.#hasDrawn = engine.hasDrawn
-          this.#elapsed = engine.stop()
+          this.#snapshot = engine.stop()
         }
         unbind()
       }

@@ -6,6 +6,7 @@ export interface ParticleFrame {
   flowAmplitude: number
   pointerStrength: number
   pointer: [number, number]
+  backgroundPointer: [number, number]
   trailCount: number
 }
 
@@ -24,7 +25,7 @@ interface GlyphSnapshot {
   pixels: Uint8Array
 }
 
-export type ParticleLayer = boolean | 'source-color' | 'field-position' | 'field-brightness' | 'halo' | 'halo-static'
+export type ParticleLayer = boolean | 'source-color' | 'field-position' | 'field-brightness' | 'field-static' | 'field-far-static' | 'field-near-static' | 'halo' | 'halo-static'
 
 interface ParticleBounds {
   left: number
@@ -48,6 +49,9 @@ interface ParticleProbe {
   captureSurface: boolean
   surface: GlyphSnapshot | null
   previousSurface: GlyphSnapshot | null
+  referenceSurface: GlyphSnapshot | null
+  fieldDepths: number[]
+  fieldParallax: number[]
   sourceBounds: ParticleBounds | null
   targetBounds: ParticleBounds | null
   mainProgram: number
@@ -100,6 +104,9 @@ export async function captureParticleFrames(page: Page, layer: ParticleLayer = f
       captureSurface: opening,
       surface: null,
       previousSurface: null,
+      referenceSurface: null,
+      fieldDepths: [],
+      fieldParallax: [],
       sourceBounds: null,
       targetBounds: null,
       mainProgram: 0,
@@ -192,9 +199,13 @@ export async function captureParticleFrames(page: Page, layer: ParticleLayer = f
         // A moving background cannot satisfy a foreground assertion, and
         // brightness cannot make a stationary field pass the position check.
         const fixedPosition = 'vec2 fixedClip = (a_target / u_resolution) * 2.0 - 1.0; fixedClip.y *= -1.0; gl_Position = vec4(fixedClip, 0.0, 1.0);'
+        const staticField = typeof selectedLayer === 'string' && selectedLayer.startsWith('field-') && selectedLayer.endsWith('-static')
+        const isolateDepth = selectedLayer === 'field-far-static'
+          ? 'if (a_depth <= 75.0) { gl_Position = vec4(2.0, 2.0, 0.0, 1.0); }'
+          : selectedLayer === 'field-near-static' ? 'if (a_depth > 75.0) { gl_Position = vec4(2.0, 2.0, 0.0, 1.0); }' : ''
         const isolation = selectedLayer === 'field-brightness'
           ? `${fixedPosition} v_spin = 0.0;`
-          : `v_brightness = a_brightness; v_spin = 0.0; ${selectedLayer === true ? 'v_sourceLight = a_sourceStyle.y;' : ''}`
+          : `v_brightness = a_brightness; v_spin = 0.0; ${selectedLayer === true ? 'v_sourceLight = a_sourceStyle.y;' : ''} ${staticField ? isolateDepth : ''}`
         source = source.replace(/\}\s*$/, `${isolation}\n}`)
       }
       return shaderSource.call(this, shader, source)
@@ -224,6 +235,11 @@ export async function captureParticleFrames(page: Page, layer: ParticleLayer = f
       if (selectedLayer === 'halo-static' && args[0] && uniformNames.get(args[0])?.name === 'u_haloTime') {
         // Freeze only scintillation in the actual shader. The production
         // clock and both draw passes still run, exposing any position drift.
+        return uniform1f.call(this, args[0], 0)
+      }
+      if (typeof selectedLayer === 'string' && selectedLayer.startsWith('field-') && selectedLayer.endsWith('-static') && args[0] && uniformNames.get(args[0])?.name === 'u_time') {
+        // Freeze autonomous drift/twinkle while preserving the production
+        // background pointer, so only real spatial parallax can move pixels.
         return uniform1f.call(this, args[0], 0)
       }
       return uniform1f.apply(this, args)
@@ -323,6 +339,8 @@ export async function captureParticleFrames(page: Page, layer: ParticleLayer = f
       const dustStart = delay?.findIndex(value => value < 0) ?? -1
       const glyphCount = dustStart < 0 ? count : dustStart
       probe.glyphCount = glyphCount
+      probe.fieldDepths = Array.from(attribute('a_depth')?.slice(glyphCount) ?? [])
+      probe.fieldParallax = Array.from(attribute('a_parallax')?.slice(glyphCount) ?? [])
       const sourceStyle = attribute('a_sourceStyle')
       const sourcePalettePoints = [0, 0, 0, 0]
       let sourceSparkles = 0
@@ -359,7 +377,7 @@ export async function captureParticleFrames(page: Page, layer: ParticleLayer = f
       probe.targetBounds = positionBounds(attribute('a_target'))
       // Source-color samples exclude the background but retain the actual
       // source twinkle; an isolated white field cannot satisfy a Logo check.
-      const fieldOnly = selectedLayer === 'field-position' || selectedLayer === 'field-brightness'
+      const fieldOnly = typeof selectedLayer === 'string' && selectedLayer.startsWith('field-')
       if (!haloOnly) {
         drawArrays.call(this, mode, fieldOnly ? first + glyphCount : first, fieldOnly ? count - glyphCount : selectedLayer ? glyphCount : count)
       }
@@ -369,6 +387,7 @@ export async function captureParticleFrames(page: Page, layer: ParticleLayer = f
         flowAmplitude: current?.get('u_flowAmplitude')?.[0] ?? 0,
         pointerStrength: current?.get('u_pointerStrength')?.[0] ?? 0,
         pointer: [current?.get('u_pointer')?.[0] ?? 0, current?.get('u_pointer')?.[1] ?? 0],
+        backgroundPointer: [current?.get('u_backgroundPointer')?.[0] ?? 0, current?.get('u_backgroundPointer')?.[1] ?? 0],
         trailCount: (current?.get('u_trails[0]') ?? []).filter((value, index) => index % 3 === 2 && value > 0).length,
       }
       probe.draws += 1
@@ -426,6 +445,8 @@ export async function particleState(page: Page) {
     contexts: window.__heroParticleProbe.contexts,
     sourceBounds: window.__heroParticleProbe.sourceBounds,
     targetBounds: window.__heroParticleProbe.targetBounds,
+    fieldDepths: window.__heroParticleProbe.fieldDepths,
+    fieldParallax: window.__heroParticleProbe.fieldParallax,
     mainProgram: window.__heroParticleProbe.mainProgram,
     mainVao: window.__heroParticleProbe.mainVao,
     haloDraws: window.__heroParticleProbe.haloDraws,
@@ -503,6 +524,61 @@ export async function particleSurfaceDifference(page: Page) {
       }
     }
     return { visible, changed, absoluteAlphaChange, elapsed: surface.time - previousSurface.time }
+  })
+}
+
+export async function anchorParticleSurface(page: Page) {
+  await page.evaluate(() => {
+    window.__heroParticleProbe.referenceSurface = window.__heroParticleProbe.surface
+  })
+}
+
+/** Register real pixels without letting per-star raster coverage reweight the scene. */
+export async function particleSurfaceTranslation(page: Page) {
+  return page.evaluate(() => {
+    const { surface, referenceSurface } = window.__heroParticleProbe
+    if (!surface || !referenceSurface || surface.width !== referenceSurface.width || surface.height !== referenceSurface.height) {
+      throw new Error('A reference and current framebuffer of equal dimensions are required')
+    }
+    const canvas = document.querySelector<HTMLCanvasElement>('.home-hero-particle-canvas')!
+    const scale = surface.width / canvas.getBoundingClientRect().width
+    const support: Array<{ x: number, y: number, alpha: number }> = []
+    let referenceEnergy = 0
+    let currentEnergy = 0
+    for (let offset = 3; offset < surface.pixels.length; offset += 4) {
+      const referenceAlpha = referenceSurface.pixels[offset]!
+      const currentAlpha = surface.pixels[offset]!
+      referenceEnergy += referenceAlpha ** 2
+      currentEnergy += currentAlpha ** 2
+      if (referenceAlpha > 0) {
+        const pixel = (offset - 3) / 4
+        support.push({ x: pixel % surface.width, y: Math.floor(pixel / surface.width), alpha: referenceAlpha })
+      }
+    }
+    if (!referenceEnergy || !currentEnergy) {
+      throw new Error('Pixel registration requires two genuinely painted frames')
+    }
+    let best = { x: 0, y: 0, correlation: -1 }
+    const radius = Math.ceil(8 * scale)
+    // The sparse field contains hundreds of painted pixels, so an exhaustive
+    // local search is inexpensive and includes zero and both motion directions.
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        let dot = 0
+        for (const point of support) {
+          const x = point.x + dx
+          const y = point.y + dy
+          if (x >= 0 && x < surface.width && y >= 0 && y < surface.height) {
+            dot += point.alpha * surface.pixels[(y * surface.width + x) * 4 + 3]!
+          }
+        }
+        const correlation = dot / Math.sqrt(referenceEnergy * currentEnergy)
+        if (correlation > best.correlation) {
+          best = { x: dx / scale, y: -dy / scale, correlation }
+        }
+      }
+    }
+    return best
   })
 }
 

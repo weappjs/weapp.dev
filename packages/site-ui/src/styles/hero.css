@@ -28,6 +28,12 @@
   --orbit-rx: 43vw;
   --orbit-ry: 31svh;
 
+  /* The renderer supplies one active-time fraction; CSS owns the DOM layers. */
+  --hero-reveal-time: calc(var(--hero-planet-reveal, 0) * 320);
+  --hero-orbit-reveal: clamp(0, calc(var(--hero-reveal-time) / 180), 1);
+  --hero-body-reveal: clamp(0, calc((var(--hero-reveal-time) - 60) / 200), 1);
+  --hero-label-reveal: clamp(0, calc((var(--hero-reveal-time) - 160) / 160), 1);
+
   overflow: hidden;
   color: #edf5f0;
   background-color: #050505;
@@ -62,7 +68,7 @@
 
 .home-hero-screen[data-hero-phase='ready'] .home-hero-constellation {
   visibility: visible;
-  opacity: var(--hero-planet-reveal, 0);
+  opacity: 1;
 }
 
 .home-hero-screen:not([data-hero-phase='ready']) .home-hero-spotlight {
@@ -104,6 +110,7 @@
   border-radius: 50%;
   pointer-events: none;
   translate: -50% -50%;
+  opacity: var(--hero-orbit-reveal);
 
   --orbit-halo-spread: 8px;
 }
@@ -141,6 +148,9 @@
 
   --orbit-start: calc(var(--orbit-p) * 360deg);
 }
+.home-hero-planet {
+  opacity: var(--hero-body-reveal);
+}
 .home-hero-planet-visual {
   position: relative;
   display: grid;
@@ -173,6 +183,7 @@
   white-space: nowrap;
   pointer-events: none;
   translate: -50% calc(var(--planet-hit-size) / 2 + 8px);
+  opacity: var(--hero-label-reveal);
 }
 .home-hero-planet[data-planet-active] + .home-hero-planet-name {
   color: #edf5f0;
@@ -180,6 +191,7 @@
 .home-hero-tile:focus-visible {
   outline: 2px solid var(--highlight);
   outline-offset: 3px;
+  opacity: 1;
 }
 
 .home-hero-planet-body {
@@ -313,6 +325,7 @@
   text-align: center;
   pointer-events: none;
   translate: -50% 0;
+  opacity: var(--hero-label-reveal);
 }
 .home-hero-spotlight strong {
   color: #edf5f0;

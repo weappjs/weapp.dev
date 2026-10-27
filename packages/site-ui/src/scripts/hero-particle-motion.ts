@@ -130,3 +130,30 @@ export function particleFrameInterval(desktop: boolean, assembled: boolean, inte
   }
   return 1000 / (assembled && !interacting ? 30 : 60)
 }
+
+export interface HeroFrameSnapshot {
+  elapsed: number
+  presentedElapsed: number
+}
+
+/** A paused redraw reproduces the painted frame, including a pending wall-time gap. */
+export function createHeroFrameClock(snapshot: HeroFrameSnapshot = { elapsed: 0, presentedElapsed: 0 }) {
+  const clock = createActiveClock(snapshot.elapsed)
+  let presentedElapsed = snapshot.presentedElapsed
+  return {
+    ...clock,
+    present(elapsed: number) {
+      presentedElapsed = elapsed
+    },
+    staticFrame(paused: boolean) {
+      return paused ? presentedElapsed : clock.current()
+    },
+    reset(value = 0, now?: number) {
+      clock.reset(value, now)
+      presentedElapsed = value
+    },
+    snapshot(): HeroFrameSnapshot {
+      return { elapsed: clock.current(), presentedElapsed }
+    },
+  }
+}

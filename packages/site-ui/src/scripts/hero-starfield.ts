@@ -26,6 +26,7 @@ export function createHeroStarfield(count: number): HeroStar[] {
 }
 
 export interface HeroStarMotion {
+  layer: 'far' | 'near'
   phase: number
   driftPeriod: number
   twinklePeriod: number
@@ -44,12 +45,13 @@ export function heroStarMotion(index: number, mobile: boolean): HeroStarMotion {
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t
     return ((t ^ t >>> 14) >>> 0) / 4294967296
   }
-  return {
-    phase: next(),
-    driftPeriod: 45 + next() * 30,
-    twinklePeriod: 6 + next() * 6,
-    amplitude: mobile ? 2 + next() * 4 : 6 + next() * 10,
-  }
+  const phase = next()
+  const driftPeriod = 45 + next() * 30
+  const twinklePeriod = 6 + next() * 6
+  const amplitude = mobile ? 2 + next() * 4 : 6 + next() * 10
+  // A separate draw preserves every existing position and motion seed.
+  const layer = next() < 0.5 ? 'far' : 'near'
+  return { layer, phase, driftPeriod: driftPeriod * (layer === 'far' ? 2 : 1), twinklePeriod, amplitude }
 }
 
 /** CPU reference for the shader, anchored to the exact static picture at t=0. */

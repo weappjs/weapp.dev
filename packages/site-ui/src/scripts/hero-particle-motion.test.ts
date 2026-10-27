@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { constrainDisplacement, createActiveClock, glyphSafeRadii, particleFrameInterval, smoothValue } from './hero-particle-motion'
+import { constrainDisplacement, createActiveClock, createHeroFrameClock, glyphSafeRadii, particleFrameInterval, smoothValue } from './hero-particle-motion'
 
 function mask(width: number, height: number, inside: (x: number, y: number) => boolean): Uint8ClampedArray {
   const pixels = new Uint8ClampedArray(width * height * 4)
@@ -10,6 +10,50 @@ function mask(width: number, height: number, inside: (x: number, y: number) => b
   }
   return pixels
 }
+
+describe('painted hero frame clock', () => {
+  it('restores the painted frame when pause lands between animation frames', () => {
+    const clock = createHeroFrameClock()
+    clock.advance(1000)
+    clock.present(clock.advance(1100))
+    clock.setRunning(false, 1105)
+    expect(clock.snapshot()).toEqual({ elapsed: 105, presentedElapsed: 100 })
+    const restored = createHeroFrameClock(clock.snapshot())
+    restored.setRunning(false, 5000)
+    expect(restored.staticFrame(true)).toBe(100)
+    expect(restored.current()).toBe(105)
+    restored.setRunning(true, 8000)
+    expect(restored.advance(8016)).toBe(121)
+  })
+
+  it('does not invent a painted frame while paused or replace the last one with wall time', () => {
+    const clock = createHeroFrameClock({ elapsed: 2300, presentedElapsed: 2295 })
+    clock.setRunning(false, 1000)
+    clock.advance(100000)
+    expect(clock.staticFrame(true)).toBe(2295)
+    expect(clock.snapshot()).toEqual({ elapsed: 2300, presentedElapsed: 2295 })
+    clock.present(clock.staticFrame(true))
+    expect(clock.snapshot()).toEqual({ elapsed: 2300, presentedElapsed: 2295 })
+  })
+
+  it('uses active time for a running redraw and commits only a successful presentation', () => {
+    const clock = createHeroFrameClock({ elapsed: 2300, presentedElapsed: 2295 })
+    expect(clock.staticFrame(false)).toBe(2300)
+    expect(clock.staticFrame(true)).toBe(2295)
+    clock.present(2300)
+    expect(clock.staticFrame(true)).toBe(2300)
+  })
+
+  it('replays both the active clock and painted snapshot from the same zero phase', () => {
+    const clock = createHeroFrameClock({ elapsed: 2300, presentedElapsed: 2295 })
+    clock.setRunning(false, 1000)
+    clock.reset(0, 2000)
+    expect(clock.snapshot()).toEqual({ elapsed: 0, presentedElapsed: 0 })
+    expect(clock.staticFrame(true)).toBe(0)
+    clock.setRunning(true, 5000)
+    expect(clock.advance(5016)).toBe(16)
+  })
+})
 
 describe('hero particle motion', () => {
   it('smooths identically over the same time at different frame rates', () => {

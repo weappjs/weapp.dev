@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createActiveClock } from './hero-particle-motion'
-import { heroEntranceState, readHeroPhase, setHeroPhase, subscribeHeroPhase } from './hero-phase'
+import { heroEntranceState, heroRevealState, readHeroPhase, setHeroPhase, subscribeHeroPhase } from './hero-phase'
 
 function createScope() {
   const attributes = new Map<string, string>()
@@ -77,5 +77,18 @@ describe('hero opening phase', () => {
     clock.setRunning(true, 60_100)
     expect(heroEntranceState(clock.advance(60_180)).reveal).toBe(0.75)
     expect(heroEntranceState(clock.advance(60_260)).settled).toBe(true)
+  })
+
+  it('reveals the orbit before the planets and labels without extending the opening', () => {
+    const layers = (elapsed: number) => heroRevealState(heroEntranceState(elapsed).reveal)
+    expect(layers(2200)).toEqual({ orbit: 0, planets: 0, labels: 0 })
+    expect(layers(2260)).toEqual({ orbit: 1 / 3, planets: 0, labels: 0 })
+    expect(layers(2360)).toEqual({ orbit: 8 / 9, planets: 0.5, labels: 0 })
+    expect(layers(2380)).toEqual({ orbit: 1, planets: 0.6, labels: 0.125 })
+    expect(layers(2460)).toEqual({ orbit: 1, planets: 1, labels: 0.625 })
+    expect(layers(2520)).toEqual({ orbit: 1, planets: 1, labels: 1 })
+    expect(heroRevealState(-1)).toEqual(layers(2200))
+    expect(heroRevealState(Number.NaN)).toEqual(layers(2200))
+    expect(heroRevealState(2)).toEqual(layers(2520))
   })
 })
