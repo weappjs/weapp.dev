@@ -1,0 +1,559 @@
+---
+import { ArrowRight, ArrowUpRight, Database, Layers2, Package, ScanLine } from '@lucide/astro'
+import HomeDemos from '@weapp-io/site-ui/HomeDemos.astro'
+import HomeProjectProof from '@weapp-io/site-ui/HomeProjectProof.astro'
+import type { Locale, ProjectMetricsMap } from '../../types/project'
+import type { ProjectEntry } from '../../lib/projects'
+import type { HomeProject } from '../../lib/home-projects'
+import { formatCompactNumber, showsPublicMetrics } from '../../lib/metrics'
+import { getToolchainProjects, toolchainRoles, type ToolchainRole } from '../../lib/toolchain'
+import { getSiteCopy, projectPath } from '../../i18n/ui'
+import { buttonPrimary, buttonSecondary, sectionTitle, shell } from '../../styles/classes'
+
+interface Props {
+  locale: Locale
+  projects: ProjectEntry[]
+  metrics: ProjectMetricsMap
+  homeProjects: HomeProject[]
+}
+
+const { locale, projects, metrics, homeProjects } = Astro.props
+const copy = getSiteCopy(locale)
+const numberLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
+const toolchainProjects = getToolchainProjects(projects)
+const groups = toolchainRoles.map(role => ({
+  role,
+  projects: toolchainProjects.filter(item => item.role === role),
+}))
+const layerIcons = { engineering: Layers2, styling: ScanLine, components: Package, data: Database } as const
+const labProjects = homeProjects.filter(project => Boolean(project.demo))
+const layerIds: Record<ToolchainRole, string> = {
+  engineering: 'toolchain-engineering',
+  styling: 'styling',
+  components: 'toolchain-components',
+  data: 'toolchain-data',
+}
+
+function metricValue(value: number | null | undefined) {
+  return value === null || value === undefined ? (numberLocale === 'zh-CN' ? '暂无' : 'n/a') : formatCompactNumber(value, numberLocale)
+}
+
+function projectStatus(status: ProjectEntry['data']['status']) {
+  return copy.projects.status[status]
+}
+---
+
+<section class="workbench-section scroll-mt-20" id="projects" data-toolchain-workbench aria-labelledby="workbench-title">
+  <div class={shell}>
+    <header class="workbench-heading" data-reveal>
+      <div>
+        <h2 id="workbench-title" class={sectionTitle}>{copy.workbench.title}</h2>
+        <p class="workbench-description">{copy.workbench.description}</p>
+      </div>
+      <a class:list={[buttonPrimary, 'shrink-0']} href="#workbench-lab">{copy.workbench.primary}<ArrowRight size={17} aria-hidden="true" /></a>
+    </header>
+
+    <div class="workbench-shell">
+      <div class="workbench-tabs" role="tablist" aria-label={copy.workbench.tabsLabel} data-workbench-tabs hidden>
+        {groups.map(({ role }, index) => (
+          <button type="button" role="tab" id={`workbench-tab-${role}`} aria-controls={layerIds[role]} aria-selected={index === 0 ? 'true' : 'false'} tabindex={index === 0 ? 0 : -1} data-workbench-tab={role}>
+            {copy.workbench.layers[role].label}
+            <span aria-hidden="true">{groups.find(group => group.role === role)?.projects.length}</span>
+          </button>
+        ))}
+      </div>
+
+      <div class="workbench-panels">
+        {groups.map(({ role, projects: layerProjects }) => {
+          const LayerIcon = layerIcons[role]
+          const layer = copy.workbench.layers[role]
+          return (
+            <section id={layerIds[role]} data-workbench-panel={role} role="tabpanel" aria-labelledby={`workbench-tab-${role}`} class={`workbench-panel workbench-panel-${role}`}>
+              <header class="workbench-panel-heading">
+                <span class="workbench-layer-icon" aria-hidden="true"><LayerIcon size={22} stroke-width={1.7} /></span>
+                <div>
+                  <p class="workbench-layer-label">{layer.label}</p>
+                  <h3>{layer.title}</h3>
+                  <p>{layer.description}</p>
+                </div>
+              </header>
+              <div class="workbench-products">
+                {layerProjects.map(({ project }) => {
+                  const content = project.data.locales[locale]
+                  const projectMetrics = metrics[project.id]
+                  const placement = homeProjects.find(homeProject => homeProject.id === project.id)
+                  const hasDemo = Boolean(placement?.demo)
+                  return (
+                    <article class="workbench-product" data-project-id={project.id} aria-labelledby={`workbench-product-${project.id}`}>
+                      <div class="workbench-product-main">
+                        <div class="workbench-product-title">
+                          <img src={project.data.logo} width="48" height="48" alt="" loading="lazy" decoding="async" />
+                          <div>
+                            <div class="workbench-product-meta">
+                              <span class="workbench-status" data-project-status={project.data.status}>{projectStatus(project.data.status)}</span>
+                              <span>{layer.label}</span>
+                            </div>
+                            <h4 id={`workbench-product-${project.id}`}>{content.name}</h4>
+                          </div>
+                        </div>
+                        <p class="workbench-product-tagline">{content.tagline}</p>
+                        <p class="workbench-product-description">{content.description}</p>
+                        <div class="workbench-product-actions">
+                          <a class={buttonPrimary} href={project.data.docsUrl} target="_blank" rel="noopener noreferrer" data-analytics-event="click_outbound" data-analytics-target="docs" data-analytics-project={project.id}>{copy.projects.documentation}<ArrowUpRight size={16} aria-hidden="true" /></a>
+                          <a class={buttonSecondary} href={projectPath(locale, project.id)} data-analytics-event="select_project" data-analytics-project={project.id}>{copy.projects.details}<ArrowRight size={16} aria-hidden="true" /></a>
+                        </div>
+                      </div>
+                      <div class="workbench-product-evidence">
+                        {showsPublicMetrics(project.data.status) && projectMetrics ? (
+                          <dl class="workbench-metrics" aria-label={`${content.name} ${copy.projects.weeklyDownloads} and ${copy.projects.stars}`}>
+                            <div><dt>{copy.projects.weeklyDownloads}</dt><dd>{metricValue(projectMetrics.weeklyDownloads)}</dd></div>
+                            <div><dt>{copy.projects.stars}</dt><dd>{metricValue(projectMetrics.stars)}</dd></div>
+                          </dl>
+                        ) : null}
+                        {hasDemo ? (
+                          <p class="workbench-evidence-note"><span>{copy.workbench.demoLabel}</span>{copy.workbench.demoDescription}</p>
+                        ) : (
+                          <HomeProjectProof labels={copy.projects.proof} kind={placement?.demo} locale={locale} projectName={content.name} status={project.data.status} proof={project.data.proof} proofId={`workbench-proof-${project.id}`} />
+                        )}
+                        {project.data.installCommand ? <code class="workbench-install">{project.data.installCommand}</code> : null}
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            </section>
+          )
+        })}
+      </div>
+
+      <div class="workbench-lab" id="workbench-lab" data-reveal role="region" aria-labelledby="workbench-lab-title">
+        <div class="workbench-lab-heading">
+          <div>
+            <p class="workbench-layer-label">{copy.workbench.labLabel}</p>
+            <h3 id="workbench-lab-title">{copy.workbench.labTitle}</h3>
+            <p>{copy.workbench.labDescription}</p>
+          </div>
+          <a class="workbench-text-link" href={projectPath(locale, 'weapp-vite')}>{copy.workbench.viewCore}<ArrowRight size={16} aria-hidden="true" /></a>
+        </div>
+        <HomeDemos locale={locale} projects={labProjects} />
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const workbench = document.querySelector<HTMLElement>('[data-toolchain-workbench]')
+  if (workbench && !workbench.dataset.ready) {
+    const tablist = workbench.querySelector<HTMLElement>('[data-workbench-tabs]')
+    const tabs = [...workbench.querySelectorAll<HTMLButtonElement>('[data-workbench-tab]')]
+    const panels = [...workbench.querySelectorAll<HTMLElement>('[data-workbench-panel]')]
+    const activate = (index: number, focus = false) => {
+      const active = tabs[index]
+      if (!active) return
+      const activeRole = active.dataset.workbenchTab
+      tabs.forEach((tab, tabIndex) => {
+        const selected = tabIndex === index
+        tab.setAttribute('aria-selected', String(selected))
+        tab.tabIndex = selected ? 0 : -1
+      })
+      panels.forEach(panel => panel.toggleAttribute('hidden', panel.dataset.workbenchPanel !== activeRole))
+      workbench.dataset.enhanced = 'true'
+      if (focus) active.focus()
+    }
+    if (tablist && tabs.length && panels.length) {
+      tablist.hidden = false
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => activate(index))
+        tab.addEventListener('keydown', (event) => {
+          const next = { ArrowRight: (index + 1) % tabs.length, ArrowLeft: (index + tabs.length - 1) % tabs.length, Home: 0, End: tabs.length - 1 }[event.key]
+          if (next === undefined) return
+          event.preventDefault()
+          activate(next, true)
+        })
+      })
+      activate(0)
+    }
+    workbench.dataset.ready = 'true'
+  }
+</script>
+
+<style>
+  .workbench-section {
+    padding: clamp(4.5rem, 9vw, 7rem) 0;
+    background: var(--background);
+  }
+
+  .workbench-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2rem;
+    align-items: end;
+    margin-bottom: 2.5rem;
+  }
+
+  .workbench-heading h2,
+  .workbench-lab-heading h3 {
+    margin-bottom: 0.75rem;
+  }
+
+  .workbench-description,
+  .workbench-lab-heading p:last-child {
+    max-width: 46rem;
+    margin-bottom: 0;
+    color: var(--muted);
+    font-size: 1.125rem;
+  }
+
+  .workbench-shell {
+    overflow: hidden;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+  }
+
+  .workbench-tabs {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: thin;
+  }
+
+  .workbench-tabs button {
+    display: inline-flex;
+    min-height: 2.75rem;
+    flex: 1 0 auto;
+    gap: 0.65rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1rem;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 650;
+    transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+  }
+
+  .workbench-tabs button span {
+    color: currentcolor;
+    font: 650 0.7rem/1 var(--font-mono);
+  }
+
+  .workbench-tabs button:hover,
+  .workbench-tabs button:focus-visible,
+  .workbench-tabs button[aria-selected='true'] {
+    color: var(--text);
+    background: var(--surface);
+    border-color: var(--border);
+  }
+
+  .workbench-tabs button[aria-selected='true'] {
+    color: var(--accent);
+  }
+
+  .workbench-panels {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--border);
+  }
+
+  [data-toolchain-workbench][data-enhanced='true'] .workbench-panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workbench-panel {
+    min-width: 0;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    background: var(--surface);
+  }
+
+  .workbench-panel-styling {
+    grid-column: span 1;
+  }
+
+  .workbench-panel-heading {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .workbench-layer-icon {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    place-items: center;
+    color: var(--accent);
+    background: var(--surface-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+    border-radius: 12px;
+  }
+
+  .workbench-layer-label,
+  .workbench-product-meta,
+  .workbench-product-meta span,
+  .workbench-evidence-note span {
+    color: var(--accent);
+    font: 650 0.72rem/1.3 var(--font-mono);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .workbench-panel-heading h3 {
+    margin: 0.35rem 0 0.45rem;
+    font-size: clamp(1.35rem, 2.3vw, 1.8rem);
+  }
+
+  .workbench-panel-heading p:last-child {
+    max-width: 42rem;
+    margin-bottom: 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .workbench-products {
+    display: grid;
+  }
+
+  .workbench-product {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.9fr);
+    gap: 1.5rem;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .workbench-product:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .workbench-product-title {
+    display: flex;
+    gap: 0.85rem;
+    align-items: center;
+  }
+
+  .workbench-product-title img {
+    width: 3rem;
+    height: 3rem;
+    flex: 0 0 auto;
+    object-fit: contain;
+  }
+
+  .workbench-product-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    align-items: center;
+    color: var(--muted);
+    text-transform: none;
+  }
+
+  .workbench-product-meta span:not(.workbench-status) {
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .workbench-status[data-project-status='beta']::before,
+  .workbench-status[data-project-status='stable']::before {
+    display: inline-block;
+    width: 0.42rem;
+    height: 0.42rem;
+    margin-right: 0.35rem;
+    vertical-align: 0.08em;
+    content: '';
+    background: currentcolor;
+    border-radius: 50%;
+  }
+
+  .workbench-status[data-project-status='beta'] {
+    color: var(--highlight);
+  }
+
+  .workbench-product-title h4 {
+    margin: 0.25rem 0 0;
+    font-size: 1.25rem;
+  }
+
+  .workbench-product-tagline {
+    margin: 1.15rem 0 0.4rem;
+    font-weight: 650;
+  }
+
+  .workbench-product-description {
+    margin-bottom: 1.25rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .workbench-product-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .workbench-product-actions a {
+    min-height: 2.5rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.78rem;
+  }
+
+  .workbench-product-evidence {
+    display: grid;
+    align-content: start;
+    gap: 0.85rem;
+    min-width: 0;
+  }
+
+  .workbench-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    padding: 0 0 0.85rem;
+    margin: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .workbench-metrics dt {
+    margin-bottom: 0.2rem;
+    color: var(--muted);
+    font-size: 0.7rem;
+  }
+
+  .workbench-metrics dd {
+    margin: 0;
+    font: 700 1.1rem/1 var(--font-mono);
+  }
+
+  .workbench-evidence-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  .workbench-evidence-note span {
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+
+  .workbench-install {
+    display: block;
+    padding: 0.65rem 0.75rem;
+    overflow: auto;
+    color: var(--text);
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  .workbench-product-evidence :global(.home-project-proof) {
+    padding: 0;
+    background: transparent;
+    border: 0;
+  }
+
+  .workbench-product-evidence :global(.home-project-proof-heading),
+  .workbench-product-evidence :global(.home-project-proof-marker) {
+    display: none;
+  }
+
+  .workbench-product-evidence :global(.home-project-proof-list) {
+    padding: 0 0 0 1.25rem;
+    margin: 0;
+    font-size: 0.78rem;
+  }
+
+  .workbench-lab {
+    padding: clamp(1.25rem, 3vw, 2rem);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+
+  .workbench-lab-heading {
+    display: flex;
+    gap: 1rem;
+    align-items: end;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+
+  .workbench-lab-heading h3 {
+    margin-top: 0.35rem;
+    font-size: clamp(1.35rem, 2.3vw, 1.8rem);
+  }
+
+  .workbench-text-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    flex: 0 0 auto;
+    gap: 0.45rem;
+    align-items: center;
+    color: var(--accent);
+    font-size: 0.875rem;
+    font-weight: 650;
+  }
+
+  @media (max-width: 900px) {
+    .workbench-heading {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+
+    .workbench-panels {
+      grid-template-columns: 1fr;
+    }
+
+    .workbench-product {
+      grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.8fr);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .workbench-section {
+      padding: 4rem 0;
+    }
+
+    .workbench-shell {
+      border-radius: 16px;
+    }
+
+    .workbench-panel,
+    .workbench-lab {
+      padding: 1rem;
+    }
+
+    .workbench-product {
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+
+    .workbench-product-evidence {
+      padding-top: 0.25rem;
+    }
+
+    .workbench-lab-heading {
+      align-items: start;
+      flex-direction: column;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .workbench-tabs button {
+      transition: none;
+    }
+  }
+</style>

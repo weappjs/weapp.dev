@@ -7,7 +7,7 @@ for (const locale of ['zh-CN', 'en'] as const) {
 
   test(`${locale}: style controls change real CSS and keep instances independent`, async ({ page }) => {
     await page.goto(route)
-    await page.getByRole('tab', { name: copy.tabs.style, exact: true }).click()
+    await page.locator('home-demos').getByRole('tab', { name: copy.tabs.style, exact: true }).click()
     const hero = page.locator('home-demos style-demo')
     const button = hero.locator('[data-style-button]')
     const before = await button.evaluate((element) => {
@@ -27,8 +27,8 @@ for (const locale of ['zh-CN', 'en'] as const) {
     expect(after.radius).not.toBe(before.radius)
     expect(after.padding).not.toBe(before.padding)
     await expect(page.locator('#projects .home-project-proof')).toHaveCount(2)
-    await expect(page.locator('#styling .home-project-proof')).toHaveCount(3)
-    await expect(page.locator('#projects [data-project-id="weapp-vite"] home-demos')).toHaveCount(1)
+    await expect(page.locator('#styling .home-project-proof')).toHaveCount(2)
+    await expect(page.locator('#projects #workbench-lab home-demos')).toHaveCount(1)
     await expect(page.locator('.home-hero home-demos')).toHaveCount(0)
     await button.click()
     await expect(button).toHaveText(copy.saved)
@@ -38,7 +38,7 @@ for (const locale of ['zh-CN', 'en'] as const) {
   test(`${locale}: tabs support keyboard navigation and build targets stay aligned`, async ({ page }) => {
     await page.goto(route)
     const tabs = page.locator('home-demos [role="tab"]')
-    const buildTab = page.getByRole('tab', { name: copy.tabs.build, exact: true })
+    const buildTab = page.locator('home-demos').getByRole('tab', { name: copy.tabs.build, exact: true })
     await buildTab.click()
     const build = page.locator('home-demos build-demo')
     await expect(build).toBeVisible()
@@ -111,7 +111,7 @@ test('copy reports success and clipboard failures accessibly', async ({ page }) 
     } } })
   })
   await page.goto('/')
-  await page.getByRole('tab', { name: '样式', exact: true }).click()
+  await page.locator('home-demos').getByRole('tab', { name: '样式', exact: true }).click()
   const code = page.locator('home-demos style-demo demo-code')
   await code.getByRole('button', { name: '复制代码' }).click()
   await expect(code.getByRole('status')).toHaveText('已复制')
@@ -149,8 +149,8 @@ test('default examples remain readable without JavaScript', async ({ browser, vi
     await expect(page.locator('.demo-controls:visible, [data-copy]:visible')).toHaveCount(0)
     expect(await page.locator('home-demos build-demo pre').evaluate(element => element.scrollHeight <= element.clientHeight + 1)).toBe(true)
     await expect(page.locator('#projects .home-project-proof')).toHaveCount(2)
-    await expect(page.locator('#styling .home-project-proof')).toHaveCount(3)
-    await expect(page.locator('#projects .home-lab')).toHaveCount(1)
+    await expect(page.locator('#styling .home-project-proof')).toHaveCount(2)
+    await expect(page.locator('#projects #workbench-lab .home-lab')).toHaveCount(1)
     await expect(page.locator('.home-hero home-demos')).toHaveCount(0)
   }
   await context.close()

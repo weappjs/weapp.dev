@@ -6,6 +6,8 @@
   "exports": {
     "./HeroFont.astro": "./src/components/home/HeroFont.astro",
     "./HomeHero.astro": "./src/components/home/HomeHero.astro",
+    "./HomeDemos.astro": "./src/components/home/demos/HomeDemos.astro",
+    "./HomeProjectProof.astro": "./src/components/home/HomeProjectProof.astro",
     "./HomeProjectRow.astro": "./src/components/home/HomeProjectRow.astro",
     "./home-projects": "./src/lib/home-projects.ts",
     "./hero-logo": "./src/scripts/hero-logo.ts",

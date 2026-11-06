@@ -16,34 +16,6 @@ for (const prefix of ['', '/en']) {
     expect(chartRequests).toEqual([])
   })
 
-  test(`keeps the homepage toolchain map in flow order on ${prefix || 'zh-CN'}`, async ({ page }) => {
-    await page.goto(`${prefix}/`)
-    await expect(page.locator('.toolchain-map header p')).toHaveText(prefix ? 'WEAPP TOOLCHAIN' : 'weapp 工具链')
-    await expect(page.getByRole('navigation', { name: prefix ? 'Homepage project links' : '首页项目入口' })).toBeVisible()
-    const ids = ['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'weapp-stylex', 'varo', 'weapp-sqlite']
-    const links = page.locator('.toolchain-map-list li a')
-    await expect(links).toHaveCount(6)
-    const statusLabels = prefix ? { stable: 'Stable', beta: 'Beta' } : { stable: '稳定', beta: '测试版' }
-    for (const id of ['weapp-vite', 'weapp-tailwindcss', 'weapp-pandacss', 'varo']) {
-      const node = page.locator(`.toolchain-map-list li[data-project-id="${id}"]`)
-      await expect(node.locator('.toolchain-status')).toHaveText(statusLabels.stable)
-      await expect(node.locator('.toolchain-status')).toHaveAttribute('aria-label', prefix ? 'Project status: Stable' : '项目状态: 稳定')
-    }
-    for (const id of ['weapp-sqlite']) {
-      const node = page.locator(`.toolchain-map-list li[data-project-id="${id}"]`)
-      await expect(node.locator('.toolchain-status')).toHaveText(statusLabels.beta)
-      await expect(node.locator('.toolchain-status')).toHaveAttribute('aria-label', prefix ? 'Project status: Beta' : '项目状态: 测试版')
-    }
-    await expect(links.evaluateAll(items => items.map(item => new URL((item as HTMLAnchorElement).href).pathname))).resolves.toEqual(ids.map(id => `${prefix}/projects/${id}/`))
-    for (const id of ids) {
-      const node = page.locator(`.toolchain-map-list li[data-project-id="${id}"]`)
-      await expect(node).toHaveAttribute('aria-labelledby', `toolchain-project-${id}`)
-      await expect(node.locator(`#toolchain-project-${id}`)).toBeVisible()
-      await expect(node).toHaveAttribute('aria-describedby', `toolchain-description-${id} toolchain-role-${id} toolchain-status-${id}`)
-      await expect(node.locator('a')).toHaveAttribute('data-analytics-event', 'select_project')
-    }
-  })
-
   const zh = prefix === ''
   test(`filters project rows and recovers from an empty intersection on ${prefix}/projects/`, async ({ page }) => {
     await page.goto(`${prefix}/projects/`)

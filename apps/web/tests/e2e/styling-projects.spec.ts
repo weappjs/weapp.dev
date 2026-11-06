@@ -21,12 +21,12 @@ for (const prefix of ['', '/en']) {
     await expect(cards).toHaveCount(1)
     await expect(cards.getByRole('heading')).toHaveText('weapp-stylex')
     await page.goto(`${prefix}/`)
-    const section = page.getByRole('region', { name: prefix ? 'Choose how you write styles' : '选择适合你的样式写法', exact: true })
+    const section = page.locator('#styling')
+    await page.locator('[data-toolchain-workbench] [data-workbench-tab="styling"]').click()
     await expect(section).toHaveAttribute('id', 'styling')
-    expect(await section.locator('[data-project-row]').evaluateAll(rows => rows.map(row => row.getAttribute('data-project-id'))))
+    await expect(section.getByRole('heading', { level: 3 })).toHaveText(prefix ? 'Choose a styling workflow for the project' : '选择适合现有项目的样式写法')
+    expect(await section.locator('[data-project-id]').evaluateAll(rows => rows.map(row => row.getAttribute('data-project-id'))))
       .toEqual(stylingProjects.map(project => project.id))
-    expect(await page.locator('#projects [data-project-row]').evaluateAll(rows => rows.map(row => row.getAttribute('data-project-id'))))
-      .toEqual(['weapp-vite', 'varo', 'weapp-sqlite'])
     const jump = page.getByRole('link', { name: prefix ? 'Explore styling tools' : '查看样式工具', exact: true })
     // Bring the link into view before focus so its scroll cannot compete with
     // the native fragment navigation triggered by Enter.
@@ -35,22 +35,13 @@ for (const prefix of ['', '/en']) {
     await expect(jump).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(new RegExp(`${prefix}/#styling$`))
-    await expect(section.getByRole('heading', { level: 2 })).toBeInViewport()
-    const comparison = section.getByRole('link', { name: prefix ? 'Compare the three styling projects' : '比较三个样式项目', exact: true })
-    await expectSiteLink(comparison, `${prefix}/projects/?role=styling`)
-    await comparison.click()
-    await expect(cards).toHaveCount(3)
+    await expect(section.getByRole('heading', { level: 3 })).toBeInViewport()
     await page.goto(`${prefix}/`)
+    await page.locator('[data-toolchain-workbench] [data-workbench-tab="styling"]').click()
     await expect(page.locator('home-demos [role="tab"]')).toHaveCount(5)
     for (const project of stylingProjects) {
-      const row = page.locator(`#styling [data-project-row][data-project-id="${project.id}"]`)
-      await expect(row.getByRole('heading')).toHaveText(project.id)
-      if (project.id === 'weapp-tailwindcss') {
-        await expect(row.locator('.home-project-proof pre')).toBeVisible()
-      }
-      else {
-        await expect(row.locator('.home-project-proof-list li')).toHaveCount(3)
-      }
+      const row = page.locator(`#styling [data-project-id="${project.id}"]`)
+      await expect(row.getByRole('heading', { level: 4 })).toHaveText(project.id)
       await expect(row.locator('a[data-analytics-target="docs"]')).toHaveAttribute('href', project.docs)
       const link = row.locator('a[data-analytics-event="select_project"]')
       await expectSiteLink(link, `${prefix}/projects/${project.id}/`)
@@ -63,6 +54,7 @@ for (const prefix of ['', '/en']) {
         await expect(page.locator('main')).toContainText(prefix ? 'ordinary subpackages' : '普通分包')
       }
       await page.goto(`${prefix}/`)
+      await page.locator('[data-toolchain-workbench] [data-workbench-tab="styling"]').click()
     }
   })
 }
@@ -73,9 +65,9 @@ test.describe('styling projects without scripts', () => {
     test(`keeps all three styling routes usable on ${prefix || 'zh-CN'}`, async ({ page }) => {
       for (const project of stylingProjects) {
         await page.goto(`${prefix}/`)
-        await expect(page.locator('#styling h2')).toHaveText(prefix ? 'Choose how you write styles' : '选择适合你的样式写法')
-        const row = page.locator(`#styling [data-project-row][data-project-id="${project.id}"]`)
-        await expect(row.locator('.home-project-proof')).toBeVisible()
+        await expect(page.locator('#styling h3')).toHaveText(prefix ? 'Choose a styling workflow for the project' : '选择适合现有项目的样式写法')
+        const row = page.locator(`#styling [data-project-id="${project.id}"]`)
+        await expect(row).toBeVisible()
         await row.locator('a[data-analytics-event="select_project"]').click()
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(project.id)
         await expect(page.locator('main')).toContainText(project.command)

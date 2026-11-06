@@ -12,7 +12,7 @@ import type { HomeProject } from '../lib/home-projects'
 import { getCatalogEcosystemGroups, getConstellationProjects } from '../lib/toolchain'
 import HomePartnerSection from './home/HomePartnerSection.astro'
 import HomeProjects from './home/HomeProjects.astro'
-import ToolchainMap from './ToolchainMap.astro'
+import HomeToolchainWorkbench from './home/HomeToolchainWorkbench.astro'
 import CommercialSections from './CommercialSections.astro'
 
 interface Props {
@@ -28,8 +28,6 @@ const profile = getSiteProfile()
 const numberLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
 const ecosystemGroups = getCatalogEcosystemGroups(projects)
 const runtimeHome = projects.filter(project => project.data.role === 'Framework').sort((left, right) => left.data.order - right.data.order)
-const stylingHome = homeProjects.filter(project => project.data.role === 'Styling')
-const weappHome = homeProjects.filter(project => project.data.ecosystem === 'weapp' && project.data.role !== 'Styling')
 const taroHome = homeProjects.filter(project => project.data.ecosystem === 'taro')
 const constellation = getConstellationProjects(projects).map(project => ({
   id: project.id,
@@ -56,13 +54,15 @@ const stepIcons = [Layers2, ScanLine, Package]
 <main id="main-content">
   <HomeHero wordmark={profile.heroWordmark} overviewLabel={locale === 'zh-CN' ? `${profile.name} 首页概览` : `${profile.name} overview`} railLabel={copy.rail.label} locale={locale} railGroups={railGroups} constellation={constellation} />
 
+  <HomeToolchainWorkbench locale={locale} projects={projects} metrics={metrics} homeProjects={homeProjects} />
+
   <section class="bg-panel" id="about" data-product-intro>
     <div class:list={[section, shell]}>
       <header data-reveal class="mb-16 max-w-[900px]">
         <h2 class="mb-4 text-[clamp(2.25rem,4.5vw,4rem)] font-[650]">{copy.about.title}</h2>
         <p class="mb-0 text-lg text-copy-muted max-[720px]:text-base">{copy.about.description}</p>
         {<div class="mt-7 flex flex-wrap gap-3">
-          <a class={buttonPrimary} href={localizePath(locale, '/projects/')}>{copy.hero.primary}<ArrowRight size={17} aria-hidden="true" /></a>
+          <a class={buttonPrimary} href="#projects">{copy.hero.primary}<ArrowRight size={17} aria-hidden="true" /></a>
           <a class={buttonSecondary} href={profile.organizationUrl} target="_blank" rel="noopener noreferrer">{copy.hero.secondary}<GitFork size={17} aria-hidden="true" /></a>
         </div>}
 
@@ -95,23 +95,11 @@ const stepIcons = [Layers2, ScanLine, Package]
     </div>
   </section>
 
-  <HomeProjects locale={locale} projects={weappHome} metrics={metrics} labProjects={homeProjects} pack="start" id="projects" eyebrow={copy.ecosystems.weapp.eyebrow} title={copy.ecosystems.weapp.title} description={copy.ecosystems.weapp.description} />
-
-  <HomeProjects locale={locale} projects={stylingHome} metrics={metrics} pack="middle" surface="soft" id="styling" eyebrow={copy.styling.eyebrow} title={copy.styling.title} description={copy.styling.description} action={{ href: localizePath(locale, '/projects/?role=styling'), label: copy.styling.action }} />
-
   <HomeProjects locale={locale} projects={taroHome} metrics={metrics} pack="middle" id="ecosystem-taro" eyebrow={copy.ecosystems.taro.eyebrow} title={copy.ecosystems.taro.title} description={copy.ecosystems.taro.description} />
 
   <HomePartnerSection locale={locale} pack="middle" id="runtime" projects={runtimeHome} eyebrow={copy.runtime.eyebrow} title={copy.runtime.title} description={copy.runtime.description} showRuntime />
 
   <HomePartnerSection locale={locale} pack="end" id="ecosystem" projects={ecosystemGroups.find(group => group.id === 'uni-app')?.projects ?? []} eyebrow={copy.ecosystems['uni-app'].eyebrow} title={copy.ecosystems['uni-app'].title} description={copy.ecosystems['uni-app'].description} />
-
-  <section class:list={[section, shell]} aria-label={locale === 'zh-CN' ? '工具链地图' : 'Toolchain map'}>
-    <ToolchainMap locale={locale} projects={projects} />
-  </section>
-
-
-
-
 
   <section class:list={[section, shell]} id="releases">
     <div class="grid grid-cols-[.75fr_1.25fr] gap-16 max-[900px]:grid-cols-1 max-[900px]:gap-10">
