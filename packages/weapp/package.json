@@ -61,7 +61,7 @@
     "open": "10.2.0"
   },
   "devDependencies": {
-    "@playwright/test": "1.64.1",
+    "@playwright/test": "1.65.0",
     "@types/cross-spawn": "6.0.6",
     "@types/node": "24.19.2",
     "@types/picomatch": "4.0.3",
@@ -73,12 +73,12 @@
     "jsqr": "1.4.0",
     "picomatch": "4.0.7",
     "qrcode": "1.5.4",
-    "semver": "7.8.5",
+    "semver": "7.8.6",
     "string-width": "7.2.0",
-    "tsdown": "0.23.1",
+    "tsdown": "0.23.7",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
-    "vitest": "5.0.5",
+    "vitest": "5.1.0",
     "yaml": "2.9.1"
   }
 }

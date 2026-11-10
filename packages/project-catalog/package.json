@@ -20,12 +20,12 @@
     "metrics:sync": "tsx scripts/generate-metrics.ts --update-fallback --require-fresh"
   },
   "dependencies": {
-    "astro": "7.4.1"
+    "astro": "7.4.7"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
-    "vitest": "5.0.5"
+    "vitest": "5.1.0"
   }
 }

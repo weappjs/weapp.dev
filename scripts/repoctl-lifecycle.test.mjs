@@ -245,8 +245,13 @@ it('keeps a missing docs result pending and retries the frozen release source an
   const spawn = (command, args, settings) => {
     assert.equal(command, 'pnpm')
     assert.notEqual(settings.cwd, fixture.cwd)
-    assert.equal(settings.env.REPO_DOCS_SOURCE_SHA, fixture.source)
-    assert.equal(settings.env.REPO_DOCS_RELEASE_ID, record.id)
+    if (args[0] === 'install') {
+      assert.equal(Object.keys(settings.env).some(key => key.startsWith('REPO_DOCS_')), false, 'Install lifecycles must not inherit a site deployment identity')
+    }
+    else {
+      assert.equal(settings.env.REPO_DOCS_SOURCE_SHA, fixture.source)
+      assert.equal(settings.env.REPO_DOCS_RELEASE_ID, record.id)
+    }
     assert.equal(readFileSync(path.join(settings.cwd, 'packages/weapp/index.js'), 'utf8'), 'export const source = "released"\n')
     assert.equal(spawnSync('git', ['rev-parse', 'HEAD'], { cwd: settings.cwd, encoding: 'utf8' }).stdout.trim(), fixture.source)
     commands.push(args.join(' '))
@@ -256,7 +261,12 @@ it('keeps a missing docs result pending and retries the frozen release source an
     return { status: 0, stdout: '', stderr: '' }
   }
   const options = { cwd: fixture.cwd, site: 'web', channel: 'stable', release: record.id, config: docsConfig, github: fixture.options.github, env: { ...fixture.env, REPO_DOCS_CONCURRENCY_GROUP: 'docs-web-stable' }, spawn }
-  await assert.rejects(deployDocs(options), /did not produce valid JSON at REPO_DOCS_RESULT_FILE/)
+  await assert.rejects(deployDocs(options), (error) => {
+    assert.equal(error.name, 'DocsDeploymentError')
+    assert.equal(error.report.failedStage, 'provider')
+    assert.equal(error.report.stages.find(stage => stage.status === 'failed').reason, 'script-result-invalid')
+    return true
+  })
   const pending = fixture.automation.get('docs/web/stable').value
   assert.equal(pending.pending.phase, 'deploying')
   assert.equal(pending.current, undefined)
@@ -266,7 +276,12 @@ it('keeps a missing docs result pending and retries the frozen release source an
   fixture.git('commit', '-m', 'feat: unreleased change')
   fixture.git('push', 'origin', 'main')
   fixture.setRemoteHead(fixture.git('rev-parse', 'HEAD'))
-  await assert.rejects(deployDocs({ ...options, release: 'd'.repeat(64) }), /unfinished deploying operation/)
+  await assert.rejects(deployDocs({ ...options, release: 'd'.repeat(64) }), (error) => {
+    assert.equal(error.name, 'DocsDeploymentError')
+    assert.equal(error.report.failedStage, 'plan')
+    assert.equal(error.report.stages.find(stage => stage.status === 'failed').reason, 'deployment-unresolved')
+    return true
+  })
   await assert.rejects(planDocsDeployment({ ...options, sourceSha: fixture.git('rev-parse', 'HEAD') }), /never an arbitrary source SHA/)
   produceResult = true
   const recovered = await deployDocs({ ...options, config: { sites: { web: { ...site, buildScript: 'unreleased:build', stable: { deployScript: 'unreleased:deploy' } } } } })
@@ -289,7 +304,12 @@ it('refuses preview upload when main advances during the build and clears the un
     }
     return { status: 0, stdout: '', stderr: '' }
   }
-  await assert.rejects(deployDocs({ cwd: fixture.cwd, site: 'web', channel: 'preview', sourceSha: fixture.source, config: docsConfig, github: fixture.options.github, env: { ...fixture.env, REPO_DOCS_CONCURRENCY_GROUP: 'docs-web-preview' }, spawn }), /Main advanced during the preview build/)
+  await assert.rejects(deployDocs({ cwd: fixture.cwd, site: 'web', channel: 'preview', sourceSha: fixture.source, config: docsConfig, github: fixture.options.github, env: { ...fixture.env, REPO_DOCS_CONCURRENCY_GROUP: 'docs-web-preview' }, spawn }), (error) => {
+    assert.equal(error.name, 'DocsDeploymentError')
+    assert.equal(error.report.failedStage, 'provider')
+    assert.equal(error.report.stages.find(stage => stage.status === 'failed').reason, 'main-advanced')
+    return true
+  })
   assert.deepEqual(commands, ['install --frozen-lockfile', 'run site:build'])
   assert.equal(fixture.automation.get('docs/web/preview').value.pending, undefined)
   assert.equal(fixture.automation.get('docs/web/preview').value.current, undefined)

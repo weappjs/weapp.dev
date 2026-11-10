@@ -32,7 +32,7 @@ pnpm metrics:sync
 
 ## 依赖维护
 
-[2026-10-22 全仓依赖与工具链升级记录](dependency-upgrade-2026-10-22.md) 记录当前升级目标、兼容性保留项、发布冷却、限定 override 与补丁的删除条件和验收状态；[2026-10-15 记录](dependency-upgrade-2026-10-15.md) 保留上一轮基线与样式构建迁移结论。后续升级应复查上游约束，满足删除条件后移除对应 override 或补丁。
+[2026-11-10 全仓依赖兼容升级记录](dependency-upgrade-2026-11-10.md) 记录当前升级目标、安全审计、兼容性保留项、发布冷却、限定 override、补丁及依赖元数据修正的删除条件和验收状态；[2026-10-22 记录](dependency-upgrade-2026-10-22.md) 保留上一轮基线与 Astro 热更新修复。后续升级应复查上游约束，满足删除条件后移除对应 override 或补丁。
 
 ## 内容与路由
 
@@ -58,7 +58,7 @@ pnpm metrics:sync
 
 [2026-10-23 repoctl 6.0.1 迁移与上线记录](repoctl-migration-2026-10-23.md) 记录历史 0.3.0 补发、nightly 首次真实发布、新发布身份验证、双站 main/PR 预览及线上验收、0.4.0 完整稳定包发布，以及 0.4.0 两站首次受管正式部署、线上验收、截图核对和无重复提交的恢复审计。
 
-版本与发布由 repoctl 6.0.1 统一管理，底层继续使用 pnpm 12 原生 versioning。开发分支用 `pnpm change weapp --bump minor --summary "变更说明"` 记录功能（修复用 `patch`）；`.changeset/*.md` 是 pnpm change intent，不使用 Changesets CLI/action。`pnpm release:plan --json` 只读预览，`pnpm change check` 检查 intent。`pnpm-workspace.yaml` 的 `versioning.ignore` 精确排除 root 与四个私有 workspace，新增私有包时同步名单。
+版本与发布由 repoctl 6.4.0 统一管理，底层继续使用 pnpm 12 原生 versioning。开发分支用 `pnpm change weapp --bump minor --summary "变更说明"` 记录功能（修复用 `patch`）；`.changeset/*.md` 是 pnpm change intent，不使用 Changesets CLI/action。`pnpm release:plan --json` 只读预览，`pnpm change check` 检查 intent。`pnpm-workspace.yaml` 的 `versioning.ignore` 精确排除 root 与四个私有 workspace，新增私有包时同步名单。
 
 受管 `.github/workflows/release.yml` 在 main push 时执行 repoctl 的 plan、verify、prepare、upload、confirm、finalize 阶段。有待处理 intent 时维护 `release/pnpm-version` → main 的版本 PR；审查并合并版本 PR 后，由下一次 main 运行完成 npm 正式发布、canonical tag、GitHub Release 和 release record。版本 PR 不自动合并，prepare 不发布包。`release:verify` 保留边界、类型、lint、单测和独立 tarball 检查；`afterVersion` 构建并检查新的 CLI 版本，避免 nightly 或正式版本号与 `dist/data/meta.json` 不一致。
 

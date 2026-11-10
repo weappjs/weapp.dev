@@ -1,0 +1,28 @@
+diff --git a/dist/vite-BV6HpUGt.cjs b/dist/vite-BV6HpUGt.cjs
+index ef058f8718fdcfa883c941b4393fb6787a48d2b3..126fc850bb43d019ec9d8296fb762af3bf6047b9 100644
+--- a/dist/vite-BV6HpUGt.cjs
++++ b/dist/vite-BV6HpUGt.cjs
+@@ -651,7 +651,8 @@ function createDeferredVitePlugins(slots, create) {
+ 	let active;
+ 	const resolveState = (context, config) => {
+ 		const environmentConfig = context?.environment?.config;
+-		const selectedConfig = config ?? environmentConfig;
++		// Vite creates a distinct resolved config for each build environment.
++		const selectedConfig = config ?? context?.environment?.getTopLevelConfig?.() ?? environmentConfig;
+ 		if (selectedConfig) {
+ 			let state = states.get(selectedConfig);
+ 			if (!state && config) {
+diff --git a/dist/vite-Dl6mZ1qC.js b/dist/vite-Dl6mZ1qC.js
+index 24d0f8f8b90950344c9b849240c3736d08e70c22..5628b27bd6c42a52168de72851146c9fceb74b0d 100644
+--- a/dist/vite-Dl6mZ1qC.js
++++ b/dist/vite-Dl6mZ1qC.js
+@@ -644,7 +644,8 @@ function createDeferredVitePlugins(slots, create) {
+ 	let active;
+ 	const resolveState = (context, config) => {
+ 		const environmentConfig = context?.environment?.config;
+-		const selectedConfig = config ?? environmentConfig;
++		// Vite creates a distinct resolved config for each build environment.
++		const selectedConfig = config ?? context?.environment?.getTopLevelConfig?.() ?? environmentConfig;
+ 		if (selectedConfig) {
+ 			let state = states.get(selectedConfig);
+ 			if (!state && config) {
