@@ -18,7 +18,7 @@
     "preview": "astro preview",
     "test": "vitest run",
     "test:worker": "vitest run --config vitest.worker.config.ts",
-    "worker:types": "wrangler types .cache/worker-configuration.d.ts",
+    "worker:types": "node -e \"require('node:fs').mkdirSync('.cache', { recursive: true })\" && wrangler types .cache/worker-configuration.d.ts",
     "test:e2e": "pnpm build && playwright test",
     "test:e2e:analytics-live": "WEAPP_ANALYTICS_LIVE_TEST=1 playwright test tests/e2e/analytics-live.spec.ts --project=desktop"
   },
