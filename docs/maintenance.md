@@ -44,6 +44,8 @@ pnpm metrics:sync
 
 两站独立生成 canonical、hreflang、OG、JSON-LD、robots、sitemap、RSS 与 LLM 资源。商业项目页使用 WebPage 和经确认的 Service；开源项目页使用 SoftwareSourceCode。
 
+商业站的中英文错误页及其 HTML 别名由轻量 Worker 返回 HTTP 404，避免直接访问静态错误页时得到 200 而形成软 404。其他页面仍优先由静态资源服务响应。Worker 类型由 `pnpm --filter @weapp-io/web worker:types` 生成到缓存，并与 Astro 分开检查。构建后执行 `pnpm --filter @weapp-io/web test:worker`，用 Wrangler 本地运行时验证正式和预览两份配置；CI 分别构建 stable、preview，受管商业站部署也在上传前运行这项检查。
+
 两站的 BIMI 标识文件由各自 public/bimi/logo.svg 发布到 /bimi/logo.svg。构建验证要求该文件存在，旧的 /.well-known/bimi/ 路径不得进入产物；更新 BIMI DNS 记录时使用新路径。
 
 ## 统计与隐私

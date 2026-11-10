@@ -69,6 +69,9 @@ export async function buildSite(site, { cwd = process.cwd(), env = process.env, 
       }
     }
     await prepareIdentity(site, cwd, buildEnv)
+    if (site === 'web') {
+      await command(['--filter', application, 'test:worker'])
+    }
     await command(['--filter', application, 'exec', 'playwright', 'install', ...(env.CI ? ['--with-deps'] : []), 'chromium'])
     await command(['--filter', application, 'exec', 'playwright', 'test'])
   }

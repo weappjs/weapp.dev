@@ -48,6 +48,29 @@ permissions:
   contents: read
 
 jobs:
+  worker-http:
+    name: Worker HTTP (${{ matrix.channel }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [stable, preview]
+    env:
+      REPO_DOCS_CHANNEL: ${{ matrix.channel }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @weapp-io/web build
+      - run: pnpm --filter @weapp-io/web test:worker
+
   verify:
     name: Verify commercial application
     runs-on: ubuntu-24.04
@@ -101,7 +124,7 @@ jobs:
           retention-days: 7
 
   deploy-preview:
-    needs: verify
+    needs: [verify, worker-http]
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 15

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsx scripts/prepare-project-assets.ts && astro build && pnpm og:generate && pnpm pages:prepare && tsx scripts/validate-build.ts",
     "pages:prepare": "tsx scripts/prepare-pages-content.ts",
-    "check": "astro check && tsc --noEmit",
+    "check": "pnpm worker:types && astro check && tsc --noEmit && tsc --project worker/tsconfig.json",
     "deploy:dry-run": "wrangler deploy --dry-run",
     "dev": "tsx scripts/prepare-project-assets.ts && astro dev",
     "lint": "eslint .",
@@ -17,6 +17,8 @@
     "og:generate": "tsx scripts/generate-og.ts",
     "preview": "astro preview",
     "test": "vitest run",
+    "test:worker": "vitest run --config vitest.worker.config.ts",
+    "worker:types": "wrangler types .cache/worker-configuration.d.ts",
     "test:e2e": "pnpm build && playwright test",
     "test:e2e:analytics-live": "WEAPP_ANALYTICS_LIVE_TEST=1 playwright test tests/e2e/analytics-live.spec.ts --project=desktop"
   },

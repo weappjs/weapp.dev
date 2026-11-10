@@ -34,6 +34,9 @@ describe('frozen website verification', () => {
         }
       } })
       expect(commands.filter(args => args.at(-1) === 'build')).toHaveLength(1)
+      expect(commands).toContainEqual(['--filter', '@weapp-io/web', 'test:worker'])
+      expect(commands.findIndex(args => args.at(-1) === 'test:worker'))
+        .toBeLessThan(commands.findIndex(args => args.includes('playwright')))
       expect(await readFile(path.join(cwd, 'runner/.cache/docs-artifacts/web/preview/dist/index.html'), 'utf8')).toBe('<h1>frozen source</h1>')
     }
     finally {

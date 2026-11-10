@@ -307,7 +307,17 @@ it('separates Pages credentials from Cloudflare and keeps PR deploys on validate
   assert.equal(pages.env.CLOUDFLARE_API_TOKEN, undefined)
   for (const filename of ['ci.yml', 'open-source.yml']) {
     const workflow = parse(await readFile(path.join(repository, '.github/workflows', filename), 'utf8'))
-    assert.deepEqual(Object.keys(workflow.jobs).sort(), ['deploy-preview', 'verify'])
+    const commercial = filename === 'ci.yml'
+    assert.deepEqual(Object.keys(workflow.jobs).sort(), commercial ? ['deploy-preview', 'verify', 'worker-http'] : ['deploy-preview', 'verify'])
+    if (commercial) {
+      const http = workflow.jobs['worker-http']
+      assert.deepEqual(http.strategy.matrix.channel, ['stable', 'preview'])
+      assert.match(http.env.REPO_DOCS_CHANNEL, /^\$\{\{ matrix\.channel \}\}$/)
+      assert.deepEqual(http.steps.filter(step => step.run?.endsWith(' build') || step.run?.endsWith(' test:worker')).map(step => step.run), [
+        'pnpm --filter @weapp-io/web build',
+        'pnpm --filter @weapp-io/web test:worker',
+      ])
+    }
     const verify = workflow.jobs.verify
     assert.match(verify.env.REPO_DOCS_CHANNEL, /github.event_name == 'pull_request' && 'preview' \|\| 'stable'/)
     for (const job of [verify, workflow.jobs['deploy-preview']]) {
@@ -319,7 +329,7 @@ it('separates Pages credentials from Cloudflare and keeps PR deploys on validate
     const artifact = verify.steps.findIndex(step => step.uses?.startsWith('actions/upload-artifact@'))
     assert.ok(identity >= 0 && identity < e2e && e2e < artifact)
     const preview = workflow.jobs['deploy-preview']
-    assert.equal(preview.needs, 'verify')
+    assert.deepEqual(preview.needs, commercial ? ['verify', 'worker-http'] : 'verify')
     assert.match(preview.if, /github.event.pull_request.head.repo.full_name == github.repository/)
     const download = preview.steps.findIndex(step => step.uses?.startsWith('actions/download-artifact@'))
     const upload = preview.steps.findIndex(step => step.run?.startsWith('node scripts/docs-deployment/cli.mjs pr '))
